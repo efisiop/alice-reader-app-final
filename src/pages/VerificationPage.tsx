@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { 
-  Container, Box, Typography, TextField, Button, 
+import {
+  Container, Box, Typography, TextField, Button,
   Paper, Alert, CircularProgress, Link, Checkbox, FormControlLabel
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
@@ -14,26 +14,33 @@ const VerificationPage: React.FC = () => {
   const [consentGiven, setConsentGiven] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  
+
   const { setIsVerified, user } = useAuth();
   const navigate = useNavigate();
 
-  // In Phase 1, we're just mocking this verification
-  // In Phase 2, we would actually validate against Supabase
+  // List of valid verification codes
+  const validCodes = ['ALICE123', 'WONDERLAND', 'RABBIT', 'TEAPARTY', 'CHESHIRE'];
+
+  // Handle verification
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!verificationCode || !firstName || !lastName || !email || !consentGiven) {
       setError('Please fill in all fields and agree to the terms');
       return;
     }
-    
+
+    // Check if the verification code is valid
+    if (!validCodes.includes(verificationCode.toUpperCase())) {
+      setError('Invalid verification code. Please try again.');
+      return;
+    }
+
     setError(null);
     setLoading(true);
-    
+
     try {
-      // Mock successful verification for Phase 1
-      // In Phase 2, we would call Supabase to verify and store user data
+      // Mock successful verification
       setTimeout(() => {
         setIsVerified(true);
         navigate('/reader');
@@ -84,9 +91,9 @@ const VerificationPage: React.FC = () => {
               autoFocus
               value={verificationCode}
               onChange={(e) => setVerificationCode(e.target.value)}
-              helperText="Enter the unique code found with your book"
+              helperText="For testing, use one of these codes: ALICE123, WONDERLAND, RABBIT, TEAPARTY, CHESHIRE"
             />
-            
+
             <TextField
               margin="normal"
               required
@@ -97,7 +104,7 @@ const VerificationPage: React.FC = () => {
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
             />
-            
+
             <TextField
               margin="normal"
               required
@@ -108,7 +115,7 @@ const VerificationPage: React.FC = () => {
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
             />
-            
+
             <TextField
               margin="normal"
               required
@@ -121,7 +128,7 @@ const VerificationPage: React.FC = () => {
               onChange={(e) => setEmail(e.target.value)}
               helperText="This should match your registration email"
             />
-            
+
             <Box sx={{ bgcolor: 'background.paper', p: 2, mt: 2, borderRadius: 1, border: '1px solid #e0e0e0' }}>
               <Typography variant="body2" paragraph>
                 <strong>Why we need your information:</strong>
@@ -143,10 +150,10 @@ const VerificationPage: React.FC = () => {
                 </Link>
               </Typography>
             </Box>
-            
+
             <FormControlLabel
               control={
-                <Checkbox 
+                <Checkbox
                   checked={consentGiven}
                   onChange={(e) => setConsentGiven(e.target.checked)}
                   color="primary"
@@ -155,7 +162,7 @@ const VerificationPage: React.FC = () => {
               label="I understand and agree to the collection and use of my information as described above"
               sx={{ mt: 2 }}
             />
-            
+
             <Button
               type="submit"
               fullWidth
