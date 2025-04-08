@@ -1,10 +1,1 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App.tsx'
-import './index.css'
-
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-)
+document.getElementById('root')!.innerHTML = '<h2>JavaScript Content</h2><p>This is added by JavaScript</p>'
