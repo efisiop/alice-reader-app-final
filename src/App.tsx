@@ -1,14 +1,12 @@
 // src/App.tsx
-import { HashRouter as Router, Routes, Route } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
 import theme from './utils/theme';
-import EnvChecker from './components/Debug/EnvChecker';
 
-import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import VerificationPage from './pages/VerificationPage';
@@ -39,8 +37,7 @@ function App() {
                 <ReaderInterface />
               </ProtectedRoute>
             } />
-            <Route path="/debug" element={<EnvChecker />} />
-            <Route path="/" element={<HomePage />} />
+            <Route path="/" element={<Navigate to="/login" replace />} />
           </Routes>
         </Router>
       </AuthProvider>
@@ -48,4 +45,4 @@ function App() {
   );
 }
 
-export default App
+export default App;
