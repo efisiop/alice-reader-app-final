@@ -118,6 +118,16 @@ const ReaderInterface: React.FC = () => {
           }}
         >
           <Box sx={{ fontSize: `${fontSize}px` }}>
+            {selectedText && (
+              <Box sx={{ mb: 2, p: 2, bgcolor: 'rgba(106, 81, 174, 0.1)', borderRadius: 1 }}>
+                <Typography variant="subtitle2" color="primary" gutterBottom>
+                  Selected Text:
+                </Typography>
+                <Typography variant="body2">
+                  {selectedText}
+                </Typography>
+              </Box>
+            )}
             <TextHighlighter
               text={sampleText}
               onTextSelect={(text) => setSelectedText(text)}

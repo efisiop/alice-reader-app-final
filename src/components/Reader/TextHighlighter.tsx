@@ -1,6 +1,6 @@
 // src/components/Reader/TextHighlighter.tsx
 import React, { useState } from 'react';
-import { Typography, Box } from '@mui/material';
+import { Box } from '@mui/material';
 
 interface TextHighlighterProps {
   text: string;
@@ -35,10 +35,10 @@ const TextHighlighter: React.FC<TextHighlighterProps> = ({
   const words = text.split(/(\s+)/).filter(Boolean);
 
   return (
-    <Box 
-      component="div" 
+    <Box
+      component="div"
       onMouseUp={handleMouseUp}
-      sx={{ 
+      sx={{
         fontSize: '1.1rem',
         lineHeight: 1.7,
         '& .word:hover': {
