@@ -1,9 +1,17 @@
 import { useState } from 'react'
+import { HashRouter as Router, Routes, Route } from 'react-router-dom'
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
 
-function App() {
+// Import page components
+import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
+import ReaderDashboard from './pages/ReaderDashboard'
+import VerificationPage from './pages/VerificationPage'
+import ProtectedRoute from './components/Auth/ProtectedRoute'
+
+function HomePage() {
   const [count, setCount] = useState(0)
 
   return (
@@ -29,6 +37,20 @@ function App() {
         Click on the Vite and React logos to learn more
       </p>
     </>
+  )
+}
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/reader" element={<ProtectedRoute><ReaderDashboard /></ProtectedRoute>} />
+        <Route path="/verify" element={<VerificationPage />} />
+      </Routes>
+    </Router>
   )
 }
 
