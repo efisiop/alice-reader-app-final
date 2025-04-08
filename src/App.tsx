@@ -1,6 +1,8 @@
 // src/App.tsx
 import { HashRouter, Routes, Route } from 'react-router-dom';
-import { Typography, Box, Container } from '@mui/material';
+import { Typography, Box, Container, CssBaseline } from '@mui/material';
+import { ThemeProvider } from '@mui/material/styles';
+import theme from './utils/theme';
 
 // Simple Home component
 function Home() {
@@ -32,12 +34,15 @@ function About() {
 
 function App() {
   return (
-    <HashRouter>
-      <Routes>
-        <Route path="/about" element={<About />} />
-        <Route path="/" element={<Home />} />
-      </Routes>
-    </HashRouter>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <HashRouter>
+        <Routes>
+          <Route path="/about" element={<About />} />
+          <Route path="/" element={<Home />} />
+        </Routes>
+      </HashRouter>
+    </ThemeProvider>
   );
 }
 
