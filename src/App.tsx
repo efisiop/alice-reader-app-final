@@ -1,64 +1,29 @@
 // src/App.tsx
-import { HashRouter, Routes, Route } from 'react-router-dom';
-import { Typography, Box, Container, CssBaseline, Button } from '@mui/material';
-import { ThemeProvider } from '@mui/material/styles';
-import theme from './utils/theme';
+import React from 'react';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+
 import { AuthProvider } from './contexts/AuthContext';
+import ProtectedRoute from './components/Auth/ProtectedRoute';
 
-// Simple Home component
-function Home() {
-  return (
-    <Container>
-      <Box sx={{ mt: 4, textAlign: 'center' }}>
-        <Typography variant="h3">Alice Reader</Typography>
-        <Typography variant="body1" sx={{ mt: 2 }}>
-          Welcome to the Alice Reader application.
-        </Typography>
-        <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center', gap: 2 }}>
-          <Button variant="contained" color="primary" href="#/login">
-            Login
-          </Button>
-          <Button variant="outlined" color="primary" href="#/about">
-            About
-          </Button>
-        </Box>
-      </Box>
-    </Container>
-  );
-}
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import VerificationPage from './pages/VerificationPage';
+import ReaderDashboard from './pages/ReaderDashboard';
+import ReaderInterface from './pages/ReaderInterface';
 
-// Simple About component
-function About() {
-  return (
-    <Container>
-      <Box sx={{ mt: 4, textAlign: 'center' }}>
-        <Typography variant="h3">About</Typography>
-        <Typography variant="body1" sx={{ mt: 2 }}>
-          This is a simple about page.
-        </Typography>
-      </Box>
-    </Container>
-  );
-}
-
-// Simple Login component
-function Login() {
-  return (
-    <Container>
-      <Box sx={{ mt: 4, textAlign: 'center' }}>
-        <Typography variant="h3">Login</Typography>
-        <Typography variant="body1" sx={{ mt: 2 }}>
-          This is a simple login page.
-        </Typography>
-        <Box sx={{ mt: 4 }}>
-          <Button variant="contained" color="primary" href="#/">
-            Back to Home
-          </Button>
-        </Box>
-      </Box>
-    </Container>
-  );
-}
+// Basic theme
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#6a51ae', // Purple shade for Alice in Wonderland theme
+    },
+    secondary: {
+      main: '#ff6b8b', // Pink shade for highlights
+    },
+  },
+});
 
 function App() {
   return (
@@ -67,9 +32,33 @@ function App() {
       <AuthProvider>
         <HashRouter>
           <Routes>
-            <Route path="/about" element={<About />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route
+              path="/verify"
+              element={
+                <ProtectedRoute requireVerification={false}>
+                  <VerificationPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reader"
+              element={
+                <ProtectedRoute>
+                  <ReaderDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reader/read"
+              element={
+                <ProtectedRoute>
+                  <ReaderInterface />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/" element={<Navigate to="/login" replace />} />
           </Routes>
         </HashRouter>
       </AuthProvider>

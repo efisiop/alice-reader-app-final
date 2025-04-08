@@ -1,11 +1,20 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Session, User } from '@supabase/supabase-js';
-import { supabase } from '../services/supabaseClient';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
+
+type User = {
+  id: string;
+  email: string;
+};
+
+type Session = {
+  user: User;
+};
 
 type AuthContextType = {
-  session: Session | null;
   user: User | null;
+  session: Session | null;
   loading: boolean;
+  isVerified: boolean;
+  setIsVerified: React.Dispatch<React.SetStateAction<boolean>>;
   signIn: (email: string, password: string) => Promise<{
     error: Error | null;
     user: User | null;
@@ -15,49 +24,50 @@ type AuthContextType = {
     user: User | null;
   }>;
   signOut: () => Promise<void>;
-  isVerified: boolean;
-  setIsVerified: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
 
-  useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    // Cleanup on unmount
-    return () => subscription.unsubscribe();
-  }, []);
-
+  // Mock authentication functions for testing
   const signIn = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    return { user: data?.user ?? null, error };
+    setLoading(true);
+    try {
+      // Mock successful sign-in
+      const mockUser = { id: 'mock-id', email };
+      setUser(mockUser);
+      setSession({ user: mockUser });
+      return { user: mockUser, error: null };
+    } catch (error) {
+      return { user: null, error: error as Error };
+    } finally {
+      setLoading(false);
+    }
   };
 
   const signUp = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    return { user: data?.user ?? null, error };
+    setLoading(true);
+    try {
+      // Mock successful sign-up
+      const mockUser = { id: 'mock-id', email };
+      setUser(mockUser);
+      setSession({ user: mockUser });
+      return { user: mockUser, error: null };
+    } catch (error) {
+      return { user: null, error: error as Error };
+    } finally {
+      setLoading(false);
+    }
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    setUser(null);
+    setSession(null);
   };
 
   const value = {
