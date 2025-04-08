@@ -3,23 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Minimal Test</title>
-    <style>
-      body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-      h1 { color: #333; }
-      .container { max-width: 800px; margin: 0 auto; }
-    </style>
+    <title>React App</title>
   </head>
   <body>
-    <div class="container">
-      <h1>Static HTML Content</h1>
-      <div id="root"></div>
-    </div>
-
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        document.getElementById('root').innerHTML = '<h2>JavaScript Content</h2><p>This is added by JavaScript</p>';
-      });
-    </script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
