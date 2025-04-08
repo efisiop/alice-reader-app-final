@@ -1,5 +1,7 @@
 // src/config.ts
 export const supabaseConfig = {
-  supabaseUrl: "your_project_url",
-  supabaseAnonKey: "your_anon_key"
+  // Replace these values with your actual Supabase credentials
+  // You can find these in your Supabase dashboard under Project Settings > API
+  supabaseUrl: "https://your-project-id.supabase.co",
+  supabaseAnonKey: "your-anon-key-starting-with-eyJ..."
 };
