@@ -6,6 +6,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
 import theme from './utils/theme';
+import EnvChecker from './components/Debug/EnvChecker';
 
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -37,6 +38,7 @@ function App() {
                 <ReaderInterface />
               </ProtectedRoute>
             } />
+            <Route path="/debug" element={<EnvChecker />} />
             <Route path="/" element={<Navigate to="/login" replace />} />
           </Routes>
         </Router>
