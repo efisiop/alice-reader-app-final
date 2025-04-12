@@ -1,55 +1,215 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container, Box, Typography, TextField, Button,
-  Paper, Alert, CircularProgress, Link, Checkbox, FormControlLabel
+  Paper, Alert, CircularProgress, Link, Checkbox, FormControlLabel,
+  Snackbar
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { verifyBookCode, markCodeAsUsed, updateUserProfile } from '../services/backendService';
+import LoadingState from '../components/common/LoadingState';
 
 const VerificationPage: React.FC = () => {
   const [verificationCode, setVerificationCode] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
+  const [userId, setUserId] = useState<string | null>(null);
   const [consentGiven, setConsentGiven] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const { setIsVerified, user } = useAuth();
+  const { setIsVerified, user, isVerified } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // List of valid verification codes
-  const validCodes = ['ALICE123', 'WONDERLAND', 'RABBIT', 'TEAPARTY', 'CHESHIRE'];
+  // Check if user is already verified
+  useEffect(() => {
+    console.log('VerificationPage: Checking verification status...');
+    const checkVerificationStatus = async () => {
+      try {
+        // If user is already verified, redirect to reader dashboard
+        if (isVerified) {
+          console.log('VerificationPage: User already verified, redirecting to reader...');
+          navigate('/reader');
+          return;
+        }
+
+        // Get user data from location state if available
+        const state = location.state as any;
+        if (state) {
+          console.log('VerificationPage: Found user data in location state');
+          if (state.firstName) setFirstName(state.firstName);
+          if (state.lastName) setLastName(state.lastName);
+          if (state.email) setEmail(state.email);
+          if (state.userId) setUserId(state.userId);
+          if (state.message) setSuccessMessage(state.message);
+        } else if (user) {
+          // If no state but user is logged in, use user data
+          console.log('VerificationPage: Using logged in user data');
+          setEmail(user.email || '');
+          // We don't have first/last name in the user object directly
+          // This would be fetched from the user profile in a real app
+        }
+      } catch (err) {
+        console.error('VerificationPage: Error checking verification status:', err);
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+
+    checkVerificationStatus();
+  }, [isVerified, navigate, location, user]);
+
+  // Verification will be done through Supabase
+
+  // Form validation
+  const validateForm = () => {
+    // Reset error
+    setError(null);
+
+    // Check for empty fields
+    if (!verificationCode.trim()) {
+      setError('Verification code is required');
+      return false;
+    }
+
+    if (!firstName.trim()) {
+      setError('First name is required');
+      return false;
+    }
+
+    if (!lastName.trim()) {
+      setError('Last name is required');
+      return false;
+    }
+
+    if (!email.trim()) {
+      setError('Email is required');
+      return false;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address');
+      return false;
+    }
+
+    if (!consentGiven) {
+      setError('You must agree to the terms to continue');
+      return false;
+    }
+
+    return true;
+  };
 
   // Handle verification
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('VerificationPage: Starting verification process...');
 
-    if (!verificationCode || !firstName || !lastName || !email || !consentGiven) {
-      setError('Please fill in all fields and agree to the terms');
+    // Validate form
+    if (!validateForm()) {
       return;
     }
 
-    // Check if the verification code is valid
-    if (!validCodes.includes(verificationCode.toUpperCase())) {
-      setError('Invalid verification code. Please try again.');
-      return;
-    }
-
-    setError(null);
     setLoading(true);
 
     try {
-      // Mock successful verification
+      // Determine which user ID to use
+      const effectiveUserId = user?.id || userId;
+
+      if (!effectiveUserId) {
+        console.error('VerificationPage: No user ID available for verification');
+        throw new Error('User not found. Please log in again.');
+      }
+
+      console.log('VerificationPage: Verifying with user ID:', effectiveUserId);
+      console.log('VerificationPage: Verification code:', verificationCode);
+
+      // Step 1: Verify the code using backend service
+      console.log('VerificationPage: Step 1 - Verifying book code...');
+      const { data: verificationResult, error: verifyError } = await verifyBookCode(verificationCode);
+
+      if (verifyError) {
+        console.error('VerificationPage: Code verification error:', verifyError);
+        throw new Error('Invalid verification code. Please try again.');
+      }
+
+      if (!verificationResult) {
+        console.error('VerificationPage: No verification result returned');
+        throw new Error('Verification failed. Please try again.');
+      }
+
+      console.log('VerificationPage: Verification result:', verificationResult);
+
+      if (verificationResult.is_used) {
+        console.error('VerificationPage: Code already used');
+        throw new Error('This code has already been used.');
+      }
+
+      // Step 2: Update user profile with name
+      console.log('VerificationPage: Step 2 - Updating user profile...');
+      const { error: updateError } = await updateUserProfile(effectiveUserId, {
+        first_name: firstName,
+        last_name: lastName,
+        email: email
+      });
+
+      if (updateError) {
+        console.error('VerificationPage: Profile update error:', updateError);
+        throw new Error('Failed to update profile: ' + updateError.message);
+      }
+
+      // Step 3: Mark code as used
+      console.log('VerificationPage: Step 3 - Marking code as used...');
+      const { error: markCodeError } = await markCodeAsUsed(verificationCode, effectiveUserId);
+
+      if (markCodeError) {
+        console.error('VerificationPage: Mark code error:', markCodeError);
+        throw new Error('Failed to mark code as used: ' + markCodeError.message);
+      }
+
+      // Step 4: Set verified status
+      console.log('VerificationPage: Step 4 - Setting verified status...');
+      setIsVerified(true);
+      setSuccessMessage('Book verified successfully! Redirecting to reader...');
+
+      // Add debug info
+      console.log('VerificationPage: Verification successful for user:', effectiveUserId);
+      console.log('VerificationPage: Redirecting to reader dashboard');
+
+      // Short delay to show success message
       setTimeout(() => {
-        setIsVerified(true);
+        // Navigate to reader dashboard
         navigate('/reader');
       }, 1500);
     } catch (err: any) {
+      console.error('VerificationPage: Verification error:', err);
       setError(err.message || 'Verification failed');
+    } finally {
       setLoading(false);
     }
   };
+
+  // Prevent showing reader dashboard content when on verification page
+  useEffect(() => {
+    // Clear any reader dashboard loading messages that might be showing
+    const dashboardLoadingElements = document.querySelectorAll('.reader-dashboard-loading');
+    dashboardLoadingElements.forEach(element => {
+      if (element instanceof HTMLElement) {
+        element.style.display = 'none';
+      }
+    });
+  }, []);
+
+  // Show loading state while checking verification status
+  if (initialLoading) {
+    return <LoadingState message="Checking verification status..." />;
+  }
 
   return (
     <Container maxWidth="sm">
@@ -91,7 +251,9 @@ const VerificationPage: React.FC = () => {
               autoFocus
               value={verificationCode}
               onChange={(e) => setVerificationCode(e.target.value)}
-              helperText="For testing, use one of these codes: ALICE123, WONDERLAND, RABBIT, TEAPARTY, CHESHIRE"
+              helperText="Enter the verification code from your book (e.g., ALICE123)"
+              disabled={loading}
+              error={!!error && !verificationCode.trim()}
             />
 
             <TextField
@@ -103,6 +265,8 @@ const VerificationPage: React.FC = () => {
               name="firstName"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
+              disabled={loading}
+              error={!!error && !firstName.trim()}
             />
 
             <TextField
@@ -114,6 +278,8 @@ const VerificationPage: React.FC = () => {
               name="lastName"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
+              disabled={loading}
+              error={!!error && !lastName.trim()}
             />
 
             <TextField
@@ -127,6 +293,8 @@ const VerificationPage: React.FC = () => {
               value={email || (user?.email ?? '')}
               onChange={(e) => setEmail(e.target.value)}
               helperText="This should match your registration email"
+              disabled={loading}
+              error={!!error && (!email.trim() || error.includes('email'))}
             />
 
             <Box sx={{ bgcolor: 'background.paper', p: 2, mt: 2, borderRadius: 1, border: '1px solid #e0e0e0' }}>
@@ -157,6 +325,7 @@ const VerificationPage: React.FC = () => {
                   checked={consentGiven}
                   onChange={(e) => setConsentGiven(e.target.checked)}
                   color="primary"
+                  disabled={loading}
                 />
               }
               label="I understand and agree to the collection and use of my information as described above"
@@ -173,9 +342,27 @@ const VerificationPage: React.FC = () => {
             >
               {loading ? <CircularProgress size={24} /> : 'Verify & Activate'}
             </Button>
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Link href="/test-codes.html" target="_blank" variant="body2">
+                Test Verification Codes
+              </Link>
+              <Link component={RouterLink} to="/status" variant="body2">
+                System Status
+              </Link>
+            </Box>
           </Box>
         </Paper>
       </Box>
+
+      {/* Success message snackbar */}
+      <Snackbar
+        open={!!successMessage}
+        autoHideDuration={5000}
+        onClose={() => setSuccessMessage(null)}
+        message={successMessage}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
     </Container>
   );
 };

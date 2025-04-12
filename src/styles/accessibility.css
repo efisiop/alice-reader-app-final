@@ -1,0 +1,85 @@
+/* src/styles/accessibility.css */
+:root {
+  --base-font-size: 100%;
+  --base-line-height: 1.5;
+}
+
+html {
+  font-size: var(--base-font-size);
+}
+
+body {
+  line-height: var(--base-line-height);
+}
+
+/* High Contrast Mode */
+.high-contrast {
+  --background-color: #000000;
+  --text-color: #ffffff;
+  --primary-color: #ffff00;
+  --secondary-color: #00ffff;
+  --link-color: #00ffff;
+  
+  background-color: var(--background-color) !important;
+  color: var(--text-color) !important;
+}
+
+.high-contrast a {
+  color: var(--link-color) !important;
+}
+
+.high-contrast button {
+  background-color: var(--primary-color) !important;
+  color: var(--background-color) !important;
+  border: 2px solid var(--text-color) !important;
+}
+
+/* Reduced Motion */
+.reduced-motion * {
+  animation-duration: 0.001s !important;
+  transition-duration: 0.001s !important;
+}
+
+/* Dyslexic-Friendly Font */
+.dyslexic-font {
+  font-family: 'OpenDyslexic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+  letter-spacing: 0.05em;
+  word-spacing: 0.1em;
+}
+
+.dyslexic-font p {
+  max-width: 60ch;
+}
+
+/* Focus styles for better accessibility */
+*:focus {
+  outline: 3px solid #4a90e2 !important;
+  outline-offset: 2px !important;
+}
+
+.high-contrast *:focus {
+  outline: 3px solid var(--primary-color) !important;
+}
+
+/* Skip to content link for keyboard navigation */
+.skip-to-content {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.skip-to-content:focus {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: auto;
+  height: auto;
+  padding: 16px;
+  background: #fff;
+  z-index: 9999;
+  color: #000;
+  font-weight: bold;
+}

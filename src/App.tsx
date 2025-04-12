@@ -1,69 +1,154 @@
-// src/App.tsx
-import React from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
+import React, { useEffect, useState } from 'react';
+import { HashRouter as Router, Routes, Route } from 'react-router-dom';
+import './App.css';
+import './styles/accessibility.css';
 
+// Components
+import TestServiceRegistry from './components/TestServiceRegistry';
+import ServiceStatusCheck from './components/admin/ServiceStatusCheck';
+import BetaTestHarness from './components/beta/BetaTestHarness';
+import { AccessibilityProvider } from './components/common/AccessibilityMenu';
+import SkipToContent from './components/common/SkipToContent';
+
+// Pages
+import ServiceTestPage from './pages/test/ServiceTestPage';
+import ServiceRegistryTestPage from './pages/ServiceRegistryTestPage';
+import BetaTestDashboard from './pages/Beta/BetaTestDashboard';
+import LandingPage from './pages/LandingPage';
+import LoginPage from './pages/Auth/LoginPage';
+import RegisterPage from './pages/Auth/RegisterPage';
+import VerifyPage from './pages/Auth/VerifyPage';
+import ForgotPasswordPage from './pages/Auth/ForgotPasswordPage';
+import ReaderDashboard from './pages/Reader/ReaderDashboard';
+import ReaderPage from './pages/Reader/ReaderPage';
+import ReaderStatistics from './pages/Reader/ReaderStatistics';
+import ConsultantDashboard from './pages/Consultant/ConsultantDashboard';
+import ReadersList from './pages/Consultant/ReadersList';
+import HelpRequests from './pages/Consultant/HelpRequests';
+import AdminDashboard from './pages/Admin/AdminDashboard';
+import { ConsultantDashboardPage } from './pages/Consultant/ConsultantDashboardPage';
+import { ProtectedRoute } from './components/Common/ProtectedRoute';
+
+// Services
+import { initializeServices } from './services';
+import { AppError } from './utils/errorHandling';
+import { appLog } from './components/LogViewer';
 import { AuthProvider } from './contexts/AuthContext';
-import ProtectedRoute from './components/Auth/ProtectedRoute';
 
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import VerificationPage from './pages/VerificationPage';
-import ReaderDashboard from './pages/ReaderDashboard';
-import ReaderInterface from './pages/ReaderInterface';
-
-// Basic theme
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#6a51ae', // Purple shade for Alice in Wonderland theme
-    },
-    secondary: {
-      main: '#ff6b8b', // Pink shade for highlights
-    },
-  },
-});
+// Import your existing components here
+// import Home from './pages/Home';
+// import Login from './pages/Login';
+// etc.
 
 function App() {
-  return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <AuthProvider>
-        <HashRouter>
+  const [initialized, setInitialized] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const init = async () => {
+      try {
+        appLog('App', 'Initializing services', 'info');
+        await initializeServices();
+        setInitialized(true);
+        appLog('App', 'Services initialized successfully', 'success');
+      } catch (err: any) {
+        console.error('Failed to initialize services:', err);
+        appLog('App', `Failed to initialize services: ${err.message}`, 'error');
+        setError('Failed to initialize application. Please check the console for details.');
+      }
+    };
+
+    init();
+  }, []);
+
+  if (error) {
+    return (
+      <div className="error-container">
+        <h2>Initialization Error</h2>
+        <p>{error}</p>
+        <button onClick={() => window.location.reload()}>Retry</button>
+      </div>
+    );
+  }
+
+  if (!initialized) {
+    return (
+      <div className="loading-container">
+        <h2>Initializing Application...</h2>
+        <p>Please wait while the services are being initialized.</p>
+      </div>
+    );
+  }
+
+  const AppContent = () => (
+    <Router>
+      <div className="App">
+        <SkipToContent contentId="main-content" />
+        <main id="main-content">
           <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
-            <Route
-              path="/verify"
+            <Route path="/verify" element={<VerifyPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+
+            {/* Reader Routes */}
+            <Route path="/reader" element={<ReaderDashboard />} />
+            <Route path="/reader/:bookId/page/:pageNumber" element={<ReaderPage />} />
+            <Route path="/reader/statistics" element={<ReaderStatistics />} />
+
+            {/* Consultant Routes */}
+            <Route path="/consultant" element={<ConsultantDashboard />} />
+            <Route path="/consultant/readers" element={<ReadersList />} />
+            <Route path="/consultant/help-requests" element={<HelpRequests />} />
+            <Route 
+              path="/consultant-dashboard" 
               element={
-                <ProtectedRoute requireVerification={false}>
-                  <VerificationPage />
+                <ProtectedRoute requiredRole="consultant">
+                  <ConsultantDashboardPage />
                 </ProtectedRoute>
-              }
+              } 
             />
-            <Route
-              path="/reader"
-              element={
-                <ProtectedRoute>
-                  <ReaderDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/reader/read"
-              element={
-                <ProtectedRoute>
-                  <ReaderInterface />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/" element={<Navigate to="/login" replace />} />
+
+            {/* Admin Routes */}
+            <Route path="/admin" element={<AdminDashboard />} />
+
+            {/* Beta Testing Routes */}
+            {import.meta.env.VITE_APP_ENV === 'beta' && (
+              <Route path="/beta-dashboard" element={<BetaTestDashboard />} />
+            )}
+
+            {/* Development Routes */}
+            <Route path="/test-registry" element={<TestServiceRegistry />} />
+            <Route path="/service-test" element={<ServiceTestPage />} />
+            <Route path="/service-status" element={<ServiceStatusCheck />} />
+            <Route path="/service-registry-test" element={<ServiceRegistryTestPage />} />
           </Routes>
-        </HashRouter>
-      </AuthProvider>
-    </ThemeProvider>
+        </main>
+      </div>
+    </Router>
   );
+
+  // Wrap with providers
+  const WithProviders = () => (
+    <AuthProvider>
+      <AccessibilityProvider>
+        <AppContent />
+      </AccessibilityProvider>
+    </AuthProvider>
+  );
+
+  // In beta environment, wrap with test harness
+  if (import.meta.env.VITE_APP_ENV === 'beta') {
+    return (
+      <BetaTestHarness>
+        <WithProviders />
+      </BetaTestHarness>
+    );
+  }
+
+  return <WithProviders />;
 }
 
 export default App;

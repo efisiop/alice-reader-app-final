@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple Supabase Test</title>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    button {
+      padding: 10px 15px;
+      background-color: #6a51ae;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 10px 0;
+    }
+    pre {
+      background-color: #f5f5f5;
+      padding: 15px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    .error {
+      background-color: #ffebee;
+      color: #c62828;
+      padding: 15px;
+      border-radius: 4px;
+      margin-top: 20px;
+    }
+    .success {
+      background-color: #e8f5e9;
+      color: #2e7d32;
+      padding: 15px;
+      border-radius: 4px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Simple Supabase Test</h1>
+  
+  <button id="testBtn">Test Connection</button>
+  
+  <div id="result"></div>
+  
+  <script>
+    document.getElementById('testBtn').addEventListener('click', async () => {
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = '<p>Testing connection...</p>';
+      
+      try {
+        // Supabase credentials
+        const supabaseUrl = 'https://blwypdcobizmpidmuhvq.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsd3lwZGNvYml6bXBpZG11aHZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQyMDgzNDcsImV4cCI6MjA1OTc4NDM0N30.YP2r-CnSaM4rKclXBivanAMBQh9sMsI95F2p87zIuWM';
+        
+        // Create Supabase client
+        const { createClient } = supabase;
+        const supabaseClient = createClient(supabaseUrl, supabaseKey);
+        
+        // Test query
+        const { data, error } = await supabaseClient
+          .from('books')
+          .select('*')
+          .limit(1);
+        
+        if (error) {
+          throw error;
+        }
+        
+        // Show success
+        resultDiv.innerHTML = `
+          <div class="success">
+            <h3>Connection Successful!</h3>
+            <pre>${JSON.stringify(data, null, 2)}</pre>
+          </div>
+        `;
+      } catch (err) {
+        // Show error
+        resultDiv.innerHTML = `
+          <div class="error">
+            <h3>Connection Failed</h3>
+            <p>${err.message || 'Unknown error'}</p>
+            <pre>${JSON.stringify(err, null, 2)}</pre>
+          </div>
+        `;
+      }
+    });
+  </script>
+</body>
+</html>

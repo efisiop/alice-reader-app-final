@@ -1,7 +1,60 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
+import path from 'path'
 
-export default defineConfig({
-  plugins: [react()],
-  base: '/alice-reader-app/',
+// Use GitHub Pages base path in production, local path in development
+const getBase = (mode: string) => {
+  if (mode === 'production') {
+    return '/alice-reader/' // Replace with your repository name
+  }
+  return '/'
+}
+
+export default defineConfig(({ mode }) => {
+  // Load environment variables based on mode
+  const env = loadEnv(mode, process.cwd(), '');
+
+  console.log(`Building for ${mode} environment`);
+
+  return {
+    plugins: [react()],
+    base: getBase(mode),
+    define: {
+      'import.meta.env.VITE_APP_ENV': JSON.stringify(env.VITE_APP_ENV || mode),
+      'import.meta.env.VITE_BUILD_DATE': JSON.stringify(new Date().toISOString()),
+      'import.meta.env.VITE_BETA_MODE': JSON.stringify(env.VITE_BETA_MODE === 'true'),
+      'import.meta.env.VITE_BETA_VERSION': JSON.stringify(env.VITE_BETA_VERSION || '0.0.0'),
+    },
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+        '@components': path.resolve(__dirname, './src/components'),
+        '@services': path.resolve(__dirname, './src/services'),
+        '@utils': path.resolve(__dirname, './src/utils'),
+        '@types': path.resolve(__dirname, './src/types'),
+        '@hooks': path.resolve(__dirname, './src/hooks'),
+        '@data': path.resolve(__dirname, './src/data'),
+      },
+    },
+    server: {
+      port: 5173,
+      open: true,
+    },
+    build: {
+      outDir: 'dist',
+      sourcemap: mode !== 'production',
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            vendor: ['react', 'react-dom', 'react-router-dom'],
+            ui: ['@mui/material', '@mui/icons-material'],
+            supabase: ['@supabase/supabase-js'],
+          },
+        },
+      },
+      // Generate 404.html for GitHub Pages SPA support
+      assetsDir: 'assets',
+      emptyOutDir: true,
+    },
+  }
 })

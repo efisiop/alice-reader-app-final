@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alice Reader Test App</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    header {
+      background-color: #3f51b5;
+      color: white;
+      padding: 20px;
+      border-radius: 8px 8px 0 0;
+      margin: -20px -20px 20px;
+    }
+    h1 {
+      margin: 0;
+    }
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .card h2 {
+      margin-top: 0;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 10px;
+    }
+    .screenshot {
+      max-width: 100%;
+      height: auto;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+    .code {
+      background-color: #f8f8f8;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 15px;
+      overflow-x: auto;
+      font-family: monospace;
+      margin: 10px 0;
+    }
+    .button {
+      display: inline-block;
+      background-color: #3f51b5;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 4px;
+      text-decoration: none;
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+    .button:hover {
+      background-color: #303f9f;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Alice Reader App</h1>
+      <p>Interactive Reader Journey Simulation</p>
+    </header>
+
+    <div class="card">
+      <h2>Overview</h2>
+      <p>
+        The Alice Reader App is an interactive reading companion for "Alice in Wonderland" that provides tiered assistance features:
+      </p>
+      <ul>
+        <li>Word highlighting and definition lookup</li>
+        <li>AI Assistant for deeper understanding</li>
+        <li>Consultant support for personalized help</li>
+      </ul>
+      <p>
+        This demonstration showcases the key components of the app, including the landing page, authentication flow, reader interface, and administrative features.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Landing Page</h2>
+      <p>
+        The landing page introduces users to the Alice Reader app with a visually appealing design that highlights the key features.
+      </p>
+      <img src="https://m.media-amazon.com/images/I/71pmz7EqjdL._AC_UF1000,1000_QL80_.jpg" alt="Landing Page" class="screenshot" style="max-width: 300px;">
+      <div class="code">
+        <pre>// src/pages/LandingPage.tsx
+import React from 'react';
+import { 
+  Box, 
+  Typography, 
+  Button, 
+  Container, 
+  Grid, 
+  Paper 
+} from '@mui/material';
+import { Link as RouterLink } from 'react-router-dom';</pre>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Authentication Flow</h2>
+      <p>
+        The app includes a complete authentication flow with login, registration, and book verification pages.
+      </p>
+      <div class="code">
+        <pre>// src/pages/Auth/LoginPage.tsx
+import React, { useState, useEffect } from 'react';
+import { 
+  Box, 
+  Typography, 
+  TextField, 
+  Button, 
+  Paper, 
+  Link, 
+  Alert, 
+  CircularProgress,
+  Container
+} from '@mui/material';</pre>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Reader Dashboard</h2>
+      <p>
+        The reader dashboard provides a personalized overview of the user's reading progress and quick access to continue reading.
+      </p>
+      <div class="code">
+        <pre>// src/pages/Reader/ReaderDashboard.tsx
+import React, { useState, useEffect } from 'react';
+import { 
+  Box, 
+  Typography, 
+  Paper, 
+  Grid, 
+  Button, 
+  LinearProgress,
+  Divider,
+  Avatar
+} from '@mui/material';</pre>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Reader Interface</h2>
+      <p>
+        The reader interface is the core of the app, providing the actual reading experience with tiered assistance features.
+      </p>
+      <div class="code">
+        <pre>// src/pages/Reader/ReaderPage.tsx
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { 
+  Box, 
+  Typography, 
+  Paper, 
+  IconButton, 
+  Drawer, 
+  Divider, 
+  TextField, 
+  Button, 
+  CircularProgress,
+  Tooltip,
+  Popover
+} from '@mui/material';</pre>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Consultant Features</h2>
+      <p>
+        The consultant dashboard and tools allow reading consultants to monitor readers and provide assistance.
+      </p>
+      <div class="code">
+        <pre>// src/pages/Consultant/ConsultantDashboard.tsx
+import React, { useState, useEffect } from 'react';
+import { 
+  Box, 
+  Typography, 
+  Paper, 
+  Grid, 
+  Card, 
+  CardContent, 
+  Divider, 
+  CircularProgress,
+  Button,
+  List,
+  ListItem
+} from '@mui/material';</pre>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Admin Dashboard</h2>
+      <p>
+        The admin dashboard provides system monitoring and management capabilities.
+      </p>
+      <div class="code">
+        <pre>// src/pages/Admin/AdminDashboard.tsx
+import React, { useState, useEffect } from 'react';
+import { 
+  Box, 
+  Typography, 
+  Paper, 
+  Grid, 
+  Button, 
+  CircularProgress,
+  Card,
+  CardContent,
+  Divider
+} from '@mui/material';</pre>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Next Steps</h2>
+      <p>
+        To run the app locally, you would need to:
+      </p>
+      <ol>
+        <li>Clone the repository</li>
+        <li>Install dependencies with <code>npm install</code></li>
+        <li>Set up environment variables for Supabase</li>
+        <li>Run the development server with <code>npm run dev</code></li>
+      </ol>
+      <p>
+        The app is currently experiencing some issues with the development server, but the components have been successfully implemented and can be viewed individually.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Component Documentation</h2>
+      <p>
+        The following components have been implemented:
+      </p>
+      <ul>
+        <li><strong>Landing Page</strong>: Introduces the app and its features</li>
+        <li><strong>Authentication Pages</strong>: Login, Registration, Verification</li>
+        <li><strong>Reader Dashboard</strong>: Personalized reading overview</li>
+        <li><strong>Reader Interface</strong>: Reading experience with assistance features</li>
+        <li><strong>Statistics Page</strong>: Detailed reading statistics</li>
+        <li><strong>Consultant Pages</strong>: Tools for reading consultants</li>
+        <li><strong>Admin Dashboard</strong>: System monitoring and management</li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>

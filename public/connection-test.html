@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Supabase Connection Test</title>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    h1 {
+      color: #6a51ae;
+      border-bottom: 2px solid #f0f0f0;
+      padding-bottom: 10px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    button {
+      background: #6a51ae;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background 0.3s;
+      margin-right: 10px;
+    }
+    button:hover {
+      background: #5a4494;
+    }
+    button:disabled {
+      background: #cccccc;
+      cursor: not-allowed;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 4px;
+      overflow: auto;
+      max-height: 300px;
+    }
+    .success {
+      color: #2e7d32;
+      background: #e8f5e9;
+      padding: 10px;
+      border-radius: 4px;
+      margin-bottom: 10px;
+    }
+    .error {
+      color: #c62828;
+      background: #ffebee;
+      padding: 10px;
+      border-radius: 4px;
+      margin-bottom: 10px;
+    }
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(106, 81, 174, 0.3);
+      border-radius: 50%;
+      border-top-color: #6a51ae;
+      animation: spin 1s ease-in-out infinite;
+      margin-right: 10px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Supabase Connection Test</h1>
+    <p>This page tests the connection to your Supabase project independently of your React application.</p>
+
+    <div>
+      <button id="testButton" onclick="testConnection()">Test Connection</button>
+      <button id="testDirectButton" onclick="testDirectConnection()">Test Direct API</button>
+    </div>
+
+    <div id="result" style="margin-top: 20px;">
+      <p>Click a button to test the connection.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Environment Information</h2>
+    <pre id="envInfo">Loading environment information...</pre>
+  </div>
+
+  <script>
+    // Your Supabase credentials
+    const SUPABASE_URL = "https://blwypdcobizmpidmuhvq.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsd3lwZGNvYml6bXBpZG11aHZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQyMDgzNDcsImV4cCI6MjA1OTc4NDM0N30.YP2r-CnSaM4rKclXBivanAMBQh9sMsI95F2p87zIuWM";
+
+    // Display environment info
+    document.getElementById('envInfo').textContent = `Supabase URL: ${SUPABASE_URL}\nSupabase Key: ${SUPABASE_KEY ? SUPABASE_KEY.substring(0, 10) + '...' : 'Not set'}`;
+
+    // Test connection using Supabase client
+    async function testConnection() {
+      const resultElement = document.getElementById('result');
+      const testButton = document.getElementById('testButton');
+
+      testButton.disabled = true;
+      resultElement.innerHTML = '<div class="loading"></div> Testing connection...';
+
+      try {
+        console.log('Testing Supabase connection with client...');
+
+        // Create Supabase client
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // Test query
+        console.log('Executing query...');
+        const { data, error } = await supabaseClient.from('books').select('title').limit(1);
+
+        console.log('Query result:', { data, error });
+
+        if (error) throw error;
+
+        resultElement.innerHTML = `
+          <div class="success">✓ Connection successful!</div>
+          <h3>Retrieved data:</h3>
+          <pre>${JSON.stringify(data, null, 2)}</pre>
+        `;
+      } catch (error) {
+        console.error('Connection test failed:', error);
+
+        resultElement.innerHTML = `
+          <div class="error">✗ Connection failed!</div>
+          <h3>Error:</h3>
+          <pre>${JSON.stringify(error, null, 2)}</pre>
+        `;
+      } finally {
+        testButton.disabled = false;
+      }
+    }
+
+    // Test connection using direct fetch API
+    async function testDirectConnection() {
+      const resultElement = document.getElementById('result');
+      const testButton = document.getElementById('testDirectButton');
+
+      testButton.disabled = true;
+      resultElement.innerHTML = '<div class="loading"></div> Testing direct API connection...';
+
+      try {
+        console.log('Testing direct API connection...');
+
+        // Make a direct fetch request to the Supabase REST API
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/books?select=title&limit=1`, {
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        console.log('Response status:', response.status, response.statusText);
+
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(`API Error (${response.status}): ${text}`);
+        }
+
+        const data = await response.json();
+        console.log('Data:', data);
+
+        resultElement.innerHTML = `
+          <div class="success">✓ Direct API connection successful!</div>
+          <h3>Retrieved data:</h3>
+          <pre>${JSON.stringify(data, null, 2)}</pre>
+        `;
+      } catch (error) {
+        console.error('Direct API test failed:', error);
+
+        resultElement.innerHTML = `
+          <div class="error">✗ Direct API connection failed!</div>
+          <h3>Error:</h3>
+          <pre>${error.message || 'Unknown error'}</pre>
+        `;
+      } finally {
+        testButton.disabled = false;
+      }
+    }
+
+    // Auto-run test on page load
+    window.addEventListener('load', () => {
+      setTimeout(testConnection, 500);
+    });
+  </script>
+</body>
+</html>

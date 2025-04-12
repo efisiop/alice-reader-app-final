@@ -1,54 +1,79 @@
-# React + TypeScript + Vite
+# Alice Reader App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Overview
 
-Currently, two official plugins are available:
+The Alice Reader app is a reading assistance application designed to help users improve their reading experience through various features including word definitions, AI assistance, and live help from consultants.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Features
 
-## Expanding the ESLint configuration
+- **Interactive Reading Interface**: Navigate through books with an intuitive interface
+- **Dictionary Integration**: Look up word definitions with a simple tap
+- **AI Assistant**: Get context-aware answers to questions about the text
+- **Consultant Support**: Request help from reading consultants when needed
+- **Reading Statistics**: Track reading progress and performance
+- **Accessibility Features**: Support for various accessibility needs
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Getting Started
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+### Prerequisites
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+- Node.js (v18 or later)
+- npm (v8 or later)
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Installation
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
-```
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/efisiop/alice-reader-app.git
+   cd alice-reader-app
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Set up environment variables:
+   - Create a `.env` file based on `.env.example`
+   - Add your Supabase URL and API key
+
+4. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+## Documentation
+
+Comprehensive documentation is available in the `docs` directory:
+
+- [Beta Testing Guide](docs/beta-testing-guide.md): Instructions for beta testers
+- [Production Readiness Checklist](docs/production-readiness-checklist.md): Checklist for production deployment
+- [Troubleshooting Guide](docs/troubleshooting-guide.md): Solutions for common issues
+
+## Architecture
+
+The Alice Reader app is built with:
+
+- **Frontend**: React, TypeScript, Vite
+- **Backend**: Supabase (PostgreSQL, Authentication, Storage)
+- **State Management**: React Context API
+- **Styling**: CSS Modules
+
+## Troubleshooting
+
+If you encounter issues with the application, please refer to our [Troubleshooting Guide](docs/troubleshooting-guide.md) which covers common problems and their solutions, including:
+
+- Application initialization issues
+- Circular dependencies
+- Type export/import issues
+- Service registry problems
+- Backend connection issues
+- Authentication errors
+
+## Contributing
+
+Contributions are welcome! Please read our contributing guidelines before submitting pull requests.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
