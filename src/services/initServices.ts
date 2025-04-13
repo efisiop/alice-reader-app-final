@@ -1,6 +1,6 @@
 // src/services/initServices.ts
 import { appLog } from '../components/LogViewer';
-import { registry } from './registry';
+import { registry } from '@services/serviceRegistry';
 import { initManager } from './initManager';
 import { getInitializationOrder } from './initOrder';
 import { logDependencyGraph, SERVICE_DEPENDENCIES } from './dependencies';

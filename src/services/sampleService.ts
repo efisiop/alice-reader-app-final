@@ -1,5 +1,5 @@
 // src/services/sampleService.ts
-import { registry } from './ServiceRegistry';
+import { registry } from '@services/serviceRegistry';
 import { SERVICE_NAMES } from '../constants/app';
 import { appLog } from '../components/LogViewer';
 import { handleServiceError, AppError, ErrorCode } from '../utils/errorHandling';

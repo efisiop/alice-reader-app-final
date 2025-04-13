@@ -1,5 +1,5 @@
 // src/services/mockServices.ts
-import { registry } from './registry';
+import { registry } from '@services/serviceRegistry';
 
 // Mock Auth Service
 const mockAuthService = {

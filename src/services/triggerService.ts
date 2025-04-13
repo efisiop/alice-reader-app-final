@@ -1,5 +1,5 @@
 // src/services/triggerService.ts
-import { registry, SERVICE_NAMES } from './registry';
+import { registry, SERVICE_NAMES } from '@services/serviceRegistry';
 import { initManager } from './initManager';
 import { getSupabaseClient } from './supabaseClient';
 import { appLog } from '../components/LogViewer';

@@ -1,5 +1,5 @@
 // src/services/interactionService.ts
-import { registry } from './registry';
+import { registry } from '@services/serviceRegistry';
 import { initManager } from './initManager';
 import { appLog } from '../components/LogViewer';
 import { handleServiceError } from '../utils/errorHandling';

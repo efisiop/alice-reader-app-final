@@ -1,5 +1,5 @@
 // src/services/authService.ts
-import { registry } from './registry';
+import { registry } from '@services/serviceRegistry';
 import { initManager } from './initManager';
 import { getSupabaseClient } from './supabaseClient';
 import { appLog } from '../components/LogViewer';

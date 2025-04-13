@@ -4,12 +4,18 @@ import {
   applyMigrations,
   rollbackMigrations,
   verifySchema,
-  migrations
+  getMigrationFiles,
+  getMigrationSql
 } from '../utils/migrationUtils';
 import { appLog } from '../components/LogViewer';
-import { registry } from './registry';
+import { registry } from '@services/serviceRegistry';
 import { initManager } from './initManager';
 import { handleServiceError } from '../utils/errorHandling';
+import { DbSchema } from '../types/database';
+import { SupabaseClientOptions } from '@supabase/supabase-js';
+import { ErrorCode, AppError } from '../utils/errorHandling';
+import { UserProfile } from '../types/user';
+import { BookDetails } from '../types/book';
 
 /**
  * Database Service Interface

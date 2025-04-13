@@ -1,7 +1,7 @@
 // src/services/statisticsService.ts
 import { getSupabaseClient } from './supabaseClient';
 import { appLog } from '../components/LogViewer';
-import { registry } from './registry';
+import { registry } from '@services/serviceRegistry';
 import { initManager } from './initManager';
 import { handleServiceError } from '../utils/errorHandling';
 
