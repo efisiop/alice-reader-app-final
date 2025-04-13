@@ -1,4 +1,4 @@
-	name: Deploy to GitHub Pages
+name: Deploy to GitHub Pages
 
 on:
   push:
@@ -10,7 +10,6 @@ permissions:
   pages: write
   id-token: write
 
-# Allow only one concurrent deployment
 concurrency:
   group: "pages"
   cancel-in-progress: true
@@ -22,30 +21,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Display BetaTestDashboard Import Line
+      - name: Check file content
         run: |
-          echo "--- Checking content of src/pages/Beta/BetaTestDashboard.tsx ---"
-          if [ -f "src/pages/Beta/BetaTestDashboard.tsx" ]; then
-            echo "File exists. Grepping for ServiceStatusCheck import:"
-            grep 'ServiceStatusCheck' src/pages/Beta/BetaTestDashboard.tsx || echo "Import line containing 'ServiceStatusCheck' not found."
-            
-            echo "Full list of the first 30 lines of the file:"
-            head -n 30 src/pages/Beta/BetaTestDashboard.tsx
-            
-            echo "List of all import statements:"
-            grep -n "import" src/pages/Beta/BetaTestDashboard.tsx
-          else
-            echo "ERROR: src/pages/Beta/BetaTestDashboard.tsx NOT FOUND!"
-            
-            echo "Checking if the file exists in a different casing:"
-            find src -name "BetaTestDashboard.tsx" -type f
-            
-            echo "Checking directory structure:"
-            ls -la src/pages/
-            ls -la src/pages/Beta/ || echo "Beta directory not found"
-            ls -la src/pages/beta/ || echo "beta directory not found"
-          fi
-          echo "--- Finished checking file content ---"
+          echo "Content of Beta directory:"
+          ls -la src/pages/Beta/ || echo "Beta directory not found"
+          echo "Content of BetaTestDashboard.tsx:"
+          cat src/pages/Beta/BetaTestDashboard.tsx || echo "File not found"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -56,36 +37,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Debug Steps
-      - name: Debug - List workspace contents
-        run: |
-          echo "=== Workspace Root ==="
-          ls -la
-          echo "=== src directory ==="
-          ls -la src/
-          echo "=== components directory ==="
-          ls -la src/components/
-          echo "=== Beta directory ==="
-          ls -la src/pages/Beta/
-
-      - name: Debug - Check specific files
-        run: |
-          echo "=== BetaTestDashboard.tsx imports ==="
-          head -n 30 src/pages/Beta/BetaTestDashboard.tsx
-          echo "=== Check Admin directory ==="
-          ls -la src/components/Admin/ || echo "Admin directory not found"
-          ls -la src/components/admin/ || echo "admin directory not found"
-          echo "=== Check ServiceStatusCheck.tsx ==="
-          find src/components -name "ServiceStatusCheck.tsx" -type f
-          
-      - name: Debug - Check TypeScript and Vite configs
-        run: |
-          echo "=== tsconfig.app.json paths ==="
-          cat tsconfig.app.json
-          echo "=== vite.config.ts ==="
-          cat vite.config.ts
-
-      - name: Create production environment file
+      - name: Create env file
         run: |
           echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}" >> .env.production
           echo "VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}" >> .env.production
@@ -98,11 +50,10 @@ jobs:
         with:
           static_site_generator: "vite"
 
-      - name: Create 404.html for SPA routing
-        run: |
-          cp dist/index.html dist/404.html
+      - name: Create 404.html
+        run: cp dist/index.html dist/404.html
 
-      - name: Upload Pages artifact
+      - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: "./dist"
