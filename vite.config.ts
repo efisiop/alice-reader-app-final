@@ -51,6 +51,20 @@ export default defineConfig(({ mode }) => {
             supabase: ['@supabase/supabase-js'],
           },
         },
+        // Exclude test files from the build
+        external: mode === 'production' ? [
+          /src\/components\/test\/.*/,
+          /src\/pages\/test\/.*/,
+          /src\/mocks\/.*/,
+          /src\/__tests__\/.*/,
+          /src\/.*\.test\.(ts|tsx)$/,
+          /src\/.*\.spec\.(ts|tsx)$/,
+          /src\/components\/ServiceRegistryTest\.tsx$/,
+          /src\/components\/TestServiceRegistry\.tsx$/,
+          /src\/pages\/ServiceRegistryTestPage\.tsx$/,
+          /src\/AppTest\.tsx$/,
+          /src\/main-test\.tsx$/
+        ] : [],
       },
       // Generate 404.html for GitHub Pages SPA support
       assetsDir: 'assets',

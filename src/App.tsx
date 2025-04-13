@@ -4,14 +4,11 @@ import './App.css';
 import './styles/accessibility.css';
 
 // Components
-import TestServiceRegistry from './components/TestServiceRegistry';
 import { ServiceStatusCheck } from '@components/Admin/ServiceStatusCheck';
 import { AccessibilityProvider } from './components/common/AccessibilityMenu';
 import SkipToContent from './components/common/SkipToContent';
 
 // Pages
-import ServiceTestPage from './pages/test/ServiceTestPage';
-import ServiceRegistryTestPage from './pages/ServiceRegistryTestPage';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/Auth/LoginPage';
 import RegisterPage from './pages/Auth/RegisterPage';
@@ -95,23 +92,20 @@ function App() {
             <Route path="/consultant" element={<ConsultantDashboard />} />
             <Route path="/consultant/readers" element={<ReadersList />} />
             <Route path="/consultant/help-requests" element={<HelpRequests />} />
-            <Route 
-              path="/consultant-dashboard" 
+            <Route
+              path="/consultant-dashboard"
               element={
                 <ProtectedRoute requiredRole="consultant">
                   <ConsultantDashboardPage />
                 </ProtectedRoute>
-              } 
+              }
             />
 
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminDashboard />} />
 
-            {/* Development Routes */}
-            <Route path="/test-registry" element={<TestServiceRegistry />} />
-            <Route path="/service-test" element={<ServiceTestPage />} />
+            {/* Admin Routes - Service Status */}
             <Route path="/service-status" element={<ServiceStatusCheck />} />
-            <Route path="/service-registry-test" element={<ServiceRegistryTestPage />} />
           </Routes>
         </main>
       </div>

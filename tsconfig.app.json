@@ -37,5 +37,22 @@
       "@theme/*": ["./src/theme/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/components/test",
+    "src/pages/test",
+    "src/mocks",
+    "**/__tests__/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "src/components/ServiceRegistryTest.tsx",
+    "src/components/TestServiceRegistry.tsx",
+    "src/pages/ServiceRegistryTestPage.tsx",
+    "src/AppTest.tsx",
+    "src/main-test.tsx"
+  ]
 }

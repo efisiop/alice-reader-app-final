@@ -4,7 +4,7 @@ import { Box, Typography, Paper, Button, CircularProgress, Alert } from '@mui/ma
 import { useBookService, useSampleService } from '../hooks/useService';
 import { appLog } from './LogViewer';
 import { SERVICE_NAMES } from '../constants/app';
-import { registry } from '../services/ServiceRegistry';
+import { registry } from '../services/serviceRegistry';
 
 /**
  * Component to test the Service Registry implementation
