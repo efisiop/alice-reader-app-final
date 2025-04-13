@@ -17,7 +17,7 @@ import {
   CardContent,
   CardActions
 } from '@mui/material';
-import TestScenarios from '../../components/beta/TestScenarios';
+import TestScenarios from '../../components/Beta/TestScenarios';
 import { ServiceStatusCheck } from '../../components/Admin/ServiceStatusCheck';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import BugReportIcon from '@mui/icons-material/BugReport';
