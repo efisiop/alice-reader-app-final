@@ -17,8 +17,8 @@ import {
   CardContent,
   CardActions
 } from '@mui/material';
-import TestScenarios from '../../components/Beta/TestScenarios';
-import { ServiceStatusCheck } from '../../components/Admin/ServiceStatusCheck';
+import TestScenarios from '@components/Beta/TestScenarios';
+import { ServiceStatusCheck } from '@components/Admin/ServiceStatusCheck';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import BugReportIcon from '@mui/icons-material/BugReport';
 import SpeedIcon from '@mui/icons-material/Speed';
@@ -26,8 +26,8 @@ import FeedbackIcon from '@mui/icons-material/Feedback';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import PersonIcon from '@mui/icons-material/Person';
 import BuildIcon from '@mui/icons-material/Build';
-import { registry } from '../../services/registry';
-import { MonitoringServiceInterface } from '../../services/monitoringService';
+import { registry } from '@services/registry';
+import { MonitoringServiceInterface } from '@services/monitoringService';
 
 interface TabPanelProps {
   children?: React.ReactNode;
