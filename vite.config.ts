@@ -5,7 +5,7 @@ import path from 'path'
 // Use GitHub Pages base path in production, local path in development
 const getBase = (mode: string) => {
   if (mode === 'production') {
-    return '/alice-reader/' // Replace with your repository name
+    return '/alice-reader-app-final/' // Correct repository name for GitHub Pages
   }
   return '/'
 }
