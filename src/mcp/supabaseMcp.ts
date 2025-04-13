@@ -141,6 +141,37 @@ class SupabaseMCP {
     }
   }
 
+  async signUp(email: string, password: string): Promise<{ data: { user: User | null }, error: Error | null }> {
+    try {
+      if (this.config.mockEnabled) {
+        const mockUser = this.mockData.get('mockUser');
+        return {
+          data: { user: mockUser },
+          error: null
+        };
+      }
+
+      const { data, error } = await this.client.auth.signUp({
+        email,
+        password
+      });
+
+      if (!error && data.session) {
+        this.setCachedSession('current', data.session);
+      }
+
+      return {
+        data: { user: data.user },
+        error
+      };
+    } catch (error) {
+      return {
+        data: { user: null },
+        error: error instanceof Error ? error : new Error('Unknown error')
+      };
+    }
+  }
+
   async signOut(): Promise<{ error: Error | null }> {
     try {
       if (this.config.mockEnabled) {

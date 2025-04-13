@@ -5,7 +5,7 @@ import './styles/accessibility.css';
 
 // Components
 import TestServiceRegistry from './components/TestServiceRegistry';
-import ServiceStatusCheck from './components/admin/ServiceStatusCheck';
+import ServiceStatusCheck from './components/Admin/ServiceStatusCheck';
 import BetaTestHarness from './components/beta/BetaTestHarness';
 import { AccessibilityProvider } from './components/common/AccessibilityMenu';
 import SkipToContent from './components/common/SkipToContent';
@@ -27,7 +27,7 @@ import ReadersList from './pages/Consultant/ReadersList';
 import HelpRequests from './pages/Consultant/HelpRequests';
 import AdminDashboard from './pages/Admin/AdminDashboard';
 import { ConsultantDashboardPage } from './pages/Consultant/ConsultantDashboardPage';
-import { ProtectedRoute } from './components/Common/ProtectedRoute';
+import { ProtectedRoute } from './components/common/ProtectedRoute';
 
 // Services
 import { initializeServices } from './services';

@@ -69,3 +69,5 @@ export const LoadingSkeleton: React.FC<LoadingSkeletonProps> = ({
     </Stack>
   );
 };
+
+export default LoadingSkeleton;

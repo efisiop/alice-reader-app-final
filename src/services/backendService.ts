@@ -35,6 +35,10 @@ export const signIn = async (email: string, password: string) => {
   return mcpInstance.signIn(email, password);
 };
 
+export const signUp = async (email: string, password: string) => {
+  return mcpInstance.signUp(email, password);
+};
+
 export const signOut = async () => {
   return mcpInstance.signOut();
 };
