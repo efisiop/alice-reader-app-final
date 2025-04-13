@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Typography, Paper } from '@mui/material';
-import QRCode from 'qrcode.react';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface VerificationCodeQRProps {
   code: string;
@@ -17,7 +17,7 @@ export function VerificationCodeQR({ code, size = 200, title }: VerificationCode
         </Typography>
       )}
       <Box sx={{ my: 2 }}>
-        <QRCode value={code} size={size} renderAs="svg" />
+        <QRCodeSVG value={code} size={size} />
       </Box>
       <Typography variant="body2" color="text.secondary" align="center">
         {code}
