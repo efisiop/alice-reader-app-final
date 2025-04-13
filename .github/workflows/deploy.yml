@@ -60,6 +60,12 @@ jobs:
           echo "Files in internal-dev/components:"
           find internal-dev/components -type f | sort
           
+      - name: Verify Node Env and Vite Mode
+        run: |
+          echo "NODE_ENV: $NODE_ENV" 
+          echo "Vite Mode Variable: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'production' || 'development' }}"
+          echo "Repository name: ${{ github.repository }}"
+          
       - name: Create production environment file
         run: |
           echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}" >> .env.production
@@ -75,9 +81,9 @@ jobs:
             npx tsc --noEmit
           fi
 
-      - name: Build project with Vite
-        # Run vite build directly using npx
-        run: npx vite build
+      - name: Build project with Vite (Explicit Mode & emptyOutDir)
+        # Run vite build directly using npx with explicit production mode
+        run: npx vite build --mode production --emptyOutDir
 
       - name: Setup Pages artifact structure
         # This action prepares the environment for upload-pages-artifact
