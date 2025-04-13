@@ -6,14 +6,12 @@ import './styles/accessibility.css';
 // Components
 import TestServiceRegistry from './components/TestServiceRegistry';
 import { ServiceStatusCheck } from '@components/Admin/ServiceStatusCheck';
-import { BetaWrapper } from './components/BetaWrapper';
 import { AccessibilityProvider } from './components/common/AccessibilityMenu';
 import SkipToContent from './components/common/SkipToContent';
 
 // Pages
 import ServiceTestPage from './pages/test/ServiceTestPage';
 import ServiceRegistryTestPage from './pages/ServiceRegistryTestPage';
-import BetaTestDashboard from './pages/Beta/BetaTestDashboard';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/Auth/LoginPage';
 import RegisterPage from './pages/Auth/RegisterPage';
@@ -34,11 +32,6 @@ import { initializeServices } from './services';
 import { AppError } from './utils/errorHandling';
 import { appLog } from './components/LogViewer';
 import { AuthProvider } from './contexts/AuthContext';
-
-// Import your existing components here
-// import Home from './pages/Home';
-// import Login from './pages/Login';
-// etc.
 
 function App() {
   const [initialized, setInitialized] = useState(false);
@@ -114,11 +107,6 @@ function App() {
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminDashboard />} />
 
-            {/* Beta Testing Routes */}
-            {import.meta.env.VITE_APP_ENV === 'beta' && (
-              <Route path="/beta-dashboard" element={<BetaTestDashboard />} />
-            )}
-
             {/* Development Routes */}
             <Route path="/test-registry" element={<TestServiceRegistry />} />
             <Route path="/service-test" element={<ServiceTestPage />} />
@@ -131,24 +119,13 @@ function App() {
   );
 
   // Wrap with providers
-  const WithProviders = () => (
+  return (
     <AuthProvider>
       <AccessibilityProvider>
         <AppContent />
       </AccessibilityProvider>
     </AuthProvider>
   );
-
-  // In beta environment, wrap with test harness
-  if (import.meta.env.VITE_APP_ENV === 'beta') {
-    return (
-      <BetaWrapper>
-        <WithProviders />
-      </BetaWrapper>
-    );
-  }
-
-  return <WithProviders />;
 }
 
 export default App;

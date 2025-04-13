@@ -1,9 +1,10 @@
 import React from 'react';
-import { BetaTestHarness as OriginalBetaTestHarness } from '@components/Beta/BetaTestHarness';
 
 type BetaWrapperProps = React.PropsWithChildren<{}>;
 
+// This is a simplified placeholder component for production builds
+// The actual implementation is only used in beta environment
 export function BetaWrapper({ children }: BetaWrapperProps) {
-  // We just re-export the original component to avoid case-sensitivity issues
-  return <OriginalBetaTestHarness>{children}</OriginalBetaTestHarness>;
+  // In production builds, just render the children without any beta test harness
+  return <>{children}</>;
 }
