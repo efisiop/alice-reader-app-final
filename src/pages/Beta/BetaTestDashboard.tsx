@@ -18,7 +18,7 @@ import {
   CardActions
 } from '@mui/material';
 import TestScenarios from '../../components/beta/TestScenarios';
-import ServiceStatusCheck from '../../components/Admin/ServiceStatusCheck';
+import { ServiceStatusCheck } from '../../components/Admin/ServiceStatusCheck';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import BugReportIcon from '@mui/icons-material/BugReport';
 import SpeedIcon from '@mui/icons-material/Speed';
