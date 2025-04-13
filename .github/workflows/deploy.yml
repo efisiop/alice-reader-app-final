@@ -22,6 +22,31 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Display BetaTestDashboard Import Line
+        run: |
+          echo "--- Checking content of src/pages/Beta/BetaTestDashboard.tsx ---"
+          if [ -f "src/pages/Beta/BetaTestDashboard.tsx" ]; then
+            echo "File exists. Grepping for ServiceStatusCheck import:"
+            grep 'ServiceStatusCheck' src/pages/Beta/BetaTestDashboard.tsx || echo "Import line containing 'ServiceStatusCheck' not found."
+            
+            echo "Full list of the first 30 lines of the file:"
+            head -n 30 src/pages/Beta/BetaTestDashboard.tsx
+            
+            echo "List of all import statements:"
+            grep -n "import" src/pages/Beta/BetaTestDashboard.tsx
+          else
+            echo "ERROR: src/pages/Beta/BetaTestDashboard.tsx NOT FOUND!"
+            
+            echo "Checking if the file exists in a different casing:"
+            find src -name "BetaTestDashboard.tsx" -type f
+            
+            echo "Checking directory structure:"
+            ls -la src/pages/
+            ls -la src/pages/Beta/ || echo "Beta directory not found"
+            ls -la src/pages/beta/ || echo "beta directory not found"
+          fi
+          echo "--- Finished checking file content ---"
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
