@@ -1,9 +1,9 @@
-// src/pages/test/ServiceTestPage.tsx
+// src/pages/Test/ServiceTestPage.tsx
 import React, { useState } from 'react';
 import { Container, Typography, Box, Paper, Divider, Tabs, Tab } from '@mui/material';
-import ServiceTestHarness from '../../components/test/ServiceTestHarness';
-import SampleServiceComponent from '../../components/test/SampleServiceComponent';
-import { appLog } from '../../components/LogViewer';
+import ServiceTestHarness from '../../components/tests/ServiceTestHarness';
+import SampleServiceComponent from '../../components/tests/SampleServiceComponent';
+import { appLog } from '../../../src/components/LogViewer';
 
 /**
  * Service Test Page

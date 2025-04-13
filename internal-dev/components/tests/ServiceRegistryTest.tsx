@@ -1,10 +1,10 @@
 // src/components/ServiceRegistryTest.tsx
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Paper, Button, CircularProgress, Alert } from '@mui/material';
-import { useBookService, useSampleService } from '../hooks/useService';
-import { appLog } from './LogViewer';
-import { SERVICE_NAMES } from '../constants/app';
-import { registry } from '../services/serviceRegistry';
+import { useBookService, useSampleService } from '../../../src/hooks/useService';
+import { appLog } from '../../../src/components/LogViewer';
+import { SERVICE_NAMES } from '../../../src/constants/app';
+import { registry } from '../../../src/services/serviceRegistry';
 
 /**
  * Component to test the Service Registry implementation

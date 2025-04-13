@@ -1,8 +1,8 @@
 // src/pages/ServiceRegistryTestPage.tsx
 import React from 'react';
 import { Container, Typography, Box, Paper, Divider } from '@mui/material';
-import ServiceRegistryTest from '../components/ServiceRegistryTest';
-import { appLog } from '../components/LogViewer';
+import ServiceRegistryTest from '../../../internal-dev/components/tests/ServiceRegistryTest';
+import { appLog } from '../../../src/components/LogViewer';
 
 /**
  * Test page for the Service Registry implementation

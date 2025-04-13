@@ -14,16 +14,15 @@ export default defineConfig(({ mode }) => {
   // Load environment variables based on mode
   const env = loadEnv(mode, process.cwd(), '');
 
-  console.log(`Building for ${mode} environment`);
+  console.log(`Building for ${mode} environment with simplified config`);
 
   return {
     plugins: [react()],
     base: getBase(mode),
     define: {
-      'import.meta.env.VITE_APP_ENV': JSON.stringify(env.VITE_APP_ENV || mode),
+      'import.meta.env.VITE_APP_ENV': JSON.stringify('production'),
       'import.meta.env.VITE_BUILD_DATE': JSON.stringify(new Date().toISOString()),
-      'import.meta.env.VITE_BETA_MODE': JSON.stringify(env.VITE_BETA_MODE === 'true'),
-      'import.meta.env.VITE_BETA_VERSION': JSON.stringify(env.VITE_BETA_VERSION || '0.0.0'),
+      'import.meta.env.VITE_BETA_MODE': JSON.stringify(false),
     },
     resolve: {
       alias: {
@@ -36,14 +35,15 @@ export default defineConfig(({ mode }) => {
         '@data': path.resolve(__dirname, './src/data'),
       },
     },
-    server: {
-      port: 5173,
-      open: true,
-    },
     build: {
       outDir: 'dist',
-      sourcemap: mode !== 'production',
+      sourcemap: false,
       rollupOptions: {
+        // Explicitly exclude Beta components
+        external: [
+          /src\/components\/Beta\/.*/,
+          /src\/pages\/Beta\/.*/,
+        ],
         output: {
           manualChunks: {
             vendor: ['react', 'react-dom', 'react-router-dom'],

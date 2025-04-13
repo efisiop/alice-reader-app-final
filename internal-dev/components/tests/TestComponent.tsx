@@ -1,6 +1,7 @@
 // src/components/test/TestComponent.tsx
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Box, Typography, Button, Paper } from '@mui/material';
+import { appLog } from '../../../src/components/LogViewer';
 
 const TestComponent: React.FC = () => {
   return (

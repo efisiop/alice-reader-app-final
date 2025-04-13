@@ -18,7 +18,8 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import { useSampleService } from '../../hooks/useService';
-import { appLog } from '../LogViewer';
+import { appLog } from '../../../src/components/LogViewer';
+import { SampleService, createSampleService } from '../../../src/services/sampleService';
 
 /**
  * Sample Service Component

@@ -21,13 +21,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Check file content
-        run: |
-          echo "Content of Beta directory:"
-          ls -la src/pages/Beta/ || echo "Beta directory not found"
-          echo "Content of BetaTestDashboard.tsx:"
-          cat src/pages/Beta/BetaTestDashboard.tsx || echo "File not found"
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:

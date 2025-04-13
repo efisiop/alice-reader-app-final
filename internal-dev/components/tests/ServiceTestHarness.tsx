@@ -14,21 +14,24 @@ import {
   AccordionSummary,
   AccordionDetails,
   Alert,
-  Chip
+  Chip,
+  Tabs,
+  Tab
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
 import { 
-  initializeAllServices, 
+  initializeServices, 
+  getServiceStatus, 
   getRegisteredServices, 
   getInitializedServices 
-} from '../../services/initServices';
-import { registry } from '../../services/registry';
-import { SERVICE_DEPENDENCIES } from '../../services/dependencies';
-import { getInitializationOrder } from '../../services/initOrder';
-import { appLog } from '../LogViewer';
+} from '../../../src/services/initServices';
+import { registry, SERVICE_NAMES } from '../../../src/services/serviceRegistry';
+import { SERVICE_DEPENDENCIES } from '../../../src/services/dependencies';
+import { getInitializationOrder } from '../../../src/services/initOrder';
+import { appLog } from '../../../src/components/LogViewer';
 
 /**
  * Service Test Harness Component
@@ -67,7 +70,7 @@ const ServiceTestHarness: React.FC = () => {
     
     try {
       appLog('ServiceTestHarness', 'Initializing all services', 'info');
-      await initializeAllServices({ forceReload: true });
+      await initializeServices({ forceReload: true });
       updateServiceLists();
       appLog('ServiceTestHarness', 'Services initialized successfully', 'success');
     } catch (err) {

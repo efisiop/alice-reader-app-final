@@ -1,10 +1,10 @@
 // src/components/TestServiceRegistry.tsx
 import React, { useEffect, useState } from 'react';
-import { registry, SERVICE_NAMES, initManager, initializeServices } from '../services';
-import { appLog } from './LogViewer';
-import { BookServiceInterface } from '../services/bookService';
-import { FeedbackServiceInterface } from '../services/feedbackService';
-import { TriggerServiceInterface } from '../services/triggerService';
+import { registry, SERVICE_NAMES, initManager, initializeServices } from '../../../src/services';
+import { appLog } from '../../../src/components/LogViewer';
+import { BookServiceInterface } from '../../../src/services/bookService';
+import { FeedbackServiceInterface } from '../../../src/services/feedbackService';
+import { TriggerServiceInterface } from '../../../src/services/triggerService';
 
 const TestServiceRegistry: React.FC = () => {
   const [bookDetails, setBookDetails] = useState<any>(null);

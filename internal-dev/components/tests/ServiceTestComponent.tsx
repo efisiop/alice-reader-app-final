@@ -1,7 +1,10 @@
 // src/components/test/ServiceTestComponent.tsx
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, Paper, CircularProgress, List, ListItem, ListItemText, Divider, Button } from '@mui/material';
-import { registry } from '../../services/registry';
+import { Box, Typography, Paper, CircularProgress, List, ListItem, ListItemText, Divider, Button, TextField, Alert } from '@mui/material';
+import { appLog } from '../../../src/components/LogViewer';
+import { createSampleService } from '../../../src/services/sampleService';
+import { createBookService } from '../../../src/services/bookService';
+import { registry, SERVICE_NAMES } from '../../../src/services/serviceRegistry';
 
 const ServiceTestComponent: React.FC = () => {
   const [userData, setUserData] = useState<any>(null);
