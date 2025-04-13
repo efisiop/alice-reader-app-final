@@ -31,6 +31,35 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Debug Steps
+      - name: Debug - List workspace contents
+        run: |
+          echo "=== Workspace Root ==="
+          ls -la
+          echo "=== src directory ==="
+          ls -la src/
+          echo "=== components directory ==="
+          ls -la src/components/
+          echo "=== Beta directory ==="
+          ls -la src/pages/Beta/
+
+      - name: Debug - Check specific files
+        run: |
+          echo "=== BetaTestDashboard.tsx imports ==="
+          head -n 30 src/pages/Beta/BetaTestDashboard.tsx
+          echo "=== Check Admin directory ==="
+          ls -la src/components/Admin/ || echo "Admin directory not found"
+          ls -la src/components/admin/ || echo "admin directory not found"
+          echo "=== Check ServiceStatusCheck.tsx ==="
+          find src/components -name "ServiceStatusCheck.tsx" -type f
+          
+      - name: Debug - Check TypeScript and Vite configs
+        run: |
+          echo "=== tsconfig.app.json paths ==="
+          cat tsconfig.app.json
+          echo "=== vite.config.ts ==="
+          cat vite.config.ts
+
       - name: Create production environment file
         run: |
           echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}" >> .env.production
