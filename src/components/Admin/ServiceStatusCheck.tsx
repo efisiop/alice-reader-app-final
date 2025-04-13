@@ -66,13 +66,13 @@ export function ServiceStatusCheck() {
           return {
             name,
             status: 'registered',
-            dependencies: SERVICE_DEPENDENCIES[name] || []
+            dependencies: (SERVICE_DEPENDENCIES as Record<string, string[]>)[name] || []
           };
         } else {
           return {
             name,
             status: 'unregistered',
-            dependencies: SERVICE_DEPENDENCIES[name] || []
+            dependencies: (SERVICE_DEPENDENCIES as Record<string, string[]>)[name] || []
           };
         }
       } catch (error) {
@@ -80,7 +80,7 @@ export function ServiceStatusCheck() {
           name,
           status: 'error',
           error: error instanceof Error ? error.message : String(error),
-          dependencies: SERVICE_DEPENDENCIES[name] || []
+          dependencies: (SERVICE_DEPENDENCIES as Record<string, string[]>)[name] || []
         };
       }
     });
