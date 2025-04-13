@@ -6,7 +6,7 @@ import './styles/accessibility.css';
 // Components
 import TestServiceRegistry from './components/TestServiceRegistry';
 import { ServiceStatusCheck } from '@components/Admin/ServiceStatusCheck';
-import BetaTestHarness from '@components/Beta/BetaTestHarness';
+import { BetaWrapper } from './components/BetaWrapper';
 import { AccessibilityProvider } from './components/common/AccessibilityMenu';
 import SkipToContent from './components/common/SkipToContent';
 
@@ -142,9 +142,9 @@ function App() {
   // In beta environment, wrap with test harness
   if (import.meta.env.VITE_APP_ENV === 'beta') {
     return (
-      <BetaTestHarness>
+      <BetaWrapper>
         <WithProviders />
-      </BetaTestHarness>
+      </BetaWrapper>
     );
   }
 
