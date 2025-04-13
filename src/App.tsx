@@ -5,8 +5,8 @@ import './styles/accessibility.css';
 
 // Components
 import TestServiceRegistry from './components/TestServiceRegistry';
-import ServiceStatusCheck from './components/Admin/ServiceStatusCheck';
-import BetaTestHarness from './components/beta/BetaTestHarness';
+import { ServiceStatusCheck } from '@components/Admin/ServiceStatusCheck';
+import BetaTestHarness from '@components/Beta/BetaTestHarness';
 import { AccessibilityProvider } from './components/common/AccessibilityMenu';
 import SkipToContent from './components/common/SkipToContent';
 
