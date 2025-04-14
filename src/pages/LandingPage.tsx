@@ -21,6 +21,7 @@ import { usePerformance } from '../hooks/usePerformance';
 import BookIcon from '@mui/icons-material/Book';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import PersonIcon from '@mui/icons-material/Person';
+import { aliceCover } from '../assets';
 
 const LandingPage: React.FC = () => {
   const theme = useTheme();
@@ -153,7 +154,7 @@ const LandingPage: React.FC = () => {
             <Grid item xs={12} md={4}>
               <Box
                 component="img"
-                src="https://m.media-amazon.com/images/I/71pmz7EqjdL._AC_UF1000,1000_QL80_.jpg"
+                src={aliceCover}
                 alt="Alice in Wonderland"
                 sx={{
                   width: '100%',
