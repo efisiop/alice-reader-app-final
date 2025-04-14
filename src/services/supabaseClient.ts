@@ -344,12 +344,14 @@ export async function verifyBookCode(code: string, userId: string, firstName?: s
 
     if (profileError) {
       appLog('SupabaseClient', 'Error updating user profile during verification', 'error', profileError);
-      // Don't return an error, as the verification code was already marked as used
-      // We'll just log the error but still consider the verification successful
-    } else {
-      appLog('SupabaseClient', 'User profile updated with verification info', 'success');
-    }
+      return { 
+        success: false, 
+        error: `Profile update failed: ${profileError.message}`,
+        verificationStatus: 'code_marked_used_profile_update_failed'
+      };
+    } 
 
+    appLog('SupabaseClient', 'User profile updated with verification info', 'success');
     appLog('SupabaseClient', 'Book code verified successfully', 'success');
     return { success: true, data };
   } catch (error) {
