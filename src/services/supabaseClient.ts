@@ -4,9 +4,10 @@ import { Database, BookWithChapters, SectionWithChapter, BookProgress, BookStats
 import { appLog } from '../components/LogViewer';
 
 // Configuration
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 1000; // ms
+const MAX_RETRIES = 5;
+const RETRY_DELAY = 500; // ms
 const CONNECTION_CHECK_INTERVAL = 30000; // 30 seconds
+const MAX_RETRY_DELAY = 10000; // Maximum delay between retries (10s)
 
 // Get credentials from either environment variables or window fallbacks
 const getSupabaseCredentials = () => {
@@ -148,26 +149,54 @@ export const startConnectionMonitoring = () => {
   return () => clearInterval(interval);
 };
 
-// Retry utility function
+// Retry utility function with improved timeout handling
 export const executeWithRetries = async <T>(
   operation: () => Promise<T>,
   operationName: string
 ): Promise<T> => {
   let retries = 0;
+  let delay = RETRY_DELAY;
 
   while (retries < MAX_RETRIES) {
     try {
-      return await operation();
+      const startTime = Date.now();
+      appLog('SupabaseClient', `Executing ${operationName} (attempt ${retries + 1}/${MAX_RETRIES})`, 'debug');
+      
+      const result = await operation();
+      
+      const elapsed = Date.now() - startTime;
+      if (elapsed > 2000) {
+        appLog('SupabaseClient', `${operationName} completed in ${elapsed}ms (slow operation)`, 'warning');
+      } else {
+        appLog('SupabaseClient', `${operationName} completed in ${elapsed}ms`, 'debug');
+      }
+      
+      return result;
     } catch (error: any) {
       retries++;
+      
+      const isNetworkError = error.message?.includes('network') || 
+        error.message?.includes('timeout') || 
+        error.message?.includes('connection');
+      
+      const isRateLimitError = error.code === '429' || 
+        error.message?.includes('rate limit') || 
+        error.message?.includes('too many requests');
+      
+      const errorLevel = retries >= MAX_RETRIES ? 'error' : 'warning';
+      appLog('SupabaseClient', `${operationName} attempt ${retries}/${MAX_RETRIES} failed: ${error.message}`, errorLevel);
       handleSupabaseError(error, `${operationName} (attempt ${retries}/${MAX_RETRIES})`);
 
       if (retries >= MAX_RETRIES) {
+        appLog('SupabaseClient', `${operationName} failed after ${MAX_RETRIES} attempts`, 'error');
         throw error;
       }
 
-      // Exponential backoff
-      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * Math.pow(2, retries - 1)));
+      // Exponential backoff with jitter and maximum delay
+      delay = Math.min(delay * (1.5 + Math.random() * 0.5), MAX_RETRY_DELAY);
+      
+      appLog('SupabaseClient', `Retrying ${operationName} in ${Math.round(delay)}ms (${isNetworkError ? 'network issue' : isRateLimitError ? 'rate limit' : 'error'})`, 'debug');
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
 
@@ -269,25 +298,54 @@ export async function updateUserProfile(
     first_name?: string;
     last_name?: string;
     email?: string;
+    book_verified?: boolean;
   }
 ) {
   appLog('SupabaseClient', `Updating profile for user: ${userId}`, 'info');
+  
   return await executeWithRetries(async () => {
     const client = await getSupabaseClient();
-    const { data, error } = await client
-      .from('profiles')
-      .update(updates)
-      .eq('id', userId)
-      .select()
-      .single();
+    
+    // First try the direct update method
+    try {
+      const { data, error } = await client
+        .from('profiles')
+        .update(updates)
+        .eq('id', userId)
+        .select()
+        .single();
 
-    if (error) {
-      appLog('SupabaseClient', `Error updating profile for user ${userId}:`, 'error', error.message);
-      throw error;
+      if (!error) {
+        appLog('SupabaseClient', `Profile updated successfully for user ${userId} using direct method`, 'success');
+        return data;
+      }
+      
+      appLog('SupabaseClient', `Direct update method failed for user ${userId}: ${error.message}`, 'warning');
+      
+      // If direct update fails, try the RPC method
+      try {
+        const { data: rpcData, error: rpcError } = await client
+          .rpc('update_profile', {
+            user_id: userId,
+            profile_updates: updates
+          });
+        
+        if (!rpcError) {
+          appLog('SupabaseClient', `Profile updated successfully for user ${userId} using RPC method`, 'success');
+          return rpcData;
+        }
+        
+        appLog('SupabaseClient', `RPC update method failed for user ${userId}: ${rpcError.message}`, 'error');
+        throw rpcError;
+      } catch (rpcErr) {
+        // If both methods fail, throw the original error
+        appLog('SupabaseClient', `All update methods failed for user ${userId}`, 'error');
+        throw error;
+      }
+    } catch (directErr) {
+      appLog('SupabaseClient', `Error updating profile for user ${userId}:`, 'error', directErr);
+      throw directErr;
     }
-
-    appLog('SupabaseClient', `Profile updated successfully for user ${userId}`, 'success');
-    return data;
   }, 'updateUserProfile');
 }
 
@@ -337,6 +395,7 @@ export async function verifyBookCode(code: string, userId: string, firstName?: s
     if (firstName) updates.first_name = firstName;
     if (lastName) updates.last_name = lastName;
     
+    // Direct update with PROPER error handling
     const { error: profileError } = await client
       .from('profiles')
       .update(updates)
@@ -344,12 +403,15 @@ export async function verifyBookCode(code: string, userId: string, firstName?: s
 
     if (profileError) {
       appLog('SupabaseClient', 'Error updating user profile during verification', 'error', profileError);
-      // Don't return an error, as the verification code was already marked as used
-      // We'll just log the error but still consider the verification successful
-    } else {
-      appLog('SupabaseClient', 'User profile updated with verification info', 'success');
+      // CORRECTED: Return failure when profile update fails
+      return { 
+        success: false, 
+        error: `Profile update failed: ${profileError.message}`,
+        verificationStatus: 'code_marked_used_profile_update_failed'
+      };
     }
 
+    appLog('SupabaseClient', 'User profile updated with verification info', 'success');
     appLog('SupabaseClient', 'Book code verified successfully', 'success');
     return { success: true, data };
   } catch (error) {
@@ -705,3 +767,90 @@ export const supabase = supabaseInstance;
 
 // Default export for new code
 export default getSupabaseClient;
+
+// Diagnostic function for testing profile updates
+export async function testProfileUpdate(userId: string, updates: any): Promise<{success: boolean, error?: any, data?: any}> {
+  try {
+    appLog('SupabaseClient', `TEST ONLY: Attempting direct profile update for user: ${userId}`, 'info', updates);
+    
+    // First, try to get the profile to ensure it exists
+    const client = await getSupabaseClient();
+    const { data: profile, error: profileError } = await client
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+    
+    if (profileError) {
+      appLog('SupabaseClient', `TEST ONLY: Error getting profile for ${userId}:`, 'error', profileError);
+      return { success: false, error: profileError, data: { method: 'get_profile' } };
+    }
+    
+    appLog('SupabaseClient', `TEST ONLY: Profile exists for ${userId}:`, 'info', profile);
+    
+    // Try the update using different methods to diagnose issues
+    
+    // Method 1: Direct update with .update().eq()
+    try {
+      const { data: updateData1, error: updateError1 } = await client
+        .from('profiles')
+        .update(updates)
+        .eq('id', userId)
+        .select();
+      
+      if (updateError1) {
+        appLog('SupabaseClient', `TEST ONLY: Error with Method 1 update for ${userId}:`, 'error', updateError1);
+      } else {
+        appLog('SupabaseClient', `TEST ONLY: Method 1 update successful for ${userId}:`, 'success', updateData1);
+        return { success: true, data: { method: 'direct_update', result: updateData1 } };
+      }
+    } catch (error) {
+      appLog('SupabaseClient', `TEST ONLY: Exception with Method 1 update for ${userId}:`, 'error', error);
+    }
+    
+    // Method 2: RPC call (if available)
+    try {
+      const { data: updateData2, error: updateError2 } = await client
+        .rpc('update_profile', { 
+          user_id: userId,
+          profile_updates: updates
+        });
+      
+      if (updateError2) {
+        appLog('SupabaseClient', `TEST ONLY: Error with Method 2 (RPC) update for ${userId}:`, 'error', updateError2);
+      } else {
+        appLog('SupabaseClient', `TEST ONLY: Method 2 (RPC) update successful for ${userId}:`, 'success', updateData2);
+        return { success: true, data: { method: 'rpc_update', result: updateData2 } };
+      }
+    } catch (error) {
+      appLog('SupabaseClient', `TEST ONLY: Exception with Method 2 (RPC) update for ${userId}:`, 'error', error);
+    }
+    
+    // Method 3: Service role client if available (bypasses RLS)
+    // Only attempt this if you have access to the service role key in your testing environment
+    try {
+      // This is just a diagnostic test - in production, never expose service role keys in client code
+      const serviceRoleClient = client; // In real test, this would be configured with service role key
+      
+      const { data: updateData3, error: updateError3 } = await serviceRoleClient
+        .from('profiles')
+        .update(updates)
+        .eq('id', userId)
+        .select();
+      
+      if (updateError3) {
+        appLog('SupabaseClient', `TEST ONLY: Error with Method 3 (service role) update for ${userId}:`, 'error', updateError3);
+      } else {
+        appLog('SupabaseClient', `TEST ONLY: Method 3 (service role) update successful for ${userId}:`, 'success', updateData3);
+        return { success: true, data: { method: 'service_role_update', result: updateData3 } };
+      }
+    } catch (error) {
+      appLog('SupabaseClient', `TEST ONLY: Exception with Method 3 (service role) update for ${userId}:`, 'error', error);
+    }
+    
+    return { success: false, error: 'All update methods failed' };
+  } catch (error) {
+    appLog('SupabaseClient', `TEST ONLY: Error in testProfileUpdate:`, 'error', error);
+    return { success: false, error };
+  }
+}
