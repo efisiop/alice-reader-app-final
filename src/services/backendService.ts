@@ -1,5 +1,4 @@
 // src/services/backendService.ts
-import { supabase } from './supabaseClient';
 import getSupabaseClient from './supabaseClient';
 import { checkSupabaseConnection, executeWithRetries } from './supabaseClient';
 import { mockBackend } from './mockBackend';
@@ -915,7 +914,8 @@ export async function runDatabaseFixes(): Promise<{ success: boolean; message: s
       appLog('BackendService', `Running migration: ${migration.name}`, 'info');
 
       try {
-        const { error } = await supabase.rpc('run_sql', { sql: migration.sql });
+        const client = await getSupabaseClient();
+        const { error } = await client.rpc('run_sql', { sql: migration.sql });
 
         if (error) {
           results.push({
@@ -934,7 +934,8 @@ export async function runDatabaseFixes(): Promise<{ success: boolean; message: s
       } catch (e) {
         // Try direct SQL execution if RPC fails
         try {
-          const { error } = await supabase.rpc('exec_sql', { query: migration.sql });
+          const client = await getSupabaseClient();
+          const { error } = await client.rpc('exec_sql', { query: migration.sql });
 
           if (error) {
             // One more fallback - try splitting the SQL into statements
@@ -944,7 +945,8 @@ export async function runDatabaseFixes(): Promise<{ success: boolean; message: s
             for (const statement of statements) {
               if (!statement.trim()) continue;
 
-              const { error: stmtError } = await supabase.rpc('exec_sql', {
+              const client = await getSupabaseClient();
+              const { error: stmtError } = await client.rpc('exec_sql', {
                 query: statement + ';'
               });
 
