@@ -146,7 +146,12 @@ const createAuthService = async (): Promise<AuthServiceInterface> => {
             .eq('id', userId)
             .single();
 
-          if (error) throw error;
+          if (error) {
+            appLog('AuthService', `Error fetching profile for user ${userId}:`, 'error', error.message);
+            throw error;
+          }
+
+          appLog('AuthService', `Profile fetched successfully for user ${userId}`, 'success');
           return { data, error: null };
         } else {
           return mockBackend.auth.getUserProfile(userId);

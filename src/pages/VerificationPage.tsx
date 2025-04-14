@@ -6,7 +6,6 @@ import {
 } from '@mui/material';
 import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { verifyBookCode, markCodeAsUsed, updateUserProfile } from '../services/backendService';
 import LoadingState from '../components/common/LoadingState';
 
 const VerificationPage: React.FC = () => {
@@ -21,7 +20,7 @@ const VerificationPage: React.FC = () => {
   const [initialLoading, setInitialLoading] = useState(true);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const { setIsVerified, user, isVerified } = useAuth();
+  const { setIsVerified, user, isVerified, verifyBook } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -130,52 +129,15 @@ const VerificationPage: React.FC = () => {
       console.log('VerificationPage: Verifying with user ID:', effectiveUserId);
       console.log('VerificationPage: Verification code:', verificationCode);
 
-      // Step 1: Verify the code using backend service
-      console.log('VerificationPage: Step 1 - Verifying book code...');
-      const { data: verificationResult, error: verifyError } = await verifyBookCode(verificationCode);
+      // Use the comprehensive verification function from AuthContext
+      const { success, error: verifyError } = await verifyBook(verificationCode, firstName, lastName);
 
-      if (verifyError) {
-        console.error('VerificationPage: Code verification error:', verifyError);
-        throw new Error('Invalid verification code. Please try again.');
+      if (!success || verifyError) {
+        console.error('VerificationPage: Verification error:', verifyError);
+        throw verifyError || new Error('Verification failed');
       }
 
-      if (!verificationResult) {
-        console.error('VerificationPage: No verification result returned');
-        throw new Error('Verification failed. Please try again.');
-      }
-
-      console.log('VerificationPage: Verification result:', verificationResult);
-
-      if (verificationResult.is_used) {
-        console.error('VerificationPage: Code already used');
-        throw new Error('This code has already been used.');
-      }
-
-      // Step 2: Update user profile with name
-      console.log('VerificationPage: Step 2 - Updating user profile...');
-      const { error: updateError } = await updateUserProfile(effectiveUserId, {
-        first_name: firstName,
-        last_name: lastName,
-        email: email
-      });
-
-      if (updateError) {
-        console.error('VerificationPage: Profile update error:', updateError);
-        throw new Error('Failed to update profile: ' + updateError.message);
-      }
-
-      // Step 3: Mark code as used
-      console.log('VerificationPage: Step 3 - Marking code as used...');
-      const { error: markCodeError } = await markCodeAsUsed(verificationCode, effectiveUserId);
-
-      if (markCodeError) {
-        console.error('VerificationPage: Mark code error:', markCodeError);
-        throw new Error('Failed to mark code as used: ' + markCodeError.message);
-      }
-
-      // Step 4: Set verified status
-      console.log('VerificationPage: Step 4 - Setting verified status...');
-      setIsVerified(true);
+      // Show success message
       setSuccessMessage('Book verified successfully! Redirecting to reader...');
 
       // Add debug info

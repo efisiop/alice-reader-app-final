@@ -6,11 +6,11 @@ import {
   signOut as backendSignOut,
   getUserProfile as backendGetUserProfile,
   createUserProfile as backendCreateUserProfile,
-  getUser as backendGetUser,
   getSession as backendGetSession,
-  onAuthStateChange as backendOnAuthStateChange
+  onAuthStateChange as backendOnAuthStateChange,
+  verifyBookCodeComprehensive
 } from '../services/backendService';
-import { checkSupabaseConnection, getSupabaseClient, verifyBookCode } from '../services/supabaseClient';
+import { checkSupabaseConnection } from '../services/supabaseClient';
 import { isBackendAvailable } from '../services/backendConfig';
 import { appLog } from '../components/LogViewer';
 
@@ -38,7 +38,7 @@ type AuthContextType = {
     user: User | null;
   }>;
   signOut: () => Promise<void>;
-  verifyBook: (code: string) => Promise<{
+  verifyBook: (code: string, firstName?: string, lastName?: string) => Promise<{
     success: boolean;
     error?: Error | null;
   }>;
@@ -65,7 +65,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setProfile(null);
       setIsVerified(false);
       setLoading(false);
-      
+
       // Clear any localStorage data that might have been set by Supabase
       if (typeof window !== 'undefined') {
         localStorage.removeItem('supabase.auth.token');
@@ -94,13 +94,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
           if (newSession?.user) {
             try {
-              const { data: userProfile } = await backendGetUserProfile(newSession.user.id);
-              if (userProfile && mounted) {
+              const { data: userProfile, error: profileError } = await backendGetUserProfile(newSession.user.id);
+
+              if (profileError) {
+                appLog('AuthContext', `Error fetching profile for user ${newSession.user.id}:`, 'error', profileError);
+                if (mounted) {
+                  setProfile(null);
+                  setIsVerified(false);
+                }
+              } else if (userProfile && mounted) {
+                appLog('AuthContext', `Profile loaded for user ${newSession.user.id}`, 'success');
                 setProfile(userProfile);
                 setIsVerified(userProfile.book_verified || false);
               }
             } catch (error) {
-              console.error('Error fetching user profile on auth change:', error);
+              appLog('AuthContext', 'Error in profile fetch flow:', 'error', error);
               if (mounted) {
                 setProfile(null);
                 setIsVerified(false);
@@ -134,18 +142,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         if (currentSession?.user) {
           setUser(currentSession.user);
-          
+
           try {
             const { data: userProfile, error: profileError } = await backendGetUserProfile(currentSession.user.id);
 
             if (profileError) {
-              console.error('Error fetching user profile:', profileError);
+              appLog('AuthContext', `Error fetching profile for user ${currentSession.user.id}:`, 'error', profileError);
             } else if (mounted) {
+              appLog('AuthContext', `Profile loaded for user ${currentSession.user.id}`, 'success');
               setProfile(userProfile);
               setIsVerified(userProfile?.book_verified || false);
             }
           } catch (error) {
-            console.error('Error in user profile flow:', error);
+            appLog('AuthContext', 'Error in profile fetch flow:', 'error', error);
           }
         }
       } catch (error) {
@@ -219,24 +228,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // Verify book code
-  const verifyBook = async (code: string): Promise<{ success: boolean; error?: Error | null }> => {
+  const verifyBook = async (code: string, firstName?: string, lastName?: string): Promise<{ success: boolean; error?: Error | null }> => {
     try {
       if (!user) {
         return { success: false, error: new Error('User not authenticated') };
       }
 
-      const result = await verifyBookCode(code, user.id);
+      const result = await verifyBookCodeComprehensive(code, user.id, firstName, lastName);
       if (result.error) {
-        return { 
-          success: false, 
+        return {
+          success: false,
           error: new Error(String(result.error))
         };
       }
       setIsVerified(true);
       return { success: true };
     } catch (error) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: error instanceof Error ? error : new Error('Unknown error during verification')
       };
     }

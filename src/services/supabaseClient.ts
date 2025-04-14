@@ -212,26 +212,23 @@ export async function testConnection() {
 
 // Helper function to get user profile with retry logic
 export async function getUserProfile(userId: string) {
-  try {
-    return await executeWithRetries(async () => {
-      const client = await getSupabaseClient();
-      const { data, error } = await client
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+  appLog('SupabaseClient', `Fetching profile for user: ${userId}`, 'info');
+  return await executeWithRetries(async () => {
+    const client = await getSupabaseClient();
+    const { data, error } = await client
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
 
-      if (error) {
-        appLog('SupabaseClient', 'Error fetching user profile', 'error', error);
-        throw error;
-      }
+    if (error) {
+      appLog('SupabaseClient', `Error fetching profile for user ${userId}:`, 'error', error.message);
+      throw error;
+    }
 
-      return data;
-    }, 'getUserProfile');
-  } catch (error) {
-    appLog('SupabaseClient', 'Failed to get user profile after retries', 'error', error);
-    return null;
-  }
+    appLog('SupabaseClient', `Profile fetched successfully for user ${userId}`, 'success');
+    return data;
+  }, 'getUserProfile');
 }
 
 // Helper function to create user profile with retry logic
@@ -241,31 +238,28 @@ export async function createUserProfile(
   lastName: string,
   email: string
 ) {
-  try {
-    return await executeWithRetries(async () => {
-      const client = await getSupabaseClient();
-      const { data, error } = await client
-        .from('profiles')
-        .insert({
-          id: userId,
-          first_name: firstName,
-          last_name: lastName,
-          email: email
-        })
-        .select()
-        .single();
+  appLog('SupabaseClient', `Creating profile for user: ${userId}`, 'info');
+  return await executeWithRetries(async () => {
+    const client = await getSupabaseClient();
+    const { data, error } = await client
+      .from('profiles')
+      .insert({
+        id: userId,
+        first_name: firstName,
+        last_name: lastName,
+        email: email
+      })
+      .select()
+      .single();
 
-      if (error) {
-        appLog('SupabaseClient', 'Error creating user profile', 'error', error);
-        throw error;
-      }
+    if (error) {
+      appLog('SupabaseClient', `Error creating profile for user ${userId}:`, 'error', error.message);
+      throw error;
+    }
 
-      return data;
-    }, 'createUserProfile');
-  } catch (error) {
-    appLog('SupabaseClient', 'Failed to create user profile after retries', 'error', error);
-    return null;
-  }
+    appLog('SupabaseClient', `Profile created successfully for user ${userId}`, 'success');
+    return data;
+  }, 'createUserProfile');
 }
 
 // Helper function to update user profile with retry logic
@@ -277,31 +271,28 @@ export async function updateUserProfile(
     email?: string;
   }
 ) {
-  try {
-    return await executeWithRetries(async () => {
-      const client = await getSupabaseClient();
-      const { data, error } = await client
-        .from('profiles')
-        .update(updates)
-        .eq('id', userId)
-        .select()
-        .single();
+  appLog('SupabaseClient', `Updating profile for user: ${userId}`, 'info');
+  return await executeWithRetries(async () => {
+    const client = await getSupabaseClient();
+    const { data, error } = await client
+      .from('profiles')
+      .update(updates)
+      .eq('id', userId)
+      .select()
+      .single();
 
-      if (error) {
-        appLog('SupabaseClient', 'Error updating user profile', 'error', error);
-        throw error;
-      }
+    if (error) {
+      appLog('SupabaseClient', `Error updating profile for user ${userId}:`, 'error', error.message);
+      throw error;
+    }
 
-      return data;
-    }, 'updateUserProfile');
-  } catch (error) {
-    appLog('SupabaseClient', 'Failed to update user profile after retries', 'error', error);
-    return null;
-  }
+    appLog('SupabaseClient', `Profile updated successfully for user ${userId}`, 'success');
+    return data;
+  }, 'updateUserProfile');
 }
 
 // Helper function to verify a book code
-export async function verifyBookCode(code: string, userId: string) {
+export async function verifyBookCode(code: string, userId: string, firstName?: string, lastName?: string) {
   try {
     appLog('SupabaseClient', `Verifying book code: ${code} for user: ${userId}`, 'info');
 
@@ -337,6 +328,26 @@ export async function verifyBookCode(code: string, userId: string) {
     if (updateError) {
       appLog('SupabaseClient', 'Error updating verification code', 'error', updateError);
       return { success: false, error: 'Error updating verification code' };
+    }
+
+    // Update the user's profile to mark them as verified
+    const updates: any = { book_verified: true };
+    
+    // Add first name and last name if provided
+    if (firstName) updates.first_name = firstName;
+    if (lastName) updates.last_name = lastName;
+    
+    const { error: profileError } = await client
+      .from('profiles')
+      .update(updates)
+      .eq('id', userId);
+
+    if (profileError) {
+      appLog('SupabaseClient', 'Error updating user profile during verification', 'error', profileError);
+      // Don't return an error, as the verification code was already marked as used
+      // We'll just log the error but still consider the verification successful
+    } else {
+      appLog('SupabaseClient', 'User profile updated with verification info', 'success');
     }
 
     appLog('SupabaseClient', 'Book code verified successfully', 'success');
