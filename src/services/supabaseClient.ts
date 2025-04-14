@@ -283,24 +283,50 @@ export async function verifyBookCode(code: string, userId: string, firstName?: s
     if (firstName) updates.first_name = firstName;
     if (lastName) updates.last_name = lastName;
 
-    const { error: profileError } = await client
-      .from('profiles')
-      .update(updates)
-      .eq('id', userId);
+    // First try direct update method
+    try {
+      const { error: profileError } = await client
+        .from('profiles')
+        .update(updates)
+        .eq('id', userId);
 
-    if (profileError) {
-      appLog('SupabaseClient', 'Error updating user profile during verification', 'error', profileError);
-      // FIXED: Return a failure response when profile update fails
+      if (!profileError) {
+        appLog('SupabaseClient', 'User profile updated with verification info using direct method', 'success');
+        appLog('SupabaseClient', 'Book code verified successfully', 'success');
+        return { success: true, data };
+      }
+
+      // If direct update fails, log and try RPC method
+      appLog('SupabaseClient', `Direct profile update failed: ${profileError.message}`, 'warning');
+      
+      // Try RPC method as fallback
+      const { error: rpcError } = await client
+        .rpc('update_profile', {
+          user_id: userId,
+          profile_updates: updates
+        });
+
+      if (!rpcError) {
+        appLog('SupabaseClient', 'User profile updated with verification info using RPC method', 'success');
+        appLog('SupabaseClient', 'Book code verified successfully', 'success');
+        return { success: true, data };
+      }
+
+      // If both methods fail, return error
+      appLog('SupabaseClient', `RPC profile update failed: ${rpcError.message}`, 'error');
       return {
         success: false,
-        error: `Profile update failed: ${profileError.message}`,
+        error: `Profile update failed: ${rpcError.message}`,
+        verificationStatus: 'code_marked_used_profile_update_failed'
+      };
+    } catch (error) {
+      appLog('SupabaseClient', 'Error updating user profile during verification', 'error', error);
+      return {
+        success: false,
+        error: `Profile update failed: ${error.message}`,
         verificationStatus: 'code_marked_used_profile_update_failed'
       };
     }
-
-    appLog('SupabaseClient', 'User profile updated with verification info', 'success');
-    appLog('SupabaseClient', 'Book code verified successfully', 'success');
-    return { success: true, data };
   } catch (error) {
     appLog('SupabaseClient', 'Error verifying book code', 'error', error);
     return { success: false, error: 'Error verifying book code' };
