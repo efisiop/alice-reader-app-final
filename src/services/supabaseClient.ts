@@ -14,11 +14,11 @@ const MAX_RETRY_DELAY = 10000; // Maximum delay between retries (10s)
 const getSupabaseCredentials = () => {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || window.ENV_SUPABASE_URL;
   const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || window.ENV_SUPABASE_ANON_KEY;
-  
+
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error('Supabase credentials not found in environment or window globals');
   }
-  
+
   return { supabaseUrl, supabaseAnonKey };
 };
 
@@ -29,7 +29,7 @@ let lastInitTime = 0;
 // Handler for standard Supabase errors
 export const handleSupabaseError = (error: any, context: string = 'Supabase') => {
   if (!error) return;
-  
+
   // Handle different error types
   if (typeof error === 'string') {
     appLog('SupabaseClient', `${context}: ${error}`, 'error');
@@ -46,14 +46,14 @@ export const handleSupabaseError = (error: any, context: string = 'Supabase') =>
 // Async getter for the Supabase client
 export const getSupabaseClient = async (): Promise<SupabaseClient<Database>> => {
   const now = Date.now();
-  
+
   try {
     // Check if we need to create a new client or refresh the existing one
     if (!supabaseClient || now - lastInitTime > CONNECTION_CHECK_INTERVAL) {
       appLog('SupabaseClient', 'Initializing Supabase client', supabaseClient ? 'info' : 'debug');
-      
+
       const { supabaseUrl, supabaseAnonKey } = getSupabaseCredentials();
-      
+
       // Create a new client
       supabaseClient = createClient<Database>(supabaseUrl, supabaseAnonKey, {
         auth: {
@@ -61,10 +61,10 @@ export const getSupabaseClient = async (): Promise<SupabaseClient<Database>> => 
           persistSession: true
         }
       });
-      
+
       lastInitTime = now;
     }
-    
+
     return supabaseClient;
   } catch (error) {
     handleSupabaseError(error, 'Client initialization');
@@ -84,28 +84,28 @@ export const executeWithRetries = async <T>(
     try {
       const startTime = Date.now();
       appLog('SupabaseClient', `Executing ${operationName} (attempt ${retries + 1}/${MAX_RETRIES})`, 'debug');
-      
+
       const result = await operation();
-      
+
       const elapsed = Date.now() - startTime;
       if (elapsed > 2000) {
         appLog('SupabaseClient', `${operationName} completed in ${elapsed}ms (slow operation)`, 'warning');
       } else {
         appLog('SupabaseClient', `${operationName} completed in ${elapsed}ms`, 'debug');
       }
-      
+
       return result;
     } catch (error: any) {
       retries++;
-      
-      const isNetworkError = error.message?.includes('network') || 
-        error.message?.includes('timeout') || 
+
+      const isNetworkError = error.message?.includes('network') ||
+        error.message?.includes('timeout') ||
         error.message?.includes('connection');
-      
-      const isRateLimitError = error.code === '429' || 
-        error.message?.includes('rate limit') || 
+
+      const isRateLimitError = error.code === '429' ||
+        error.message?.includes('rate limit') ||
         error.message?.includes('too many requests');
-      
+
       const errorLevel = retries >= MAX_RETRIES ? 'error' : 'warning';
       // Log with appropriate level before calling handleSupabaseError
       appLog('SupabaseClient', `${operationName} attempt ${retries}/${MAX_RETRIES} failed: ${error.message}`, errorLevel);
@@ -118,7 +118,7 @@ export const executeWithRetries = async <T>(
 
       // Exponential backoff with jitter and maximum delay
       delay = Math.min(delay * (1.5 + Math.random() * 0.5), MAX_RETRY_DELAY);
-      
+
       appLog('SupabaseClient', `Retrying ${operationName} in ${Math.round(delay)}ms (${isNetworkError ? 'network issue' : isRateLimitError ? 'rate limit' : 'error'})`, 'debug');
       await new Promise(resolve => setTimeout(resolve, delay));
     }
@@ -190,10 +190,10 @@ export async function updateUserProfile(
   }
 ) {
   appLog('SupabaseClient', `Updating profile for user: ${userId}`, 'info');
-  
+
   return await executeWithRetries(async () => {
     const client = await getSupabaseClient();
-    
+
     // First try the direct update method
     try {
       const { data, error } = await client
@@ -207,9 +207,9 @@ export async function updateUserProfile(
         appLog('SupabaseClient', `Profile updated successfully for user ${userId} using direct method`, 'success');
         return data;
       }
-      
+
       appLog('SupabaseClient', `Direct update method failed for user ${userId}: ${error.message}`, 'warning');
-      
+
       // If direct update fails, try the RPC method
       try {
         const { data: rpcData, error: rpcError } = await client
@@ -217,12 +217,12 @@ export async function updateUserProfile(
             user_id: userId,
             profile_updates: updates
           });
-        
+
         if (!rpcError) {
           appLog('SupabaseClient', `Profile updated successfully for user ${userId} using RPC method`, 'success');
           return rpcData;
         }
-        
+
         appLog('SupabaseClient', `RPC update method failed for user ${userId}: ${rpcError.message}`, 'error');
         throw rpcError;
       } catch (rpcErr) {
@@ -278,11 +278,11 @@ export async function verifyBookCode(code: string, userId: string, firstName?: s
 
     // Update the user's profile to mark them as verified
     const updates: any = { book_verified: true };
-    
+
     // Add first name and last name if provided
     if (firstName) updates.first_name = firstName;
     if (lastName) updates.last_name = lastName;
-    
+
     const { error: profileError } = await client
       .from('profiles')
       .update(updates)
@@ -291,12 +291,12 @@ export async function verifyBookCode(code: string, userId: string, firstName?: s
     if (profileError) {
       appLog('SupabaseClient', 'Error updating user profile during verification', 'error', profileError);
       // FIXED: Return a failure response when profile update fails
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: `Profile update failed: ${profileError.message}`,
         verificationStatus: 'code_marked_used_profile_update_failed'
       };
-    } 
+    }
 
     appLog('SupabaseClient', 'User profile updated with verification info', 'success');
     appLog('SupabaseClient', 'Book code verified successfully', 'success');
@@ -538,7 +538,7 @@ export async function getReadingProgress(userId: string, bookId: string): Promis
         appLog('SupabaseClient', 'No reading progress found', 'info');
         return null;
       }
-      
+
       appLog('SupabaseClient', 'Error fetching reading progress', 'error', error);
       return null;
     }
@@ -554,7 +554,7 @@ export async function getReadingProgress(userId: string, bookId: string): Promis
 export async function testProfileUpdate(userId: string, updates: any): Promise<{success: boolean, error?: any, data?: any}> {
   try {
     appLog('SupabaseClient', `TEST ONLY: Attempting direct profile update for user: ${userId}`, 'info', updates);
-    
+
     // First, try to get the profile to ensure it exists
     const client = await getSupabaseClient();
     const { data: profile, error: profileError } = await client
@@ -562,16 +562,16 @@ export async function testProfileUpdate(userId: string, updates: any): Promise<{
       .select('*')
       .eq('id', userId)
       .single();
-    
+
     if (profileError) {
       appLog('SupabaseClient', `TEST ONLY: Error getting profile for ${userId}:`, 'error', profileError);
       return { success: false, error: profileError, data: { method: 'get_profile' } };
     }
-    
+
     appLog('SupabaseClient', `TEST ONLY: Profile exists for ${userId}:`, 'info', profile);
-    
+
     // Try the update using different methods to diagnose issues
-    
+
     // Method 1: Direct update with .update().eq()
     try {
       const { data: updateData1, error: updateError1 } = await client
@@ -579,7 +579,7 @@ export async function testProfileUpdate(userId: string, updates: any): Promise<{
         .update(updates)
         .eq('id', userId)
         .select();
-      
+
       if (updateError1) {
         appLog('SupabaseClient', `TEST ONLY: Error with Method 1 update for ${userId}:`, 'error', updateError1);
       } else {
@@ -589,15 +589,15 @@ export async function testProfileUpdate(userId: string, updates: any): Promise<{
     } catch (error) {
       appLog('SupabaseClient', `TEST ONLY: Exception with Method 1 update for ${userId}:`, 'error', error);
     }
-    
+
     // Method 2: RPC call (if available)
     try {
       const { data: updateData2, error: updateError2 } = await client
-        .rpc('update_profile', { 
+        .rpc('update_profile', {
           user_id: userId,
           profile_updates: updates
         });
-      
+
       if (updateError2) {
         appLog('SupabaseClient', `TEST ONLY: Error with Method 2 (RPC) update for ${userId}:`, 'error', updateError2);
       } else {
@@ -607,19 +607,19 @@ export async function testProfileUpdate(userId: string, updates: any): Promise<{
     } catch (error) {
       appLog('SupabaseClient', `TEST ONLY: Exception with Method 2 (RPC) update for ${userId}:`, 'error', error);
     }
-    
+
     // Method 3: Service role client if available (bypasses RLS)
     // Only attempt this if you have access to the service role key in your testing environment
     try {
       // This is just a diagnostic test - in production, never expose service role keys in client code
       const serviceRoleClient = client; // In real test, this would be configured with service role key
-      
+
       const { data: updateData3, error: updateError3 } = await serviceRoleClient
         .from('profiles')
         .update(updates)
         .eq('id', userId)
         .select();
-      
+
       if (updateError3) {
         appLog('SupabaseClient', `TEST ONLY: Error with Method 3 (service role) update for ${userId}:`, 'error', updateError3);
       } else {
@@ -629,11 +629,38 @@ export async function testProfileUpdate(userId: string, updates: any): Promise<{
     } catch (error) {
       appLog('SupabaseClient', `TEST ONLY: Exception with Method 3 (service role) update for ${userId}:`, 'error', error);
     }
-    
+
     return { success: false, error: 'All update methods failed' };
   } catch (error) {
     appLog('SupabaseClient', `TEST ONLY: Error in testProfileUpdate:`, 'error', error);
     return { success: false, error };
+  }
+}
+
+// Function to check if Supabase connection is available
+export async function checkSupabaseConnection(force: boolean = false): Promise<boolean> {
+  try {
+    appLog('SupabaseClient', 'Checking Supabase connection', 'info');
+
+    // Get the client using the async getter
+    const client = await getSupabaseClient();
+
+    // Try a simple query to check connection
+    const { data, error } = await client
+      .from('books')
+      .select('id')
+      .limit(1);
+
+    if (error) {
+      appLog('SupabaseClient', `Supabase connection check failed: ${error.message}`, 'error');
+      return false;
+    }
+
+    appLog('SupabaseClient', 'Supabase connection check successful', 'success');
+    return true;
+  } catch (error) {
+    appLog('SupabaseClient', `Supabase connection check error: ${error instanceof Error ? error.message : String(error)}`, 'error');
+    return false;
   }
 }
 
