@@ -1,5 +1,5 @@
 # Alice Reader App
-
+ 
 ## Overview
 
 The Alice Reader app is a reading assistance application designed to help users improve their reading experience through various features including word definitions, AI assistance, and live help from consultants.
