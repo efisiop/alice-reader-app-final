@@ -638,7 +638,7 @@ export async function testProfileUpdate(userId: string, updates: any): Promise<{
 }
 
 // Function to check if Supabase connection is available
-export async function checkSupabaseConnection(force: boolean = false): Promise<boolean> {
+export const checkSupabaseConnection = async (force: boolean = false): Promise<boolean> => {
   try {
     appLog('SupabaseClient', 'Checking Supabase connection', 'info');
 
@@ -662,7 +662,7 @@ export async function checkSupabaseConnection(force: boolean = false): Promise<b
     appLog('SupabaseClient', `Supabase connection check error: ${error instanceof Error ? error.message : String(error)}`, 'error');
     return false;
   }
-}
+};
 
 // Default export for new code
 export default getSupabaseClient;
