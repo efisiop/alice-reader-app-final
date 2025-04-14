@@ -1,7 +1,8 @@
 // src/services/supabaseClient.ts
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { Database, BookWithChapters, SectionWithChapter, BookProgress, BookStats } from '../types/supabase';
 import { appLog } from '../components/LogViewer';
+import { Database } from '../types/supabase';
+import { Book, Chapter, Section, BookWithChapters, SectionWithChapter } from '../types/book';
 
 // Configuration
 const MAX_RETRIES = 5;
@@ -11,142 +12,64 @@ const MAX_RETRY_DELAY = 10000; // Maximum delay between retries (10s)
 
 // Get credentials from either environment variables or window fallbacks
 const getSupabaseCredentials = () => {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || window.SUPABASE_URL;
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || window.SUPABASE_KEY;
-
-  // Log which source we're using for credentials in development
-  if (import.meta.env.DEV) {
-    if (import.meta.env.VITE_SUPABASE_URL) {
-      appLog('SupabaseClient', 'Using Supabase URL from environment variables', 'debug');
-    } else if (window.SUPABASE_URL) {
-      appLog('SupabaseClient', 'Using Supabase URL from window fallback', 'debug');
-    }
-
-    if (import.meta.env.VITE_SUPABASE_ANON_KEY) {
-      appLog('SupabaseClient', 'Using Supabase key from environment variables', 'debug');
-    } else if (window.SUPABASE_KEY) {
-      appLog('SupabaseClient', 'Using Supabase key from window fallback', 'debug');
-    }
-  }
-
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || window.ENV_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || window.ENV_SUPABASE_ANON_KEY;
+  
   if (!supabaseUrl || !supabaseAnonKey) {
-    appLog('SupabaseClient', 'Missing Supabase credentials. Application may not function correctly.', 'error');
+    throw new Error('Supabase credentials not found in environment or window globals');
   }
-
+  
   return { supabaseUrl, supabaseAnonKey };
 };
 
-// Centralized error handler
-export const handleSupabaseError = (error: any, operation: string): void => {
-  appLog('SupabaseClient', `Supabase ${operation} error`, 'error', error);
-};
-
-// Connection status tracking
-let connectionStatus = {
-  isConnected: false,
-  lastChecked: 0,
-  checkInProgress: false
-};
-
-// Singleton client instance
+// Client instance cache
 let supabaseClient: SupabaseClient<Database> | null = null;
+let lastInitTime = 0;
 
-// Initialize client with error handling
-export const initializeSupabaseClient = async (): Promise<SupabaseClient<Database>> => {
-  if (supabaseClient) return supabaseClient;
-
-  const { supabaseUrl, supabaseAnonKey } = getSupabaseCredentials();
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    const error = new Error('Missing Supabase credentials');
-    handleSupabaseError(error, 'initialization');
-    throw error;
+// Handler for standard Supabase errors
+export const handleSupabaseError = (error: any, context: string = 'Supabase') => {
+  if (!error) return;
+  
+  // Handle different error types
+  if (typeof error === 'string') {
+    appLog('SupabaseClient', `${context}: ${error}`, 'error');
+  } else if (error.message) {
+    appLog('SupabaseClient', `${context}: ${error.message}`, 'error', {
+      code: error.code,
+      details: error.details
+    });
+  } else {
+    appLog('SupabaseClient', `${context}: Unknown error format`, 'error', error);
   }
+};
 
+// Async getter for the Supabase client
+export const getSupabaseClient = async (): Promise<SupabaseClient<Database>> => {
+  const now = Date.now();
+  
   try {
-    appLog('SupabaseClient', 'Creating Supabase client...', 'info');
-    supabaseClient = createClient<Database>(supabaseUrl, supabaseAnonKey);
-    appLog('SupabaseClient', 'Supabase client created successfully', 'success');
-
-    // Verify connection
-    const isConnected = await checkSupabaseConnection(true);
-    if (!isConnected) {
-      appLog('SupabaseClient', 'Supabase client created but connection test failed', 'warning');
+    // Check if we need to create a new client or refresh the existing one
+    if (!supabaseClient || now - lastInitTime > CONNECTION_CHECK_INTERVAL) {
+      appLog('SupabaseClient', 'Initializing Supabase client', supabaseClient ? 'info' : 'debug');
+      
+      const { supabaseUrl, supabaseAnonKey } = getSupabaseCredentials();
+      
+      // Create a new client
+      supabaseClient = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          autoRefreshToken: true,
+          persistSession: true
+        }
+      });
+      
+      lastInitTime = now;
     }
-
+    
     return supabaseClient;
   } catch (error) {
-    handleSupabaseError(error, 'initialization');
-    supabaseClient = null;
-    throw new Error('Failed to initialize Supabase client');
+    handleSupabaseError(error, 'Client initialization');
+    throw error;
   }
-};
-
-// Connection status check
-export const checkSupabaseConnection = async (force: boolean = false): Promise<boolean> => {
-  // Skip check if one is already in progress
-  if (connectionStatus.checkInProgress && !force) {
-    return connectionStatus.isConnected;
-  }
-
-  // Skip check if we checked recently (within last 5 seconds) unless forced
-  const now = Date.now();
-  if (!force && now - connectionStatus.lastChecked < 5000) {
-    return connectionStatus.isConnected;
-  }
-
-  connectionStatus.checkInProgress = true;
-
-  try {
-    appLog('SupabaseClient', 'Testing Supabase connection...', 'debug');
-
-    if (!supabaseClient) {
-      const { supabaseUrl, supabaseAnonKey } = getSupabaseCredentials();
-      if (!supabaseUrl || !supabaseAnonKey) {
-        connectionStatus.isConnected = false;
-        return false;
-      }
-
-      // Create a temporary client just for the check
-      const tempClient = createClient<Database>(supabaseUrl, supabaseAnonKey);
-      const { error } = await tempClient.from('books').select('id').limit(1);
-      connectionStatus.isConnected = !error;
-    } else {
-      // Use existing client
-      const { error } = await supabaseClient.from('books').select('id').limit(1);
-      connectionStatus.isConnected = !error;
-    }
-
-    connectionStatus.lastChecked = now;
-
-    if (connectionStatus.isConnected) {
-      appLog('SupabaseClient', 'Supabase connection test successful', 'success');
-    } else {
-      appLog('SupabaseClient', 'Supabase connection test failed', 'warning');
-    }
-
-    return connectionStatus.isConnected;
-  } catch (error) {
-    handleSupabaseError(error, 'connection check');
-    connectionStatus.isConnected = false;
-    return false;
-  } finally {
-    connectionStatus.checkInProgress = false;
-  }
-};
-
-// Start periodic connection checking
-export const startConnectionMonitoring = () => {
-  // Check immediately
-  checkSupabaseConnection(true);
-
-  // Then check periodically
-  const interval = setInterval(() => {
-    checkSupabaseConnection();
-  }, CONNECTION_CHECK_INTERVAL);
-
-  // Return cleanup function
-  return () => clearInterval(interval);
 };
 
 // Retry utility function with improved timeout handling
@@ -184,6 +107,7 @@ export const executeWithRetries = async <T>(
         error.message?.includes('too many requests');
       
       const errorLevel = retries >= MAX_RETRIES ? 'error' : 'warning';
+      // Log with appropriate level before calling handleSupabaseError
       appLog('SupabaseClient', `${operationName} attempt ${retries}/${MAX_RETRIES} failed: ${error.message}`, errorLevel);
       handleSupabaseError(error, `${operationName} (attempt ${retries}/${MAX_RETRIES})`);
 
@@ -202,42 +126,6 @@ export const executeWithRetries = async <T>(
 
   throw new Error(`Failed ${operationName} after ${MAX_RETRIES} retries`);
 };
-
-// Get the Supabase client (initializing if needed)
-export const getSupabaseClient = async (): Promise<SupabaseClient<Database>> => {
-  if (!supabaseClient) {
-    return initializeSupabaseClient();
-  }
-  return supabaseClient;
-};
-
-// Test Supabase connection function (legacy compatibility)
-export async function testConnection() {
-  try {
-    appLog('SupabaseClient', 'Testing Supabase connection...', 'info');
-
-    const isConnected = await checkSupabaseConnection(true);
-
-    if (!isConnected) {
-      return { success: false, error: new Error('Connection test failed') };
-    }
-
-    // Get some actual data to return
-    const client = await getSupabaseClient();
-    const { data, error } = await client.from('books').select('title').limit(1);
-
-    if (error) {
-      appLog('SupabaseClient', 'Supabase data fetch failed', 'error', error);
-      return { success: false, error };
-    }
-
-    appLog('SupabaseClient', 'Supabase connection successful!', 'success', data);
-    return { success: true, data };
-  } catch (err) {
-    appLog('SupabaseClient', 'Supabase connection test error', 'error', err);
-    return { success: false, error: err };
-  }
-}
 
 // Helper function to get user profile with retry logic
 export async function getUserProfile(userId: string) {
@@ -395,7 +283,6 @@ export async function verifyBookCode(code: string, userId: string, firstName?: s
     if (firstName) updates.first_name = firstName;
     if (lastName) updates.last_name = lastName;
     
-    // Direct update with PROPER error handling
     const { error: profileError } = await client
       .from('profiles')
       .update(updates)
@@ -403,13 +290,13 @@ export async function verifyBookCode(code: string, userId: string, firstName?: s
 
     if (profileError) {
       appLog('SupabaseClient', 'Error updating user profile during verification', 'error', profileError);
-      // CORRECTED: Return failure when profile update fails
+      // FIXED: Return a failure response when profile update fails
       return { 
         success: false, 
         error: `Profile update failed: ${profileError.message}`,
         verificationStatus: 'code_marked_used_profile_update_failed'
       };
-    }
+    } 
 
     appLog('SupabaseClient', 'User profile updated with verification info', 'success');
     appLog('SupabaseClient', 'Book code verified successfully', 'success');
@@ -609,7 +496,7 @@ export async function saveReadingProgress(
 }
 
 // Helper function to get user's reading progress for a book
-export async function getReadingProgress(userId: string, bookId: string): Promise<BookProgress | null> {
+export async function getReadingProgress(userId: string, bookId: string): Promise<any | null> {
   try {
     appLog('SupabaseClient', `Getting reading progress for user: ${userId}, book: ${bookId}`, 'info');
 
@@ -619,10 +506,21 @@ export async function getReadingProgress(userId: string, bookId: string): Promis
     const { data, error } = await client
       .from('reading_progress')
       .select(`
-        *,
-        section:section_id (
-          *,
-          chapter:chapter_id (
+        id,
+        user_id,
+        book_id,
+        section_id,
+        last_position,
+        last_read_at,
+        updated_at,
+        sections (
+          id,
+          title,
+          content,
+          page_number,
+          chapter_id,
+          chapters (
+            id,
             title,
             number
           )
@@ -630,143 +528,27 @@ export async function getReadingProgress(userId: string, bookId: string): Promis
       `)
       .eq('user_id', userId)
       .eq('book_id', bookId)
+      .order('updated_at', { ascending: false })
+      .limit(1)
       .single();
 
     if (error) {
+      // If no progress is found, that's not an error
+      if (error.code === 'PGRST116') {
+        appLog('SupabaseClient', 'No reading progress found', 'info');
+        return null;
+      }
+      
       appLog('SupabaseClient', 'Error fetching reading progress', 'error', error);
       return null;
     }
 
-    // Extract the relevant data for the BookProgress type
-    const section = data.section as any;
-    const chapter = section?.chapter as any;
-
-    return {
-      section_id: data.section_id,
-      last_position: data.last_position,
-      section_title: section?.title || 'Unknown Section',
-      chapter_title: chapter?.title || 'Unknown Chapter',
-      page_number: section?.start_page || 1
-    };
+    return data;
   } catch (error) {
     appLog('SupabaseClient', 'Error in getReadingProgress', 'error', error);
     return null;
   }
 }
-
-// Helper function to save AI interaction
-export async function saveAiInteraction(
-  userId: string,
-  bookId: string,
-  question: string,
-  response: string,
-  sectionId?: string,
-  context?: string
-) {
-  try {
-    return await executeWithRetries(async () => {
-      const client = await getSupabaseClient();
-      const { data, error } = await client
-        .from('ai_interactions')
-        .insert({
-          user_id: userId,
-          book_id: bookId,
-          section_id: sectionId || null,
-          question,
-          context: context || null,
-          response
-        })
-        .select()
-        .single();
-
-      if (error) {
-        appLog('SupabaseClient', 'Error saving AI interaction', 'error', error);
-        throw error;
-      }
-
-      return data;
-    }, 'saveAiInteraction');
-  } catch (error) {
-    appLog('SupabaseClient', 'Failed to save AI interaction after retries', 'error', error);
-    return null;
-  }
-}
-
-// Create and export a default client for backward compatibility
-// This will be initialized on first access
-let supabaseInstance: ReturnType<typeof createClient<Database>>;
-
-// Initialize the client immediately for backward compatibility
-try {
-  const { supabaseUrl, supabaseAnonKey } = getSupabaseCredentials();
-
-  if (supabaseUrl && supabaseAnonKey) {
-    supabaseInstance = createClient<Database>(supabaseUrl, supabaseAnonKey);
-    appLog('SupabaseClient', 'Legacy Supabase client created successfully', 'info');
-
-    // Start connection monitoring
-    startConnectionMonitoring();
-  } else {
-    // Create a mock client that logs errors instead of throwing
-    appLog('SupabaseClient', 'Creating mock client due to missing credentials', 'warning');
-    const mockErrorHandler = () => ({ data: null, error: new Error('Supabase client not initialized') });
-
-    supabaseInstance = {
-      from: () => ({
-        select: () => mockErrorHandler(),
-        insert: () => mockErrorHandler(),
-        update: () => mockErrorHandler(),
-        delete: () => mockErrorHandler(),
-        eq: () => ({ select: () => mockErrorHandler() }),
-        single: () => mockErrorHandler(),
-        limit: () => mockErrorHandler(),
-        order: () => mockErrorHandler(),
-      }),
-      auth: {
-        getSession: () => Promise.resolve({ data: { session: null }, error: null }),
-        getUser: () => Promise.resolve({ data: { user: null }, error: null }),
-        signInWithPassword: () => Promise.resolve({ data: { user: null }, error: new Error('Supabase client not initialized') }),
-        signUp: () => Promise.resolve({ data: { user: null }, error: new Error('Supabase client not initialized') }),
-        signOut: () => Promise.resolve({ error: null }),
-        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-      },
-      rpc: () => mockErrorHandler(),
-    } as any;
-  }
-} catch (error) {
-  appLog('SupabaseClient', 'Error creating legacy Supabase client', 'error', error);
-
-  // Create a mock client that logs errors instead of throwing
-  const mockErrorHandler = () => ({ data: null, error: new Error('Supabase client not initialized') });
-
-  supabaseInstance = {
-    from: () => ({
-      select: () => mockErrorHandler(),
-      insert: () => mockErrorHandler(),
-      update: () => mockErrorHandler(),
-      delete: () => mockErrorHandler(),
-      eq: () => ({ select: () => mockErrorHandler() }),
-      single: () => mockErrorHandler(),
-      limit: () => mockErrorHandler(),
-      order: () => mockErrorHandler(),
-    }),
-    auth: {
-      getSession: () => Promise.resolve({ data: { session: null }, error: null }),
-      getUser: () => Promise.resolve({ data: { user: null }, error: null }),
-      signInWithPassword: () => Promise.resolve({ data: { user: null }, error: new Error('Supabase client not initialized') }),
-      signUp: () => Promise.resolve({ data: { user: null }, error: new Error('Supabase client not initialized') }),
-      signOut: () => Promise.resolve({ error: null }),
-      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-    },
-    rpc: () => mockErrorHandler(),
-  } as any;
-}
-
-// Export the legacy Supabase client
-export const supabase = supabaseInstance;
-
-// Default export for new code
-export default getSupabaseClient;
 
 // Diagnostic function for testing profile updates
 export async function testProfileUpdate(userId: string, updates: any): Promise<{success: boolean, error?: any, data?: any}> {
@@ -854,3 +636,6 @@ export async function testProfileUpdate(userId: string, updates: any): Promise<{
     return { success: false, error };
   }
 }
+
+// Default export for new code
+export default getSupabaseClient;
