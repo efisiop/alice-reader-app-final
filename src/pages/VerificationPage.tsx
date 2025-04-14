@@ -137,18 +137,29 @@ const VerificationPage: React.FC = () => {
         throw verifyError || new Error('Verification failed');
       }
 
+      // Explicitly update verification state in the frontend
+      setIsVerified(true);
+
       // Show success message
       setSuccessMessage('Book verified successfully! Redirecting to reader...');
 
       // Add debug info
       console.log('VerificationPage: Verification successful for user:', effectiveUserId);
-      console.log('VerificationPage: Redirecting to reader dashboard');
+      console.log('VerificationPage: Verification state updated, redirecting to reader dashboard');
 
-      // Short delay to show success message
+      // Short delay to show success message, then navigate
       setTimeout(() => {
-        // Navigate to reader dashboard
         navigate('/reader');
       }, 1500);
+
+      // Failsafe: If setTimeout doesn't trigger for some reason, force navigation after 2 seconds
+      const navigationTimeout = setTimeout(() => {
+        console.log('VerificationPage: Failsafe navigation triggered');
+        navigate('/reader');
+      }, 2000);
+
+      // Clean up the failsafe timeout if component unmounts
+      return () => clearTimeout(navigationTimeout);
     } catch (err: any) {
       console.error('VerificationPage: Verification error:', err);
       setError(err.message || 'Verification failed');
