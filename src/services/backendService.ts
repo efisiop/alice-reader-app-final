@@ -1,6 +1,7 @@
 // src/services/backendService.ts
 import { supabase } from './supabaseClient';
-import getSupabaseClient, { checkSupabaseConnection, executeWithRetries } from './supabaseClient';
+import getSupabaseClient from './supabaseClient';
+import { checkSupabaseConnection, executeWithRetries } from './supabaseClient';
 import { mockBackend } from './mockBackend';
 import { isBackendAvailable } from './backendConfig';
 import { BookWithChapters, SectionWithChapter, BookProgress, BookStats, HelpRequest, UserFeedback, HelpRequestStatus, FeedbackType, TriggerType } from '../types/supabase';
@@ -379,7 +380,7 @@ export async function markCodeAsUsed(code: string, userId: string) {
  * 1. Checks if code exists and is not used
  * 2. Marks code as used
  * 3. Updates user profile with first/last name and verification status
- * 
+ *
  * @param code - The verification code to verify
  * @param userId - The user ID to associate with this code
  * @param firstName - Optional first name to update in the user's profile
@@ -388,7 +389,7 @@ export async function markCodeAsUsed(code: string, userId: string) {
  */
 export async function verifyBookCodeComprehensive(code: string, userId: string, firstName?: string, lastName?: string) {
   appLog('BackendService', 'Performing comprehensive book verification', 'info', { code, userId });
-  
+
   if (await useRealBackend()) {
     try {
       // Call the supabaseVerifyBookCode function directly
@@ -402,33 +403,33 @@ export async function verifyBookCodeComprehensive(code: string, userId: string, 
     try {
       // Step 1: Check if code exists and is not used
       const { data: verificationData, error: verifyError } = await mockBackend.books.verifyBookCode(code);
-      
+
       if (verifyError || !verificationData) {
         return { success: false, error: verifyError || 'Invalid verification code' };
       }
-      
+
       if (verificationData.is_used) {
         return { success: false, error: 'This code has already been used' };
       }
-      
+
       // Step 2: Mark code as used
       const { error: markCodeError } = await mockBackend.books.markCodeAsUsed(code, userId);
-      
+
       if (markCodeError) {
         return { success: false, error: markCodeError };
       }
-      
+
       // Step 3: Update user profile
       const updates: any = { book_verified: true };
       if (firstName) updates.first_name = firstName;
       if (lastName) updates.last_name = lastName;
-      
+
       const { error: updateError } = await mockBackend.profiles.updateUserProfile(userId, updates);
-      
+
       if (updateError) {
         return { success: false, error: updateError };
       }
-      
+
       return { success: true, data: verificationData };
     } catch (error) {
       appLog('BackendService', 'Error in mock comprehensive verification', 'error', error);
