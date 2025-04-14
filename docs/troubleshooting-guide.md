@@ -96,7 +96,7 @@ This guide provides comprehensive troubleshooting information for common issues 
      method1(): void;
      method2(): Promise<string>;
    };
-   
+
    // service.ts
    import type { ServiceInterface } from './types';
    ```
@@ -163,7 +163,7 @@ This guide provides comprehensive troubleshooting information for common issues 
    ```typescript
    // types.ts
    export interface ServiceInterface { ... }
-   
+
    // service.ts
    import type { ServiceInterface } from './types';
    ```
@@ -198,25 +198,25 @@ This guide provides comprehensive troubleshooting information for common issues 
      'serviceB': ['serviceD'],
      // ...
    };
-   
+
    // Initialize services in the correct order
    const initializeServices = async () => {
      const initialized = new Set();
-     
+
      const initService = async (name) => {
        if (initialized.has(name)) return;
-       
+
        // Initialize dependencies first
        const dependencies = SERVICE_DEPENDENCIES[name] || [];
        for (const dep of dependencies) {
          await initService(dep);
        }
-       
+
        // Initialize the service
        await initManager.initialize(name);
        initialized.add(name);
      };
-     
+
      // Initialize all services
      for (const service of Object.keys(SERVICE_DEPENDENCIES)) {
        await initService(service);
@@ -233,7 +233,7 @@ This guide provides comprehensive troubleshooting information for common issues 
        'bookService',
        // ...
      ];
-     
+
      for (const service of requiredServices) {
        if (!registry.has(service)) {
          throw new Error(`Required service ${service} is not registered`);
@@ -249,7 +249,7 @@ This guide provides comprehensive troubleshooting information for common issues 
      // Create and configure service
      return service;
    };
-   
+
    // Register service using factory
    initManager.register('serviceName', async () => {
      const service = await createService();
@@ -280,7 +280,7 @@ This guide provides comprehensive troubleshooting information for common issues 
    // src/services/backendConfig.ts
    // Helper to decide whether to use mock or real backend
    export const isBackendAvailable = true; // Set to true to use real Supabase, false to use mock
-   
+
    // Log the backend status for debugging
    console.log(`Backend status: Using ${isBackendAvailable ? 'REAL Supabase' : 'MOCK'} backend`);
    ```
@@ -293,17 +293,17 @@ This guide provides comprehensive troubleshooting information for common issues 
        if (!supabaseClient) {
          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
          const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-         
+
          if (!supabaseUrl || !supabaseKey) {
            return false;
          }
-         
+
          supabaseClient = createClient(supabaseUrl, supabaseKey);
        }
-       
+
        // Try a simple query to check connection
        const { error } = await supabaseClient.from('books').select('id').limit(1);
-       
+
        return !error;
      } catch (error) {
        return false;
@@ -352,9 +352,10 @@ This guide provides comprehensive troubleshooting information for common issues 
        setSession(newSession);
        setUser(newSession?.user ?? null);
        setLoading(false);
-       
+
        if (newSession?.user) {
          try {
+           // Profile should be automatically created by database trigger
            const { data: userProfile } = await backendGetUserProfile(newSession.user.id);
            setProfile(userProfile);
          } catch (error) {
@@ -364,7 +365,7 @@ This guide provides comprehensive troubleshooting information for common issues 
          setProfile(null);
        }
      });
-     
+
      // Safely access the subscription if it exists
      if (result && result.data && result.data.subscription) {
        subscription = result.data.subscription;
@@ -382,7 +383,7 @@ This guide provides comprehensive troubleshooting information for common issues 
      try {
        // Check if we should use the real backend
        const useReal = await useRealBackend();
-       
+
        if (useReal) {
          const client = await getSupabaseClient();
          return client.auth.onAuthStateChange(callback);
@@ -410,6 +411,7 @@ This guide provides comprehensive troubleshooting information for common issues 
 1. **Base Path Configuration**: Incorrect base path in Vite configuration.
 2. **Router Configuration**: Using BrowserRouter instead of HashRouter for GitHub Pages.
 3. **Environment Variables**: Missing or incorrect environment variables in production.
+4. **Build Cache Issues**: Stale build cache causing inconsistent builds.
 
 ### Solutions
 
@@ -418,7 +420,7 @@ This guide provides comprehensive troubleshooting information for common issues 
    // vite.config.ts
    export default defineConfig({
      plugins: [react()],
-     base: '/alice-reader-app/', // Must match repository name exactly
+     base: '/alice-reader-app-final/', // Must match repository name exactly
      // ...
    });
    ```
@@ -427,7 +429,7 @@ This guide provides comprehensive troubleshooting information for common issues 
    ```typescript
    // For GitHub Pages, use HashRouter instead of BrowserRouter
    import { HashRouter as Router } from 'react-router-dom';
-   
+
    function App() {
      return (
        <Router>
@@ -438,11 +440,19 @@ This guide provides comprehensive troubleshooting information for common issues 
    ```
 
 3. **Verify Environment Variables**:
-   - Create a `.env.production` file with production-specific variables
-   - Ensure all required variables are set in the deployment environment
+   - GitHub Actions workflow automatically creates `.env.production` file with secrets
+   - Ensure all required variables are set in GitHub repository secrets
    - Add fallbacks for critical variables:
    ```typescript
    const apiUrl = import.meta.env.VITE_API_URL || 'https://default-api.example.com';
+   ```
+
+4. **Clear Build Cache**:
+   - The GitHub Actions workflow includes steps to clear npm and Vite cache
+   - For local builds, you can run:
+   ```bash
+   npm cache clean --force
+   rm -rf node_modules/.vite
    ```
 
 ## Performance Problems
@@ -494,7 +504,7 @@ This guide provides comprehensive troubleshooting information for common issues 
    ```typescript
    useEffect(() => {
      // Set up resource
-     
+
      return () => {
        // Clean up resource
      };
@@ -558,6 +568,8 @@ The application includes several scripts to help diagnose issues:
 | "undefined is not an object (evaluating 'data.subscription')" | Auth state listener issues | Add null checks and error handling |
 | "Service X is not registered" | Service initialization failure | Check initialization order and dependencies |
 | "Failed to connect to backend" | Supabase connection issues | Verify Supabase URL and API key |
+| "Verification code is invalid or has already been used" | Invalid verification code | Ensure the code is valid and hasn't been used before |
+| "User profile not found" | Database trigger issue | Check Supabase logs for trigger execution errors |
 
 ## Preventative Measures
 

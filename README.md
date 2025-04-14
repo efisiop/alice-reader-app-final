@@ -1,6 +1,6 @@
 # Alice Reader App
 
-## Overview 
+## Overview
 
 The Alice Reader app is a reading assistance application designed to help users improve their reading experience through various features including word definitions, AI assistance, and live help from consultants.
 
@@ -24,8 +24,8 @@ The Alice Reader app is a reading assistance application designed to help users 
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/efisiop/alice-reader-app.git
-   cd alice-reader-app
+   git clone https://github.com/efisiop/alice-reader-app-final.git
+   cd alice-reader-app-final
    ```
 
 2. Install dependencies:
@@ -49,6 +49,8 @@ Comprehensive documentation is available in the `docs` directory:
 - [Beta Testing Guide](docs/beta-testing-guide.md): Instructions for beta testers
 - [Production Readiness Checklist](docs/production-readiness-checklist.md): Checklist for production deployment
 - [Troubleshooting Guide](docs/troubleshooting-guide.md): Solutions for common issues
+- [Deployment Guide](docs/deployment-guide.md): Instructions for deploying to GitHub Pages
+- [Dictionary Service Guide](docs/dictionary-service-guide.md): Information about the dictionary service
 
 ## Architecture
 
@@ -56,19 +58,25 @@ The Alice Reader app is built with:
 
 - **Frontend**: React, TypeScript, Vite
 - **Backend**: Supabase (PostgreSQL, Authentication, Storage)
-- **State Management**: React Context API
-- **Styling**: CSS Modules
+- **State Management**: React Context API with service registry pattern
+- **Styling**: Material-UI (MUI)
+- **Deployment**: GitHub Actions to GitHub Pages
+
+### Authentication & User Management
+
+- User signup automatically triggers profile creation via a database trigger
+- Authentication is handled through Supabase Auth
+- Book verification uses a consolidated verification process that handles code validation and profile updates in one step
 
 ## Troubleshooting
 
 If you encounter issues with the application, please refer to our [Troubleshooting Guide](docs/troubleshooting-guide.md) which covers common problems and their solutions, including:
 
 - Application initialization issues
-- Circular dependencies
-- Type export/import issues
 - Service registry problems
 - Backend connection issues
 - Authentication errors
+- Deployment issues
 
 ## Contributing
 

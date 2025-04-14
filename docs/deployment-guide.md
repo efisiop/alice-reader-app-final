@@ -38,10 +38,13 @@ The deployment process is automated using GitHub Actions:
 1. Push changes to the `main` branch
 2. GitHub Actions workflow will:
    - Install dependencies
+   - Clear npm and Vite cache to ensure clean builds
+   - Run type checking
    - Create production environment file
    - Build the project
+   - Create 404.html for SPA routing
    - Deploy to GitHub Pages
-3. Access your app at: `https://<username>.github.io/alice-reader/`
+3. Access your app at: `https://<username>.github.io/alice-reader-app-final/`
 
 ### 5. Manual Deployment
 
@@ -56,8 +59,9 @@ If needed, you can trigger a manual deployment:
 Common issues and solutions:
 
 1. **404 Errors on Routes**:
-   - Ensure the base path in `vite.config.ts` matches your repository name
+   - Ensure the base path in `vite.config.ts` matches your repository name exactly
    - Verify the 404.html file is properly created and deployed
+   - Make sure you're using HashRouter for GitHub Pages
 
 2. **Environment Variables**:
    - Check GitHub Secrets are properly set
@@ -65,8 +69,8 @@ Common issues and solutions:
 
 3. **Build Failures**:
    - Check the Actions logs for detailed error messages
-   - Verify all dependencies are properly installed
-   - Ensure the Node.js version matches the project requirements
+   - The workflow includes cache clearing steps to prevent stale cache issues
+   - Type checking is performed before build to catch type errors
 
 ### 7. Monitoring
 
@@ -98,4 +102,4 @@ To update the deployed application:
 Remember to:
 - Test changes locally before pushing
 - Monitor the deployment process
-- Verify the changes in production 
+- Verify the changes in production
