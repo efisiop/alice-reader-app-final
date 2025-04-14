@@ -22,6 +22,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import LogoutIcon from '@mui/icons-material/Logout';
 import { useAuthService, useAnalyticsService } from '../../hooks/useService';
 import { usePerformance } from '../../hooks/usePerformance';
 import { useAuth } from '../../contexts/AuthContext';
@@ -29,7 +30,7 @@ import { useAuth } from '../../contexts/AuthContext';
 const VerifyPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isVerified, verifyBook } = useAuth();
+  const { user, isVerified, verifyBook, signOut } = useAuth();
   const { service: analyticsService } = useAnalyticsService();
 
   // Form state
@@ -57,7 +58,7 @@ const VerifyPage: React.FC = () => {
   useEffect(() => {
     // If we're coming from registration, don't redirect
     const isFromRegistration = location.state?.fromRegistration;
-    
+
     // Only redirect if we're not coming from registration and the user is verified
     if (!isFromRegistration && user && isVerified) {
       console.log('User already verified, redirecting to reader');
@@ -279,23 +280,38 @@ const VerifyPage: React.FC = () => {
 
           <Divider sx={{ my: 3 }} />
 
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-            <Button
-              variant="text"
-              color="primary"
-              startIcon={<ArrowBackIcon />}
-              onClick={() => navigate('/login', { replace: true })}
-            >
-              Already Verified? Log In
-            </Button>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Button
+                variant="text"
+                color="primary"
+                startIcon={<ArrowBackIcon />}
+                onClick={() => navigate('/login', { replace: true })}
+              >
+                Already Verified? Log In
+              </Button>
+
+              <Button
+                variant="text"
+                color="primary"
+                endIcon={<PersonAddIcon />}
+                onClick={() => navigate('/register', { replace: true })}
+              >
+                Need a New Account? Sign Up
+              </Button>
+            </Box>
+
+            <Divider sx={{ my: 1 }} />
 
             <Button
-              variant="text"
-              color="primary"
-              endIcon={<PersonAddIcon />}
-              onClick={() => navigate('/register', { replace: true })}
+              variant="outlined"
+              color="secondary"
+              fullWidth
+              onClick={() => signOut()}
+              sx={{ mt: 1 }}
+              startIcon={<LogoutIcon />}
             >
-              Need a New Account? Sign Up
+              Sign Out
             </Button>
           </Box>
         </Paper>

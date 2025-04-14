@@ -7,6 +7,7 @@ import './styles/accessibility.css';
 import { ServiceStatusCheck } from '@components/Admin/ServiceStatusCheck';
 import { AccessibilityProvider } from './components/common/AccessibilityMenu';
 import SkipToContent from './components/common/SkipToContent';
+import { RouteGuard } from './components/common/RouteGuard';
 
 // Pages
 import LandingPage from './pages/LandingPage';
@@ -76,36 +77,40 @@ function App() {
         <SkipToContent contentId="main-content" />
         <main id="main-content">
           <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/verify" element={<VerifyPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            {/* Public Routes - Accessible to everyone */}
+            <Route path="/" element={<RouteGuard routeType="public"><LandingPage /></RouteGuard>} />
+            <Route path="/login" element={<RouteGuard routeType="public"><LoginPage /></RouteGuard>} />
+            <Route path="/register" element={<RouteGuard routeType="public"><RegisterPage /></RouteGuard>} />
+            <Route path="/forgot-password" element={<RouteGuard routeType="public"><ForgotPasswordPage /></RouteGuard>} />
 
-            {/* Reader Routes */}
-            <Route path="/reader" element={<ReaderDashboard />} />
-            <Route path="/reader/:bookId/page/:pageNumber" element={<ReaderPage />} />
-            <Route path="/reader/statistics" element={<ReaderStatistics />} />
+            {/* Auth Routes - Require authentication but not verification */}
+            <Route path="/verify" element={<RouteGuard routeType="auth"><VerifyPage /></RouteGuard>} />
+
+            {/* Reader Routes - Require authentication and verification */}
+            <Route path="/reader" element={<RouteGuard routeType="verified"><ReaderDashboard /></RouteGuard>} />
+            <Route path="/reader/:bookId/page/:pageNumber" element={<RouteGuard routeType="verified"><ReaderPage /></RouteGuard>} />
+            <Route path="/reader/statistics" element={<RouteGuard routeType="verified"><ReaderStatistics /></RouteGuard>} />
 
             {/* Consultant Routes */}
-            <Route path="/consultant" element={<ConsultantDashboard />} />
-            <Route path="/consultant/readers" element={<ReadersList />} />
-            <Route path="/consultant/help-requests" element={<HelpRequests />} />
+            <Route path="/consultant" element={<RouteGuard routeType="verified"><ConsultantDashboard /></RouteGuard>} />
+            <Route path="/consultant/readers" element={<RouteGuard routeType="verified"><ReadersList /></RouteGuard>} />
+            <Route path="/consultant/help-requests" element={<RouteGuard routeType="verified"><HelpRequests /></RouteGuard>} />
             <Route
               path="/consultant-dashboard"
               element={
-                <ProtectedRoute requiredRole="consultant">
-                  <ConsultantDashboardPage />
-                </ProtectedRoute>
+                <RouteGuard routeType="verified">
+                  <ProtectedRoute requiredRole="consultant">
+                    <ConsultantDashboardPage />
+                  </ProtectedRoute>
+                </RouteGuard>
               }
             />
 
             {/* Admin Routes */}
-            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin" element={<RouteGuard routeType="admin"><AdminDashboard /></RouteGuard>} />
 
             {/* Admin Routes - Service Status */}
-            <Route path="/service-status" element={<ServiceStatusCheck />} />
+            <Route path="/service-status" element={<RouteGuard routeType="admin"><ServiceStatusCheck /></RouteGuard>} />
           </Routes>
         </main>
       </div>
