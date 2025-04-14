@@ -1,6 +1,5 @@
 // src/services/backendService.ts
-import getSupabaseClient from './supabaseClient';
-import { checkSupabaseConnection, executeWithRetries } from './supabaseClient';
+import { getSupabaseClient, checkSupabaseConnection, executeWithRetries, verifyBookCode as supabaseVerifyBookCode } from './supabaseClient';
 import { mockBackend } from './mockBackend';
 import { isBackendAvailable } from './backendConfig';
 import { BookWithChapters, SectionWithChapter, BookProgress, BookStats, HelpRequest, UserFeedback, HelpRequestStatus, FeedbackType, TriggerType } from '../types/supabase';
@@ -11,7 +10,6 @@ import { appLog } from '../components/LogViewer';
 import { User, Session } from '@supabase/supabase-js';
 import mcpInstance from '../mcp/instance';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { verifyBookCode as supabaseVerifyBookCode } from './supabaseClient';
 
 // Function to determine if we should use the real backend
 async function useRealBackend() {
@@ -182,13 +180,15 @@ export async function getBookContent(bookId: string | BookId): Promise<{ data: B
 
   if (await useRealBackend()) {
     try {
+      // Get the Supabase client
+      const client = await getSupabaseClient();
       // Convert string ID to UUID if needed
       const bookUuid = getBookUuid(bookId.toString());
       appLog('BackendService', `Using book UUID: ${bookUuid}`, 'debug');
 
       // First get the book
       appLog('BackendService', 'Step 1 - Fetching book details...', 'info');
-      const { data: book, error: bookError } = await supabase
+      const { data: book, error: bookError } = await client
         .from('books')
         .select('*')
         .eq('id', bookUuid)
@@ -208,7 +208,7 @@ export async function getBookContent(bookId: string | BookId): Promise<{ data: B
 
       // Then get all chapters for this book
       appLog('BackendService', 'Step 2 - Fetching chapters...', 'info');
-      const { data: chapters, error: chaptersError } = await supabase
+      const { data: chapters, error: chaptersError } = await client
         .from('chapters')
         .select('*')
         .eq('book_id', bookUuid)
@@ -229,24 +229,19 @@ export async function getBookContent(bookId: string | BookId): Promise<{ data: B
       // For each chapter, get its sections
       appLog('BackendService', 'Step 3 - Fetching sections for each chapter...', 'info');
       const chaptersWithSections = await Promise.all(
-        chapters.map(async (chapter) => {
-          const { data: sections, error: sectionsError } = await supabase
+        chapters.map(async (chapter: any) => {
+          const { data: sections, error: sectionsError } = await client
             .from('sections')
             .select('*')
             .eq('chapter_id', chapter.id)
             .order('number');
 
           if (sectionsError) {
-            appLog('BackendService', `Error fetching sections for chapter ${chapter.id}`, 'error', sectionsError);
-            throw sectionsError;
+            appLog('BackendService', 'Error fetching sections', 'error', sectionsError);
+            return { ...chapter, sections: [] };
           }
 
-          appLog('BackendService', `Found ${sections?.length || 0} sections for chapter ${chapter.number}`, 'debug');
-
-          return {
-            ...chapter,
-            sections: sections || []
-          };
+          return { ...chapter, sections };
         })
       );
 
@@ -274,8 +269,11 @@ export async function getBookContent(bookId: string | BookId): Promise<{ data: B
 }
 
 export async function getSectionsForPage(bookId: string, pageNumber: number) {
-  if (useRealBackend()) {
-    const { data, error } = await supabase
+  if (await useRealBackend()) {
+    // Get the Supabase client
+    const client = await getSupabaseClient();
+    
+    const { data, error } = await client
       .rpc('get_sections_for_page', {
         book_id_param: bookId,
         page_number_param: pageNumber
@@ -297,11 +295,14 @@ export async function getDefinition(bookId: string, term: string, sectionId?: st
     const cleanTerm = term.replace(/[.,!?;:'"\/\\()\[\]{}]/g, '').trim().toLowerCase();
 
     if (await useRealBackend()) {
+      // Get the Supabase client
+      const client = await getSupabaseClient();
+      
       // Convert IDs to UUIDs if needed
       const bookUuid = getBookUuid(bookId);
 
       // Call the stored procedure with context parameters
-      const { data, error } = await supabase
+      const { data, error } = await client
         .rpc('get_definition_with_context', {
           book_id_param: bookUuid,
           term_param: cleanTerm,
@@ -344,8 +345,11 @@ export async function getDefinition(bookId: string, term: string, sectionId?: st
 export async function verifyBookCode(code: string) {
   // @deprecated - This function only checks if a code exists but doesn't mark it as used or update the profile
   // Use verifyBookCodeComprehensive instead
-  if (useRealBackend()) {
-    const { data, error } = await supabase
+  if (await useRealBackend()) {
+    // Get the Supabase client
+    const client = await getSupabaseClient();
+    
+    const { data, error } = await client
       .from('verification_codes')
       .select('*, books(id, title, author)')
       .eq('code', code.toUpperCase())
@@ -360,8 +364,11 @@ export async function verifyBookCode(code: string) {
 export async function markCodeAsUsed(code: string, userId: string) {
   // @deprecated - This function only marks a code as used but doesn't update the profile
   // Use verifyBookCodeComprehensive instead
-  if (useRealBackend()) {
-    const { data, error } = await supabase
+  if (await useRealBackend()) {
+    // Get the Supabase client
+    const client = await getSupabaseClient();
+    
+    const { data, error } = await client
       .from('verification_codes')
       .update({ is_used: true, used_by: userId })
       .eq('code', code.toUpperCase())
@@ -388,9 +395,12 @@ export async function markCodeAsUsed(code: string, userId: string) {
  */
 export async function verifyBookCodeComprehensive(code: string, userId: string, firstName?: string, lastName?: string) {
   appLog('BackendService', 'Performing comprehensive book verification', 'info', { code, userId });
-
+  
   if (await useRealBackend()) {
     try {
+      // Get the Supabase client
+      const client = await getSupabaseClient();
+      
       // Call the supabaseVerifyBookCode function directly
       return await supabaseVerifyBookCode(code, userId, firstName, lastName);
     } catch (error) {
@@ -449,12 +459,14 @@ export async function saveReadingProgress(userId: string | UserId, bookId: strin
 
   if (await useRealBackend()) {
     try {
+      // Get the Supabase client
+      const client = await getSupabaseClient();
       // Convert string ID to UUID if needed
       const bookUuid = getBookUuid(bookId.toString());
       appLog('BackendService', `Using book UUID: ${bookUuid}`, 'debug');
 
       // Check if a record already exists
-      const { data: existing, error: checkError } = await supabase
+      const { data: existing, error: checkError } = await client
         .from('reading_progress')
         .select('id')
         .eq('user_id', userId)
@@ -471,7 +483,7 @@ export async function saveReadingProgress(userId: string | UserId, bookId: strin
       if (existing) {
         appLog('BackendService', 'Updating existing reading progress record', 'info', { id: existing.id });
         // Update existing record
-        const { data, error } = await supabase
+        const { data, error } = await client
           .from('reading_progress')
           .update({
             section_id: sectionId,
@@ -493,7 +505,7 @@ export async function saveReadingProgress(userId: string | UserId, bookId: strin
       } else {
         appLog('BackendService', 'Creating new reading progress record', 'info');
         // Insert new record
-        const { data, error } = await supabase
+        const { data, error } = await client
           .from('reading_progress')
           .insert({
             user_id: userId,
@@ -534,11 +546,13 @@ export async function getReadingProgress(userId: string | UserId, bookId: string
 
   if (await useRealBackend()) {
     try {
+      // Get the Supabase client
+      const client = await getSupabaseClient();
       // Convert string ID to UUID if needed
       const bookUuid = getBookUuid(bookId.toString());
       appLog('BackendService', `Using book UUID: ${bookUuid}`, 'debug');
 
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('reading_progress')
         .select('section_id, last_position, last_read_at')
         .eq('user_id', userId)
@@ -559,7 +573,7 @@ export async function getReadingProgress(userId: string | UserId, bookId: string
 
       // Get section and chapter details
       appLog('BackendService', 'Fetching section and chapter details', 'info');
-      const { data: sectionData, error: sectionError } = await supabase
+      const { data: sectionData, error: sectionError } = await client
         .from('sections')
         .select('title, start_page, chapters!inner(title, number)')
         .eq('id', data.section_id)
@@ -598,14 +612,17 @@ export async function getReadingProgress(userId: string | UserId, bookId: string
 export async function updateReadingStats(userId: string, bookId: string, timeSpentSeconds: number, pagesRead: number) {
   appLog('BackendService', 'Updating reading stats', 'info', { userId, bookId, timeSpentSeconds, pagesRead });
 
-  if (useRealBackend()) {
+  if (await useRealBackend()) {
     try {
+      // Get the Supabase client
+      const client = await getSupabaseClient();
+      
       // Convert string ID to UUID if needed
       const bookUuid = getBookUuid(bookId);
       appLog('BackendService', `Using book UUID: ${bookUuid}`, 'debug');
 
       // Check if a record already exists
-      const { data: existing, error: checkError } = await supabase
+      const { data: existing, error: checkError } = await client
         .from('reading_stats')
         .select('id, total_reading_time, pages_read')
         .eq('user_id', userId)
@@ -627,7 +644,7 @@ export async function updateReadingStats(userId: string, bookId: string, timeSpe
         });
 
         // Update existing record
-        const { data, error } = await supabase
+        const { data, error } = await client
           .from('reading_stats')
           .update({
             total_reading_time: existing.total_reading_time + timeSpentSeconds,
@@ -655,7 +672,7 @@ export async function updateReadingStats(userId: string, bookId: string, timeSpe
         const percentageComplete = Math.min(100, Math.round((pagesRead / totalPages) * 100));
 
         // Insert new record
-        const { data, error } = await supabase
+        const { data, error } = await client
           .from('reading_stats')
           .insert({
             user_id: userId,
@@ -689,13 +706,13 @@ export async function updateReadingStats(userId: string, bookId: string, timeSpe
 export async function getReadingStats(userId: string, bookId: string) {
   appLog('BackendService', 'Getting reading stats', 'info', { userId, bookId });
 
-  if (useRealBackend()) {
+  if (await useRealBackend()) {
     try {
       // Convert string ID to UUID if needed
       const bookUuid = getBookUuid(bookId);
       appLog('BackendService', `Using book UUID: ${bookUuid}`, 'debug');
 
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('reading_stats')
         .select('*')
         .eq('user_id', userId)
@@ -725,7 +742,7 @@ export async function getReadingStats(userId: string, bookId: string) {
 
       // Otherwise, get total pages to calculate percentage
       appLog('BackendService', 'Fetching book data to calculate percentage', 'info');
-      const { data: bookData, error: bookError } = await supabase
+      const { data: bookData, error: bookError } = await client
         .from('books')
         .select('total_pages')
         .eq('id', bookUuid)
@@ -1010,8 +1027,11 @@ export async function runDatabaseFixes(): Promise<{ success: boolean; message: s
 
 // AI interaction services
 export async function saveAiInteraction(userId: string, bookId: string, question: string, response: string, sectionId?: string, context?: string) {
-  if (useRealBackend()) {
-    const { data, error } = await supabase
+  if (await useRealBackend()) {
+      // Get the Supabase client
+      const client = await getSupabaseClient();
+
+    const { data, error } = await client
       .from('ai_interactions')
       .insert({
         user_id: userId,
@@ -1031,8 +1051,11 @@ export async function saveAiInteraction(userId: string, bookId: string, question
 }
 
 export async function getAiInteractions(userId: string, bookId: string) {
-  if (useRealBackend()) {
-    const { data, error } = await supabase
+  if (await useRealBackend()) {
+      // Get the Supabase client
+      const client = await getSupabaseClient();
+
+    const { data, error } = await client
       .from('ai_interactions')
       .select('*')
       .eq('user_id', userId)
@@ -1047,8 +1070,11 @@ export async function getAiInteractions(userId: string, bookId: string) {
 
 // AI Prompts services
 export async function getAiPrompts(promptType: string) {
-  if (useRealBackend()) {
-    const { data, error } = await supabase
+  if (await useRealBackend()) {
+      // Get the Supabase client
+      const client = await getSupabaseClient();
+
+    const { data, error } = await client
       .from('ai_prompts')
       .select('*')
       .eq('prompt_type', promptType)
@@ -1061,8 +1087,11 @@ export async function getAiPrompts(promptType: string) {
 }
 
 export async function savePromptResponse(userId: string, promptId: string, response: string) {
-  if (useRealBackend()) {
-    const { data, error } = await supabase
+  if (await useRealBackend()) {
+      // Get the Supabase client
+      const client = await getSupabaseClient();
+
+    const { data, error } = await client
       .from('user_prompt_responses')
       .insert({
         user_id: userId,
@@ -1080,8 +1109,11 @@ export async function savePromptResponse(userId: string, promptId: string, respo
 
 // Consultant services
 export async function getConsultantAssignments(consultantId: string) {
-  if (useRealBackend()) {
-    const { data, error } = await supabase
+  if (await useRealBackend()) {
+      // Get the Supabase client
+      const client = await getSupabaseClient();
+
+    const { data, error } = await client
       .from('consultant_assignments')
       .select('*, profiles!user_id(*)')
       .eq('consultant_id', consultantId)
@@ -1094,8 +1126,11 @@ export async function getConsultantAssignments(consultantId: string) {
 }
 
 export async function assignConsultant(consultantId: string, userId: string, bookId: string) {
-  if (useRealBackend()) {
-    const { data, error } = await supabase
+  if (await useRealBackend()) {
+      // Get the Supabase client
+      const client = await getSupabaseClient();
+
+    const { data, error } = await client
       .from('consultant_assignments')
       .insert({
         consultant_id: consultantId,
@@ -1113,8 +1148,11 @@ export async function assignConsultant(consultantId: string, userId: string, boo
 }
 
 export async function createTrigger(userId: string, bookId: string, triggerType: string, message?: string, consultantId?: string) {
-  if (useRealBackend()) {
-    const { data, error } = await supabase
+  if (await useRealBackend()) {
+      // Get the Supabase client
+      const client = await getSupabaseClient();
+
+    const { data, error } = await client
       .from('consultant_triggers')
       .insert({
         consultant_id: consultantId || null,
@@ -1134,8 +1172,11 @@ export async function createTrigger(userId: string, bookId: string, triggerType:
 }
 
 export async function getTriggers(consultantId: string) {
-  if (useRealBackend()) {
-    const { data, error } = await supabase
+  if (await useRealBackend()) {
+      // Get the Supabase client
+      const client = await getSupabaseClient();
+
+    const { data, error } = await client
       .from('consultant_triggers')
       .select('*, profiles!user_id(*)')
       .eq('consultant_id', consultantId)
@@ -1148,9 +1189,12 @@ export async function getTriggers(consultantId: string) {
 }
 
 export async function markTriggerProcessed(triggerId: string) {
-  if (useRealBackend()) {
+  if (await useRealBackend()) {
+      // Get the Supabase client
+      const client = await getSupabaseClient();
+
     const now = new Date().toISOString();
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from('consultant_triggers')
       .update({
         is_processed: true,
@@ -1168,9 +1212,12 @@ export async function markTriggerProcessed(triggerId: string) {
 
 // Check if user is a consultant
 export async function isConsultant(userId: string) {
-  if (useRealBackend()) {
+  if (await useRealBackend()) {
+      // Get the Supabase client
+      const client = await getSupabaseClient();
+
     // First check the profiles table
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await client
       .from('profiles')
       .select('is_consultant')
       .eq('id', userId)
@@ -1186,7 +1233,7 @@ export async function isConsultant(userId: string) {
     }
 
     // Then check the consultant_users table
-    const { data: consultant, error: consultantError } = await supabase
+    const { data: consultant, error: consultantError } = await client
       .from('consultant_users')
       .select('is_active')
       .eq('user_id', userId)
@@ -1205,8 +1252,11 @@ export async function isConsultant(userId: string) {
 
 // User Feedback services
 export async function submitFeedback(userId: string, bookId: string, feedbackType: FeedbackType, content: string, sectionId?: string, isPublic: boolean = false) {
-  if (useRealBackend()) {
-    const { data, error } = await supabase
+  if (await useRealBackend()) {
+      // Get the Supabase client
+      const client = await getSupabaseClient();
+
+    const { data, error } = await client
       .from('user_feedback')
       .insert({
         user_id: userId,
@@ -1226,8 +1276,11 @@ export async function submitFeedback(userId: string, bookId: string, feedbackTyp
 }
 
 export async function getUserFeedback(userId: string, bookId: string) {
-  if (useRealBackend()) {
-    const { data, error } = await supabase
+  if (await useRealBackend()) {
+      // Get the Supabase client
+      const client = await getSupabaseClient();
+
+    const { data, error } = await client
       .from('user_feedback')
       .select(`
         *,
@@ -1254,8 +1307,11 @@ export async function getUserFeedback(userId: string, bookId: string) {
 }
 
 export async function getPublicFeedback(bookId: string) {
-  if (useRealBackend()) {
-    const { data, error } = await supabase
+  if (await useRealBackend()) {
+      // Get the Supabase client
+      const client = await getSupabaseClient();
+
+    const { data, error } = await client
       .from('user_feedback')
       .select(`
         *,
@@ -1285,8 +1341,11 @@ export async function getPublicFeedback(bookId: string) {
 
 // Help Request services
 export async function submitHelpRequest(userId: string, bookId: string, content: string, sectionId?: string, context?: string) {
-  if (useRealBackend()) {
-    const { data, error } = await supabase
+  if (await useRealBackend()) {
+      // Get the Supabase client
+      const client = await getSupabaseClient();
+
+    const { data, error } = await client
       .from('help_requests')
       .insert({
         user_id: userId,
@@ -1306,8 +1365,11 @@ export async function submitHelpRequest(userId: string, bookId: string, content:
 }
 
 export async function getUserHelpRequests(userId: string, bookId: string) {
-  if (useRealBackend()) {
-    const { data, error } = await supabase
+  if (await useRealBackend()) {
+      // Get the Supabase client
+      const client = await getSupabaseClient();
+
+    const { data, error } = await client
       .from('help_requests')
       .select(`
         *,
@@ -1336,8 +1398,11 @@ export async function getUserHelpRequests(userId: string, bookId: string) {
 }
 
 export async function getConsultantHelpRequests(consultantId: string) {
-  if (useRealBackend()) {
-    const { data, error } = await supabase
+  if (await useRealBackend()) {
+      // Get the Supabase client
+      const client = await getSupabaseClient();
+
+    const { data, error } = await client
       .from('help_requests')
       .select(`
         *,
@@ -1365,8 +1430,11 @@ export async function getConsultantHelpRequests(consultantId: string) {
 }
 
 export async function getPendingHelpRequests() {
-  if (useRealBackend()) {
-    const { data, error } = await supabase
+  if (await useRealBackend()) {
+      // Get the Supabase client
+      const client = await getSupabaseClient();
+
+    const { data, error } = await client
       .from('help_requests')
       .select(`
         *,
@@ -1395,7 +1463,10 @@ export async function getPendingHelpRequests() {
 }
 
 export async function updateHelpRequestStatus(requestId: string, status: HelpRequestStatus, consultantId?: string) {
-  if (useRealBackend()) {
+  if (await useRealBackend()) {
+      // Get the Supabase client
+      const client = await getSupabaseClient();
+
     const updates: any = { status };
 
     if (status === HelpRequestStatus.IN_PROGRESS && consultantId) {
@@ -1406,7 +1477,7 @@ export async function updateHelpRequestStatus(requestId: string, status: HelpReq
       updates.resolved_at = new Date().toISOString();
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from('help_requests')
       .update(updates)
       .eq('id', requestId)
@@ -1421,8 +1492,11 @@ export async function updateHelpRequestStatus(requestId: string, status: HelpReq
 
 // Consultant Action Logging
 export async function logConsultantAction(consultantId: string, userId: string, actionType: string, details?: any) {
-  if (useRealBackend()) {
-    const { data, error } = await supabase
+  if (await useRealBackend()) {
+      // Get the Supabase client
+      const client = await getSupabaseClient();
+
+    const { data, error } = await client
       .from('consultant_actions_log')
       .insert({
         consultant_id: consultantId,

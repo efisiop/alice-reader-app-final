@@ -1,4 +1,3 @@
-import { supabase } from './supabaseClient';
 import { appLog } from '../components/LogViewer';
 import { registry } from './serviceRegistry';
 import {
@@ -90,8 +89,11 @@ const createConsultantService = async (): Promise<ConsultantServiceInterface> =>
 checkIsConsultant: async (): Promise<boolean> => {
   try {
     appLog(SERVICE_NAME, 'Checking if current user is a consultant', 'info');
+    
+    // Get Supabase client
+    const client = await getSupabaseClient();
 
-    const { data, error } = await supabase.rpc('is_consultant');
+    const { data, error } = await client.rpc('is_consultant');
 
     if (error) {
       appLog(SERVICE_NAME, 'Error checking consultant status', 'error', error);
@@ -218,7 +220,8 @@ getUserReadingDetails: async (userId: string, bookId: string = BOOK_IDS.ALICE) =
 
     // Log consultant viewing this user's profile
     try {
-      await supabase.rpc('log_consultant_action', {
+      const client = await getSupabaseClient();
+    await client.rpc('log_consultant_action', {
         p_user_id: userId,
         p_action_type: 'VIEW_PROFILE',
         p_details: { book_id: bookId }
@@ -410,7 +413,8 @@ createConsultantTrigger: async (
       userId, bookId, triggerType, message
     });
 
-    const { data, error } = await supabase.rpc('create_consultant_trigger', {
+    const client = await getSupabaseClient();
+    const { data, error } = await client.rpc('create_consultant_trigger', {
       p_user_id: userId,
       p_book_id: bookId,
       p_trigger_type: triggerType,
@@ -489,8 +493,10 @@ logConsultantAction: async (
       userId, actionType, details
     });
 
-    const { data, error } = await supabase.rpc('log_consultant_action', {
+    const client = await getSupabaseClient();
+    const { data, error } = await client.rpc('log_consultant_action', {
       p_user_id: userId,
+      p_consultant_id: user?.id,
       p_action_type: actionType,
       p_details: details ? JSON.stringify(details) : null
     });
@@ -671,13 +677,14 @@ getConsultantStats: async () => {
   try {
     appLog(SERVICE_NAME, 'Getting consultant dashboard statistics', 'info');
 
-    const { data: session } = await supabase.auth.getSession();
-    if (!session.session?.user) {
+    const client = await getSupabaseClient();
+    const { data: sessionData } = await client.auth.getSession();
+    if (!sessionData.session?.user) {
       appLog(SERVICE_NAME, 'No authenticated user found', 'warning');
       return null;
     }
 
-    const consultantId = session.session.user.id;
+    const consultantId = sessionData.session.user.id;
 
     // Get assigned readers
     const { data: assignments, error: assignmentsError } = await supabase
