@@ -1,3 +1,5 @@
+console.log('main.tsx: Script executing');
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import './index.css'
@@ -81,6 +83,7 @@ async function initializeApp() {
 
     // Render the app
     appLog('Main', 'Rendering application to DOM...', 'info');
+    console.log('main.tsx: Rendering App into root...');
     ReactDOM.createRoot(document.getElementById('root')!).render(
       <React.StrictMode>
         <ErrorBoundary>

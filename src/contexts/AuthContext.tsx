@@ -49,6 +49,7 @@ type AuthContextType = {
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  console.log('AuthProvider: Mounting / Initializing');
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<AuthContextType['profile']>(null);
@@ -80,6 +81,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Check for session on initial load
   useEffect(() => {
+    console.log('AuthProvider: Initial useEffect running...');
     let mounted = true;
     let subscription: { unsubscribe: () => void } | null = null;
 
@@ -122,6 +124,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         if (listenerData?.subscription) {
           subscription = listenerData.subscription;
+          console.log('AuthProvider: State Change Listener Attached');
         }
 
         // Then get the initial session
@@ -270,6 +273,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     isConsultant
   };
 
+  console.log('AuthProvider: Initial loading state:', loading);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 

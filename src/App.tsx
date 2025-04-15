@@ -32,6 +32,7 @@ import { appLog } from './components/LogViewer';
 import { AuthProvider } from './contexts/AuthContext';
 
 function App() {
+  console.log('App.tsx: Component rendering');
   const [initialized, setInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
