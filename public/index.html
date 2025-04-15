@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alice Reader - Public Index</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2196f3;
+        }
+        .button {
+            display: inline-block;
+            background-color: #2196f3;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Alice Reader App</h1>
+        <p>This is a public index.html file that will be copied to the root of the dist directory during the build process.</p>
+        
+        <p>If you can see this page, the GitHub Pages deployment is working correctly for static HTML files.</p>
+        
+        <p>Current time: <span id="current-time"></span></p>
+        
+        <a href="./test-page.html" class="button">View Test Page</a>
+        <a href="./index.html" class="button">View Main App</a>
+    </div>
+
+    <script>
+        // Display current time
+        document.getElementById('current-time').textContent = new Date().toLocaleString();
+    </script>
+</body>
+</html>
