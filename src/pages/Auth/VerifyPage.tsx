@@ -16,8 +16,12 @@ import {
   StepContent,
   Fade,
   Grow,
-  Chip
+  Chip,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails
 } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -26,6 +30,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import { useAuthService, useAnalyticsService } from '../../hooks/useService';
 import { usePerformance } from '../../hooks/usePerformance';
 import { useAuth } from '../../contexts/AuthContext';
+import ProfileUpdateTester from '../../components/Debug/ProfileUpdateTester';
 
 const VerifyPage: React.FC = () => {
   const navigate = useNavigate();
@@ -107,12 +112,31 @@ const VerifyPage: React.FC = () => {
       return;
     }
 
+    // Add first name and last name validation
+    if (!firstName.trim()) {
+      setError('Please enter your first name');
+      return;
+    }
+
+    if (!lastName.trim()) {
+      setError('Please enter your last name');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
+      console.log('VerifyPage: Starting verification with:', {
+        verificationCode,
+        firstName,
+        lastName
+      });
+
       const startTime = performance.now();
-      const { error, success } = await verifyBook(verificationCode);
+      const { error, success } = await verifyBook(verificationCode, firstName, lastName);
+
+      console.log('VerifyPage: Verification result:', { error, success });
 
       if (error) {
         throw error;
@@ -207,11 +231,37 @@ const VerifyPage: React.FC = () => {
                     autoFocus
                     value={verificationCode}
                     onChange={(e) => setVerificationCode(e.target.value.toUpperCase())}
-                    error={!!error}
+                    error={!!error && !verificationCode.trim()}
                     placeholder="e.g. BETA001"
                     inputProps={{
                       style: { textTransform: 'uppercase', letterSpacing: '0.1em' }
                     }}
+                    disabled={loading || verificationComplete}
+                  />
+
+                  <TextField
+                    margin="normal"
+                    required
+                    fullWidth
+                    id="firstName"
+                    label="First Name"
+                    name="firstName"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    error={!!error && !firstName.trim()}
+                    disabled={loading || verificationComplete}
+                  />
+
+                  <TextField
+                    margin="normal"
+                    required
+                    fullWidth
+                    id="lastName"
+                    label="Last Name"
+                    name="lastName"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    error={!!error && !lastName.trim()}
                     disabled={loading || verificationComplete}
                   />
 
@@ -279,6 +329,16 @@ const VerifyPage: React.FC = () => {
           </Box>
 
           <Divider sx={{ my: 3 }} />
+
+          {/* Debug Tools */}
+          <Accordion sx={{ mb: 3 }}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Typography color="primary" variant="subtitle1">Debug Tools</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <ProfileUpdateTester />
+            </AccordionDetails>
+          </Accordion>
 
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>

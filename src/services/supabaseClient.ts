@@ -241,6 +241,8 @@ export async function updateUserProfile(
 export async function verifyBookCode(code: string, userId: string, firstName?: string, lastName?: string) {
   try {
     appLog('SupabaseClient', `Verifying book code: ${code} for user: ${userId}`, 'info');
+    console.log(`DEBUG: Verifying book code: ${code} for user: ${userId}`);
+    console.log(`DEBUG: First name: ${firstName}, Last name: ${lastName}`);
 
     // Get the client using the async getter
     const client = await getSupabaseClient();
@@ -252,14 +254,33 @@ export async function verifyBookCode(code: string, userId: string, firstName?: s
       .eq('code', code.toUpperCase())
       .single();
 
+    console.log('DEBUG: Verification code check result:', { data, error });
+
     if (error || !data) {
       appLog('SupabaseClient', 'Invalid verification code', 'error', error);
+      console.log('DEBUG: Invalid verification code:', error);
       return { success: false, error: 'Invalid verification code' };
     }
 
     if (data.is_used) {
       appLog('SupabaseClient', 'Code already used', 'warning');
+      console.log('DEBUG: Code already used');
       return { success: false, error: 'This code has already been used' };
+    }
+
+    // First, check if the profile exists
+    const { data: profileData, error: profileCheckError } = await client
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    console.log('DEBUG: Profile check result:', { profileData, profileCheckError });
+
+    if (profileCheckError) {
+      appLog('SupabaseClient', 'Error checking profile existence', 'error', profileCheckError);
+      console.log('DEBUG: Error checking profile existence:', profileCheckError);
+      return { success: false, error: 'Error checking profile existence' };
     }
 
     // Mark code as used
@@ -271,8 +292,11 @@ export async function verifyBookCode(code: string, userId: string, firstName?: s
       })
       .eq('code', code.toUpperCase());
 
+    console.log('DEBUG: Mark code as used result:', { updateError });
+
     if (updateError) {
       appLog('SupabaseClient', 'Error updating verification code', 'error', updateError);
+      console.log('DEBUG: Error updating verification code:', updateError);
       return { success: false, error: 'Error updating verification code' };
     }
 
@@ -283,37 +307,50 @@ export async function verifyBookCode(code: string, userId: string, firstName?: s
     if (firstName) updates.first_name = firstName;
     if (lastName) updates.last_name = lastName;
 
+    console.log('DEBUG: Profile updates to apply:', updates);
+
     // First try direct update method
     try {
-      const { error: profileError } = await client
+      console.log('DEBUG: Attempting direct profile update');
+      const { data: updateData, error: profileError } = await client
         .from('profiles')
         .update(updates)
-        .eq('id', userId);
+        .eq('id', userId)
+        .select();
+
+      console.log('DEBUG: Direct profile update result:', { updateData, profileError });
 
       if (!profileError) {
         appLog('SupabaseClient', 'User profile updated with verification info using direct method', 'success');
+        console.log('DEBUG: User profile updated with verification info using direct method');
         appLog('SupabaseClient', 'Book code verified successfully', 'success');
         return { success: true, data };
       }
 
       // If direct update fails, log and try RPC method
       appLog('SupabaseClient', `Direct profile update failed: ${profileError.message}`, 'warning');
-      
+      console.log('DEBUG: Direct profile update failed:', profileError);
+
       // Try RPC method as fallback
-      const { error: rpcError } = await client
+      console.log('DEBUG: Attempting RPC profile update');
+      const { data: rpcData, error: rpcError } = await client
         .rpc('update_profile', {
           user_id: userId,
           profile_updates: updates
         });
 
+      console.log('DEBUG: RPC profile update result:', { rpcData, rpcError });
+
       if (!rpcError) {
         appLog('SupabaseClient', 'User profile updated with verification info using RPC method', 'success');
+        console.log('DEBUG: User profile updated with verification info using RPC method');
         appLog('SupabaseClient', 'Book code verified successfully', 'success');
         return { success: true, data };
       }
 
       // If both methods fail, return error
       appLog('SupabaseClient', `RPC profile update failed: ${rpcError.message}`, 'error');
+      console.log('DEBUG: RPC profile update failed:', rpcError);
       return {
         success: false,
         error: `Profile update failed: ${rpcError.message}`,
@@ -321,6 +358,7 @@ export async function verifyBookCode(code: string, userId: string, firstName?: s
       };
     } catch (error) {
       appLog('SupabaseClient', 'Error updating user profile during verification', 'error', error);
+      console.log('DEBUG: Error updating user profile during verification:', error);
       return {
         success: false,
         error: `Profile update failed: ${error.message}`,
@@ -329,6 +367,7 @@ export async function verifyBookCode(code: string, userId: string, firstName?: s
     }
   } catch (error) {
     appLog('SupabaseClient', 'Error verifying book code', 'error', error);
+    console.log('DEBUG: Error verifying book code:', error);
     return { success: false, error: 'Error verifying book code' };
   }
 }
