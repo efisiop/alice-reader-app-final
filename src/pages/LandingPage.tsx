@@ -297,43 +297,6 @@ const LandingPage: React.FC = () => {
           </Grid>
         </Grid>
 
-        {/* Local Image Test Section */}
-        <Paper
-          elevation={3}
-          sx={{
-            p: 4,
-            mb: 8,
-            mt: 8,
-            borderRadius: 2,
-            background: 'rgba(255, 255, 255, 0.9)',
-            boxShadow: '0 8px 32px rgba(31, 38, 135, 0.15)',
-            backdropFilter: 'blur(4px)',
-            border: '1px solid rgba(255, 255, 255, 0.18)'
-          }}
-        >
-          <Typography variant="h4" component="h2" align="center" gutterBottom>
-            Local Image Test
-          </Typography>
-          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 4 }}>
-            <Box
-              component="img"
-              src={localAliceCoverImg}
-              alt="Alice in Wonderland Local Image"
-              sx={{
-                width: '100%',
-                maxWidth: 400,
-                height: 'auto',
-                borderRadius: 2,
-                boxShadow: '0 10px 20px rgba(0,0,0,0.2)',
-                mx: 'auto',
-                display: 'block'
-              }}
-            />
-          </Box>
-          <Typography variant="body1" align="center">
-            This is a local image loaded from the project's assets directory.
-          </Typography>
-        </Paper>
 
         {/* Call to Action */}
         <Box
