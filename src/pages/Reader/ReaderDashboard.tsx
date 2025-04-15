@@ -276,8 +276,12 @@ const ReaderDashboard: React.FC = () => {
 
                 <Box sx={{ mt: 'auto', pt: 2 }}>
                   <Button
-                    component={RouterLink}
-                    to={`/reader/alice-in-wonderland/page/${readingStats.currentPage}`}
+                    onClick={() => {
+                      console.log('ReaderDashboard: Navigating to reader page', {
+                        currentPage: readingStats.currentPage || 1
+                      });
+                      navigate(`/reader/alice-in-wonderland/page/${readingStats.currentPage || 1}`);
+                    }}
                     variant="contained"
                     color="primary"
                     fullWidth
@@ -410,7 +414,10 @@ const ReaderDashboard: React.FC = () => {
             </Typography>
             <List>
               {[
-                { title: 'Start from beginning', link: '/reader/alice-in-wonderland/page/1' },
+                { title: 'Start from beginning', onClick: () => {
+                  console.log('ReaderDashboard: Navigating to first page');
+                  navigate('/reader/alice-in-wonderland/page/1');
+                }},
                 { title: 'Return to home page', link: '/' },
                 { title: 'Reading statistics', link: '/reader/statistics' },
                 { title: 'Sign out', link: '#', onClick: () => {
@@ -421,7 +428,7 @@ const ReaderDashboard: React.FC = () => {
               ].map((item, index) => (
                 <ListItem
                   key={index}
-                  component={item.onClick ? 'div' : RouterLink}
+                  component={item.onClick || !item.link ? 'div' : RouterLink}
                   to={item.onClick ? undefined : item.link}
                   onClick={item.onClick}
                   button

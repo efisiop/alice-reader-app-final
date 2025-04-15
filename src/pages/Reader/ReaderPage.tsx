@@ -336,6 +336,7 @@ const ReaderPage: React.FC = () => {
   const [bookData, setBookData] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState<any>(null);
   const [totalPages, setTotalPages] = useState(0);
+  const [initialized, setInitialized] = useState(false);
 
   // UI state
   const [loading, setLoading] = useState(true);
@@ -381,6 +382,7 @@ const ReaderPage: React.FC = () => {
         const book = await bookService.getBook(bookId);
         performance.trackApiCall('getBook', startTime);
 
+        console.log('ReaderPage: Book data received:', book);
         if (book) {
           setBookData(book);
           setTotalPages(book.totalPages || 100);
@@ -390,8 +392,11 @@ const ReaderPage: React.FC = () => {
 
         // Get current page content
         const page = await bookService.getPage(bookId, parseInt(pageNumber));
+        console.log('ReaderPage: Page data received:', page);
         if (page) {
           setCurrentPage(page);
+          // Mark as initialized only after both book and page data are loaded
+          setInitialized(true);
         } else {
           throw new Error('Failed to load page content');
         }
@@ -443,25 +448,43 @@ const ReaderPage: React.FC = () => {
   // Update reading progress when unmounting
   useEffect(() => {
     return () => {
+      console.log('ReaderPage: Unmounting component, updating reading progress', {
+        hasBookService: !!bookService,
+        hasUser: !!user,
+        bookId,
+        pageNumber
+      });
+
       if (bookService && user && bookId && pageNumber) {
         const readingTime = Math.round((performance.now() - pageStartTime.current) / 1000);
 
         // Only update if they spent at least 5 seconds on the page
         if (readingTime >= 5) {
-          bookService.updateReadingProgress(
-            user.id,
-            bookId,
-            parseInt(pageNumber),
-            readingTime
-          );
+          try {
+            bookService.updateReadingProgress(
+              user.id,
+              bookId,
+              parseInt(pageNumber),
+              readingTime
+            );
 
-          // Track reading session
-          if (analyticsService) {
-            analyticsService.trackEvent('reading_session', {
+            console.log('ReaderPage: Successfully updated reading progress', {
+              userId: user.id,
               bookId,
               pageNumber,
-              duration: readingTime
+              readingTime
             });
+
+            // Track reading session
+            if (analyticsService) {
+              analyticsService.trackEvent('reading_session', {
+                bookId,
+                pageNumber,
+                duration: readingTime
+              });
+            }
+          } catch (error) {
+            console.error('ReaderPage: Error updating reading progress:', error);
           }
         }
       }
@@ -511,22 +534,36 @@ const ReaderPage: React.FC = () => {
 
   // Handle navigation
   const navigateToPage = (newPage: number) => {
-    if (newPage < 1 || newPage > totalPages) return;
+    console.log('ReaderPage: Navigating to page', { newPage, totalPages });
+    if (newPage < 1 || newPage > totalPages) {
+      console.log('ReaderPage: Invalid page number, not navigating');
+      return;
+    }
 
     // Update reading progress before navigating
     if (bookService && user && bookId) {
       const readingTime = Math.round((performance.now() - pageStartTime.current) / 1000);
 
       if (readingTime >= 5) {
-        bookService.updateReadingProgress(
-          user.id,
-          bookId,
-          parseInt(pageNumber),
-          readingTime
-        );
+        try {
+          bookService.updateReadingProgress(
+            user.id,
+            bookId,
+            parseInt(pageNumber),
+            readingTime
+          );
+          console.log('ReaderPage: Updated reading progress before navigation');
+        } catch (error) {
+          console.error('ReaderPage: Error updating reading progress before navigation:', error);
+        }
       }
     }
 
+    // Reset state before navigating
+    setInitialized(false);
+    setLoading(true);
+
+    console.log('ReaderPage: Navigating to', `/reader/${bookId}/page/${newPage}`);
     navigate(`/reader/${bookId}/page/${newPage}`);
   };
 
@@ -600,13 +637,20 @@ const ReaderPage: React.FC = () => {
     );
   }
 
-  // Check if required data is loaded
-  if (!bookData || !currentPage) {
-    console.log('ReaderPage: Missing required data', { bookData, currentPage });
+  // Check if required data is loaded and initialized
+  if (!initialized || !bookData || !currentPage) {
+    console.log('ReaderPage: Not fully initialized or missing required data', {
+      initialized,
+      bookData,
+      currentPage
+    });
     return (
       <Box sx={{ p: 3, textAlign: 'center' }}>
         <Typography color="error" variant="h6" gutterBottom>
           Something went wrong... Cannot access required data.
+        </Typography>
+        <Typography variant="body1" color="text.secondary" paragraph>
+          The reader page could not be loaded because some required data is missing.
         </Typography>
         <Button
           variant="contained"
