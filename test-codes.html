@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Verification Codes</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    h1 {
+      color: #6a51ae;
+      border-bottom: 2px solid #f0f0f0;
+      padding-bottom: 10px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+    th, td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    th {
+      background-color: #f5f5f5;
+      font-weight: 600;
+    }
+    tr:hover {
+      background-color: #f9f9f9;
+    }
+    .code {
+      font-family: monospace;
+      font-weight: bold;
+      background: #f0f0f0;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .note {
+      background-color: #fff8e1;
+      padding: 15px;
+      border-left: 4px solid #ffc107;
+      margin: 20px 0;
+    }
+    .button {
+      display: inline-block;
+      background: #6a51ae;
+      color: white;
+      padding: 10px 20px;
+      text-decoration: none;
+      border-radius: 4px;
+      margin-top: 20px;
+    }
+    .button:hover {
+      background: #5a4494;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Test Verification Codes</h1>
+    <p>The following verification codes can be used for testing the Alice Reader application. These codes are pre-configured in the test database.</p>
+    
+    <div class="note">
+      <strong>Note:</strong> These codes are for testing purposes only. In a production environment, each book would have a unique verification code.
+    </div>
+    
+    <h2>Available Test Codes</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>Description</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="code">ALICE123</span></td>
+          <td>Primary test code for Alice in Wonderland</td>
+          <td>Active</td>
+        </tr>
+        <tr>
+          <td><span class="code">WONDERLAND</span></td>
+          <td>Secondary test code</td>
+          <td>Active</td>
+        </tr>
+        <tr>
+          <td><span class="code">RABBIT</span></td>
+          <td>Test code with special features</td>
+          <td>Active</td>
+        </tr>
+        <tr>
+          <td><span class="code">TEAPARTY</span></td>
+          <td>Test code for advanced features</td>
+          <td>Active</td>
+        </tr>
+        <tr>
+          <td><span class="code">CHESHIRE</span></td>
+          <td>Test code for teacher accounts</td>
+          <td>Active</td>
+        </tr>
+      </tbody>
+    </table>
+    
+    <h2>How to Use</h2>
+    <ol>
+      <li>Register a new account or log in to an existing account</li>
+      <li>Navigate to the verification page</li>
+      <li>Enter one of the test codes above</li>
+      <li>Complete the verification process</li>
+    </ol>
+    
+    <p>After successful verification, you will be redirected to the reader dashboard where you can access the full content of Alice in Wonderland.</p>
+    
+    <a href="/verify" class="button">Go to Verification Page</a>
+  </div>
+</body>
+</html>
