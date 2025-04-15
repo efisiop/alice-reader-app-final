@@ -19,6 +19,7 @@ import ForgotPasswordPage from './pages/Auth/ForgotPasswordPage';
 import ReaderDashboard from './pages/Reader/ReaderDashboard';
 import ReaderPage from './pages/Reader/ReaderPage';
 import ReaderStatistics from './pages/Reader/ReaderStatistics';
+import MainInteractionPage from './pages/Reader/MainInteractionPage';
 import ConsultantDashboard from './pages/Consultant/ConsultantDashboard';
 import ReadersList from './pages/Consultant/ReadersList';
 import HelpRequests from './pages/Consultant/HelpRequests';
@@ -26,6 +27,11 @@ import AdminDashboard from './pages/Admin/AdminDashboard';
 import { ConsultantDashboardPage } from './pages/Consultant/ConsultantDashboardPage';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
 import TestPage from './pages/TestPage';
+import TestReaderPage from './pages/TestReaderPage';
+import TestReaderInterfacePage from './pages/TestReaderInterfacePage';
+import TestDirectReaderPage from './pages/TestDirectReaderPage';
+import TestLinks from './pages/TestLinks';
+import HashTestLinks from './pages/HashTestLinks';
 
 // Services
 import { initializeServices } from './services';
@@ -100,6 +106,7 @@ function App() {
 
             {/* Reader Routes - Require authentication and verification */}
             <Route path="/reader" element={<RouteGuard routeType="verified"><ReaderDashboard /></RouteGuard>} />
+            <Route path="/reader/interaction" element={<RouteGuard routeType="verified"><MainInteractionPage /></RouteGuard>} />
             <Route path="/reader/:bookId/page/:pageNumber" element={<RouteGuard routeType="verified"><ReaderPage /></RouteGuard>} />
             <Route path="/reader/statistics" element={<RouteGuard routeType="verified"><ReaderStatistics /></RouteGuard>} />
 
@@ -124,8 +131,17 @@ function App() {
             {/* Admin Routes - Service Status */}
             <Route path="/service-status" element={<RouteGuard routeType="admin"><ServiceStatusCheck /></RouteGuard>} />
 
-            {/* Test Route - Accessible to everyone */}
+            {/* Test Routes - Accessible to everyone */}
             <Route path="/test" element={<TestPage />} />
+            <Route path="/test-reader" element={<TestReaderPage />} />
+            <Route path="/test-reader-interface" element={<TestReaderInterfacePage />} />
+            <Route path="/test-direct-reader" element={<TestDirectReaderPage />} />
+            <Route path="/test-links" element={<TestLinks />} />
+            <Route path="/hash-test-links" element={<HashTestLinks />} />
+
+            {/* Special test route for reader page without authentication */}
+            <Route path="/test-reader-page/:pageNumber" element={<ReaderPage />} />
+            <Route path="/test-main-interaction" element={<MainInteractionPage />} />
           </Routes>
         </main>
       </div>

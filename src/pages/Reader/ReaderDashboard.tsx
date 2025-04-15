@@ -180,7 +180,7 @@ const ReaderDashboard: React.FC = () => {
             Welcome back, {profile?.first_name || 'Reader'}!
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            Continue your journey through Wonderland
+            Your reading companion for Alice in Wonderland
           </Typography>
         </Box>
         <IconButton
@@ -253,7 +253,7 @@ const ReaderDashboard: React.FC = () => {
 
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="body2" gutterBottom>
-                    Your Progress:
+                    <strong>Progress in Physical Book:</strong>
                   </Typography>
                   <LinearProgress
                     variant="determinate"
@@ -280,14 +280,14 @@ const ReaderDashboard: React.FC = () => {
                       console.log('ReaderDashboard: Navigating to reader page', {
                         currentPage: readingStats.currentPage || 1
                       });
-                      navigate(`/reader/alice-in-wonderland/page/${readingStats.currentPage || 1}`);
+                      navigate('/reader/interaction');
                     }}
                     variant="contained"
                     color="primary"
                     fullWidth
                     startIcon={<BookmarkIcon />}
                   >
-                    Continue Reading
+                    Sync My Reading
                   </Button>
                 </Box>
               </Box>
@@ -296,7 +296,7 @@ const ReaderDashboard: React.FC = () => {
 
           {/* Reading Stats */}
           <Typography variant="h6" gutterBottom>
-            Your Reading Stats
+            Your Physical Book Progress
           </Typography>
           <Grid container spacing={3} sx={{ mb: 4 }}>
             {[
@@ -414,13 +414,17 @@ const ReaderDashboard: React.FC = () => {
             </Typography>
             <List>
               {[
-                { title: 'Start from beginning', onClick: () => {
-                  console.log('ReaderDashboard: Navigating to first page');
-                  navigate('/reader/alice-in-wonderland/page/1');
+                { title: 'Sync My Reading', onClick: () => {
+                  console.log('ReaderDashboard: Navigating to reader page');
+                  navigate('/reader/interaction');
                 }},
-                { title: 'Return to home page', link: '/' },
-                { title: 'Reading statistics', link: '/reader/statistics' },
-                { title: 'Sign out', link: '#', onClick: () => {
+                { title: 'Reading Statistics', link: '/reader/statistics' },
+                { title: 'Take Chapter Quiz', onClick: () => {
+                  console.log('ReaderDashboard: Opening AI drawer for quiz');
+                  // This will be implemented later
+                  alert('Quiz feature coming soon!');
+                }},
+                { title: 'Sign Out', link: '#', onClick: () => {
                   if (authService) {
                     authService.signOut().then(() => navigate('/'));
                   }
