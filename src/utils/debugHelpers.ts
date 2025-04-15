@@ -1,9 +1,10 @@
 // src/utils/debugHelpers.ts
-import { supabase } from '../services/supabaseClient';
+import { getSupabaseClient } from '../services/supabaseClient';
 import { mockData, debugMockData, resetMockData } from '../services/mockSupabaseClient';
 
 // Debug function to check authentication state
 export async function debugAuthState() {
+  const supabase = await getSupabaseClient();
   const session = await supabase.auth.getSession();
   const user = session.data.session?.user;
 
@@ -38,6 +39,7 @@ export async function debugAuthState() {
 // Test database connectivity
 export async function testDatabaseConnection() {
   try {
+    const supabase = await getSupabaseClient();
     const { data, error } = await supabase
       .from('books')
       .select('title')
@@ -112,7 +114,7 @@ declare global {
     _debug: {
       auth: typeof debugAuthState;
       db: typeof testDatabaseConnection;
-      supabase: typeof supabase;
+      getSupabaseClient: typeof getSupabaseClient;
     };
   }
 }
@@ -122,6 +124,6 @@ if (process.env.NODE_ENV !== 'production') {
   window._debug = {
     auth: debugAuthState,
     db: testDatabaseConnection,
-    supabase: supabase
+    getSupabaseClient: getSupabaseClient
   };
 }
