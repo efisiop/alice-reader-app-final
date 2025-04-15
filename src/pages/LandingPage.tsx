@@ -21,7 +21,8 @@ import { usePerformance } from '../hooks/usePerformance';
 import BookIcon from '@mui/icons-material/Book';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import PersonIcon from '@mui/icons-material/Person';
-import { aliceCover, localAliceCover } from '../assets';
+import { aliceCover } from '../assets';
+import localAliceCoverImg from '../assets/local_images/alice_book_cover.jpg';
 
 const LandingPage: React.FC = () => {
   const theme = useTheme();
@@ -316,7 +317,7 @@ const LandingPage: React.FC = () => {
           <Box sx={{ display: 'flex', justifyContent: 'center', mb: 4 }}>
             <Box
               component="img"
-              src={localAliceCover}
+              src={localAliceCoverImg}
               alt="Alice in Wonderland Local Image"
               sx={{
                 width: '100%',
