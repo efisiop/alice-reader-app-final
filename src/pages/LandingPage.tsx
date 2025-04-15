@@ -155,7 +155,7 @@ const LandingPage: React.FC = () => {
             <Grid item xs={12} md={4}>
               <Box
                 component="img"
-                src={aliceCover}
+                src={localAliceCoverImg}
                 alt="Alice in Wonderland"
                 sx={{
                   width: '100%',
