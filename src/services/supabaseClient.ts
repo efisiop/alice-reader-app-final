@@ -79,6 +79,7 @@ export const executeWithRetries = async <T>(
 ): Promise<T> => {
   let retries = 0;
   let delay = RETRY_DELAY;
+  const startTimeTotal = Date.now();
 
   while (retries < MAX_RETRIES) {
     try {
@@ -106,6 +107,14 @@ export const executeWithRetries = async <T>(
         error.message?.includes('rate limit') ||
         error.message?.includes('too many requests');
 
+      // Don't wait so long between retries - use a more aggressive retry strategy
+      // If total time spent is getting too long (> 5 seconds), stop retrying
+      const totalElapsed = Date.now() - startTimeTotal;
+      if (totalElapsed > 5000) {
+        appLog('SupabaseClient', `${operationName} taking too long (${totalElapsed}ms) - giving up after ${retries} attempts`, 'error');
+        throw error;
+      }
+
       const errorLevel = retries >= MAX_RETRIES ? 'error' : 'warning';
       // Log with appropriate level before calling handleSupabaseError
       appLog('SupabaseClient', `${operationName} attempt ${retries}/${MAX_RETRIES} failed: ${error.message}`, errorLevel);
@@ -116,8 +125,15 @@ export const executeWithRetries = async <T>(
         throw error;
       }
 
-      // Exponential backoff with jitter and maximum delay
-      delay = Math.min(delay * (1.5 + Math.random() * 0.5), MAX_RETRY_DELAY);
+      // Use a faster retry strategy - linear backoff with smaller increase
+      // Only use longer delays for rate limit errors
+      if (isRateLimitError) {
+        // For rate limits, still use exponential but with smaller multiplier
+        delay = Math.min(delay * 1.5, MAX_RETRY_DELAY);
+      } else {
+        // For other errors, use much smaller linear backoff
+        delay = Math.min(RETRY_DELAY * (retries + 0.5), 2000);
+      }
 
       appLog('SupabaseClient', `Retrying ${operationName} in ${Math.round(delay)}ms (${isNetworkError ? 'network issue' : isRateLimitError ? 'rate limit' : 'error'})`, 'debug');
       await new Promise(resolve => setTimeout(resolve, delay));
@@ -247,12 +263,13 @@ export async function updateUserProfile(
   }
 ) {
   appLog('SupabaseClient', `Updating profile for user: ${userId}`, 'info');
+  console.log(`SupabaseClient: Updating profile for user: ${userId}`, updates);
 
   return await executeWithRetries(async () => {
     const client = await getSupabaseClient();
 
-    // First try the direct update method
     try {
+      // Single direct update method - no fallback to non-existent RPC
       const { data, error } = await client
         .from('profiles')
         .update(updates)
@@ -260,41 +277,59 @@ export async function updateUserProfile(
         .select()
         .single();
 
-      if (!error) {
-        appLog('SupabaseClient', `Profile updated successfully for user ${userId} using direct method`, 'success');
-        return data;
-      }
-
-      appLog('SupabaseClient', `Direct update method failed for user ${userId}: ${error.message}`, 'warning');
-
-      // If direct update fails, try the RPC method
-      try {
-        const { data: rpcData, error: rpcError } = await client
-          .rpc('update_profile', {
-            user_id: userId,
-            profile_updates: updates
-          });
-
-        if (!rpcError) {
-          appLog('SupabaseClient', `Profile updated successfully for user ${userId} using RPC method`, 'success');
-          return rpcData;
-        }
-
-        appLog('SupabaseClient', `RPC update method failed for user ${userId}: ${rpcError.message}`, 'error');
-        throw rpcError;
-      } catch (rpcErr) {
-        // If both methods fail, throw the original error
-        appLog('SupabaseClient', `All update methods failed for user ${userId}`, 'error');
+      if (error) {
+        appLog('SupabaseClient', `Error updating profile for user ${userId}: ${error.message}`, 'error');
+        console.error('SupabaseClient: Error updating profile:', error);
         throw error;
       }
-    } catch (directErr) {
-      appLog('SupabaseClient', `Error updating profile for user ${userId}:`, 'error', directErr);
-      throw directErr;
+
+      appLog('SupabaseClient', `Profile updated successfully for user ${userId}`, 'success');
+      console.log('SupabaseClient: Profile updated successfully:', data);
+      return data;
+    } catch (error) {
+      appLog('SupabaseClient', `Error updating profile for user ${userId}:`, 'error', error);
+      console.error('SupabaseClient: Error updating profile:', error);
+      throw error;
     }
   }, 'updateUserProfile');
 }
 
-// Helper function to verify a book code
+// Helper function for fast profile update using the database function
+export async function fastProfileUpdate(
+  userId: string,
+  updates: {
+    first_name?: string;
+    last_name?: string;
+    email?: string;
+    book_verified?: boolean;
+  }
+) {
+  try {
+    console.log('SupabaseClient: Using fast profile update for user:', userId, updates);
+    const client = await getSupabaseClient();
+    
+    const { data, error } = await client
+      .rpc('fast_profile_update', {
+        user_id: userId,
+        first_name: updates.first_name || null,
+        last_name: updates.last_name || null,
+        email: updates.email || null,
+        book_verified: updates.book_verified === undefined ? null : updates.book_verified
+      });
+      
+    if (error) {
+      console.error('SupabaseClient: Fast profile update failed:', error);
+      throw error;
+    }
+    
+    return { data, error: null };
+  } catch (error) {
+    console.error('SupabaseClient: Error in fast profile update:', error);
+    return { data: null, error };
+  }
+}
+
+// Modify verifyBookCode to use the fast update function
 export async function verifyBookCode(code: string, userId: string, firstName?: string, lastName?: string) {
   try {
     appLog('SupabaseClient', `Verifying book code: ${code} for user: ${userId}`, 'info');
@@ -325,23 +360,8 @@ export async function verifyBookCode(code: string, userId: string, firstName?: s
       return { success: false, error: 'This code has already been used' };
     }
 
-    // First, check if the profile exists
-    const { data: profileData, error: profileCheckError } = await client
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-
-    console.log('DEBUG: Profile check result:', { profileData, profileCheckError });
-
-    if (profileCheckError) {
-      appLog('SupabaseClient', 'Error checking profile existence', 'error', profileCheckError);
-      console.log('DEBUG: Error checking profile existence:', profileCheckError);
-      return { success: false, error: 'Error checking profile existence' };
-    }
-
-    // Mark code as used
-    const { error: updateError } = await client
+    // Mark code as used and update profile in parallel to save time
+    const codePromise = client
       .from('verification_codes')
       .update({
         is_used: true,
@@ -349,53 +369,44 @@ export async function verifyBookCode(code: string, userId: string, firstName?: s
       })
       .eq('code', code.toUpperCase());
 
-    console.log('DEBUG: Mark code as used result:', { updateError });
-
-    if (updateError) {
-      appLog('SupabaseClient', 'Error updating verification code', 'error', updateError);
-      console.log('DEBUG: Error updating verification code:', updateError);
-      return { success: false, error: 'Error updating verification code' };
-    }
-
     // Update the user's profile to mark them as verified
-    const updates: any = { book_verified: true };
-
-    // Add first name and last name if provided
-    if (firstName) updates.first_name = firstName;
-    if (lastName) updates.last_name = lastName;
+    const updates: any = { 
+      book_verified: true,
+      // Add first name and last name if provided
+      ...(firstName ? { first_name: firstName } : {}),
+      ...(lastName ? { last_name: lastName } : {})
+    };
 
     console.log('DEBUG: Profile updates to apply:', updates);
 
-    // Use a direct executeWithRetries to ensure the profile update happens
-    try {
-      const updatedProfile = await executeWithRetries(async () => {
-        const { data: updateData, error: profileError } = await client
-          .from('profiles')
-          .update(updates)
-          .eq('id', userId)
-          .select()
-          .single();
+    // Try to use the fast profile update function first
+    const profilePromise = fastProfileUpdate(userId, updates);
 
-        if (profileError) {
-          throw profileError;
-        }
-
-        return updateData;
-      }, 'verifyBookCode_profileUpdate');
-
-      console.log('DEBUG: Profile updated successfully:', updatedProfile);
-      appLog('SupabaseClient', 'Book code verified successfully', 'success');
-      return { success: true, data };
-    } catch (updateError) {
-      console.error('DEBUG: Failed to update profile:', updateError);
-      appLog('SupabaseClient', 'Error updating profile during verification', 'error', updateError);
-      return {
-        success: false,
-        error: `Profile update failed: ${updateError.message}`,
+    // Wait for both operations to complete (parallel)
+    const [codeResult, profileResult] = await Promise.all([codePromise, profilePromise]);
+    
+    // Check for errors in code update
+    if (codeResult.error) {
+      appLog('SupabaseClient', 'Error updating verification code', 'error', codeResult.error);
+      console.log('DEBUG: Error updating verification code:', codeResult.error);
+      return { success: false, error: 'Error updating verification code' };
+    }
+    
+    // Check for errors in profile update
+    if (profileResult.error) {
+      appLog('SupabaseClient', 'Error updating profile', 'error', profileResult.error);
+      console.log('DEBUG: Error updating profile:', profileResult.error);
+      return { 
+        success: false, 
+        error: `Profile update failed: ${String(profileResult.error)}`,
         verificationStatus: 'code_marked_used_profile_update_failed'
       };
     }
-  } catch (error) {
+    
+    console.log('DEBUG: Profile updated successfully:', profileResult.data);
+    appLog('SupabaseClient', 'Book code verified successfully', 'success');
+    return { success: true, data };
+  } catch (error: any) {
     appLog('SupabaseClient', 'Error verifying book code', 'error', error);
     console.log('DEBUG: Error verifying book code:', error);
     return { success: false, error: 'Error verifying book code' };

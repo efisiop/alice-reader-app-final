@@ -397,14 +397,18 @@ export async function verifyBookCodeComprehensive(code: string, userId: string, 
   appLog('BackendService', 'Performing comprehensive book verification', 'info', { code, userId, firstName, lastName });
   console.log('verifyBookCodeComprehensive: Starting verification with:', { code, userId, firstName, lastName });
   
+  const startTime = Date.now();
+  
   if (await useRealBackend()) {
     try {
       // Get the Supabase client
       const client = await getSupabaseClient();
       
-      // Call the supabaseVerifyBookCode function directly
+      // Call the optimized supabaseVerifyBookCode function directly
       const result = await supabaseVerifyBookCode(code, userId, firstName, lastName);
-      console.log('verifyBookCodeComprehensive: Verification result:', result);
+      const elapsedMs = Date.now() - startTime;
+      
+      console.log(`verifyBookCodeComprehensive: Verification completed in ${elapsedMs}ms, result:`, result);
       
       // Additional diagnostics
       if (!result.success) {
@@ -414,28 +418,31 @@ export async function verifyBookCodeComprehensive(code: string, userId: string, 
         appLog('BackendService', 'Verification successful', 'success');
         console.log('verifyBookCodeComprehensive: Verification successful');
         
-        // Double-check the profile was actually updated
-        try {
-          const { data: profile } = await client
-            .from('profiles')
-            .select('first_name, last_name, book_verified')
-            .eq('id', userId)
-            .single();
+        // Double-check the profile was actually updated - no need to await this
+        setTimeout(async () => {
+          try {
+            const { data: profile } = await client
+              .from('profiles')
+              .select('first_name, last_name, book_verified')
+              .eq('id', userId)
+              .single();
+              
+            console.log('verifyBookCodeComprehensive: Post-verification profile check:', profile);
             
-          console.log('verifyBookCodeComprehensive: Profile check after verification:', profile);
-          
-          if (!profile?.book_verified) {
-            console.warn('verifyBookCodeComprehensive: Profile book_verified is still false!');
+            if (!profile?.book_verified) {
+              console.warn('verifyBookCodeComprehensive: Profile book_verified is still false!');
+            }
+          } catch (profileErr) {
+            console.error('verifyBookCodeComprehensive: Error checking profile after verification:', profileErr);
           }
-        } catch (profileErr) {
-          console.error('verifyBookCodeComprehensive: Error checking profile after verification:', profileErr);
-        }
+        }, 500);
       }
       
       return result;
     } catch (error) {
-      appLog('BackendService', 'Error in comprehensive verification', 'error', error);
-      console.error('verifyBookCodeComprehensive: Error in verification:', error);
+      const elapsedMs = Date.now() - startTime;
+      appLog('BackendService', `Error in comprehensive verification (after ${elapsedMs}ms)`, 'error', error);
+      console.error(`verifyBookCodeComprehensive: Error in verification after ${elapsedMs}ms:`, error);
       return { success: false, error };
     }
   } else {
