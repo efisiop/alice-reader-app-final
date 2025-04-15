@@ -35,7 +35,7 @@ import ProfileUpdateTester from '../../components/Debug/ProfileUpdateTester';
 const VerifyPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isVerified, verifyBook, signOut } = useAuth();
+  const { user, isVerified, setIsVerified, verifyBook, signOut } = useAuth();
   const { service: analyticsService } = useAnalyticsService();
 
   // Form state
@@ -64,14 +64,18 @@ const VerifyPage: React.FC = () => {
     // If we're coming from registration, don't redirect
     const isFromRegistration = location.state?.fromRegistration;
 
+    console.log('VerifyPage: Initial auth check - user:', !!user, 'isVerified:', isVerified, 'fromRegistration:', isFromRegistration);
+
     // Only redirect if we're not coming from registration and the user is verified
     if (!isFromRegistration && user && isVerified) {
-      console.log('User already verified, redirecting to reader');
-      navigate('/reader', { replace: true });
+      console.log('VerifyPage: User already verified, redirecting to dashboard');
+      navigate('/dashboard', { replace: true });
     } else if (!user && !isFromRegistration) {
       // If there's no user and we're not coming from registration, redirect to login
-      console.log('No user found, redirecting to login');
+      console.log('VerifyPage: No user found, redirecting to login');
       navigate('/login', { replace: true });
+    } else {
+      console.log('VerifyPage: User needs verification or coming from registration, staying on page');
     }
   }, [user, isVerified, navigate, location.state]);
 
@@ -104,6 +108,14 @@ const VerifyPage: React.FC = () => {
     }
   }, [analyticsService]);
 
+  // Monitor isVerified changes and redirect if needed
+  useEffect(() => {
+    if (isVerified && user) {
+      console.log('VerifyPage: isVerified changed to true, redirecting to dashboard');
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isVerified, user, navigate]);
+
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -134,14 +146,18 @@ const VerifyPage: React.FC = () => {
       });
 
       const startTime = performance.now();
-      const { error, success } = await verifyBook(verificationCode, firstName, lastName);
 
-      console.log('VerifyPage: Verification result:', { error, success });
+      // Call verifyBook and log before and after
+      console.log('VerifyPage: About to call verifyBook');
+      const { error, success } = await verifyBook(verificationCode, firstName, lastName);
+      console.log('VerifyPage: verifyBook call completed with result:', { error, success });
 
       if (error) {
+        console.error('VerifyPage: Verification error:', error);
         throw error;
       }
 
+      // Track analytics event
       if (analyticsService) {
         analyticsService.trackEvent('book_verification', {
           success: true,
@@ -149,21 +165,27 @@ const VerifyPage: React.FC = () => {
         });
       }
 
+      // Update UI state
+      console.log('VerifyPage: Updating UI state after successful verification');
       setVerificationComplete(true);
       setSuccessMessage('Verification successful! Redirecting to your dashboard...');
 
-      // Proceed through the steps
+      // Explicitly set isVerified to true in the local component
+      console.log('VerifyPage: Setting isVerified to true locally');
+      setIsVerified(true);
+
+      // Show verification complete step
       setActiveStep(1);
 
-      // Redirect after a delay
+      // Short delay to show the success message before redirecting
+      console.log('VerifyPage: Setting up redirect to dashboard');
       setTimeout(() => {
-        setActiveStep(2);
-        setTimeout(() => {
-          navigate('/reader');
-        }, 1500);
-      }, 1500);
+        console.log('VerifyPage: Executing redirect to dashboard');
+        navigate('/dashboard', { replace: true });
+      }, 1000);
 
     } catch (err: any) {
+      console.error('VerifyPage: Verification failed:', err);
       setError(err.message || 'Verification failed. Please check your code and try again.');
 
       if (analyticsService) {
