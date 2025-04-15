@@ -333,7 +333,7 @@ const ReaderPage: React.FC = () => {
   const { settings: accessibilitySettings } = useAccessibility();
 
   // Content state
-  const [bookContent, setBookContent] = useState<any>(null);
+  const [bookData, setBookData] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState<any>(null);
   const [totalPages, setTotalPages] = useState(0);
 
@@ -361,7 +361,16 @@ const ReaderPage: React.FC = () => {
 
   // Load book content
   useEffect(() => {
-    if (!bookService) return;
+    console.log('ReaderPage: useEffect triggered for loading book content', {
+      hasBookService: !!bookService,
+      bookId,
+      pageNumber
+    });
+
+    if (!bookService) {
+      console.log('ReaderPage: No bookService available, skipping data load');
+      return;
+    }
 
     const loadBookContent = async () => {
       setLoading(true);
@@ -372,12 +381,20 @@ const ReaderPage: React.FC = () => {
         const book = await bookService.getBook(bookId);
         performance.trackApiCall('getBook', startTime);
 
-        setBookContent(book);
-        setTotalPages(book.totalPages || 100);
+        if (book) {
+          setBookData(book);
+          setTotalPages(book.totalPages || 100);
+        } else {
+          throw new Error('Failed to load book data');
+        }
 
         // Get current page content
         const page = await bookService.getPage(bookId, parseInt(pageNumber));
-        setCurrentPage(page);
+        if (page) {
+          setCurrentPage(page);
+        } else {
+          throw new Error('Failed to load page content');
+        }
 
         // Track page view
         if (analyticsService && user) {
@@ -557,15 +574,39 @@ const ReaderPage: React.FC = () => {
     setSubtlePrompt(null);
   };
 
+  // Show loading state
   if (loading || bookLoading || dictionaryLoading) {
+    console.log('ReaderPage: Showing loading state');
     return <LoadingSkeleton type="reader" />;
   }
 
+  // Show error state
   if (error) {
+    console.log('ReaderPage: Showing error state:', error);
     return (
       <Box sx={{ p: 3, textAlign: 'center' }}>
         <Typography color="error" variant="h6" gutterBottom>
           {error}
+        </Typography>
+        <Button
+          variant="contained"
+          onClick={() => navigate('/reader')}
+          startIcon={<HomeIcon />}
+          sx={{ mt: 2 }}
+        >
+          Return to Dashboard
+        </Button>
+      </Box>
+    );
+  }
+
+  // Check if required data is loaded
+  if (!bookData || !currentPage) {
+    console.log('ReaderPage: Missing required data', { bookData, currentPage });
+    return (
+      <Box sx={{ p: 3, textAlign: 'center' }}>
+        <Typography color="error" variant="h6" gutterBottom>
+          Something went wrong... Cannot access required data.
         </Typography>
         <Button
           variant="contained"
