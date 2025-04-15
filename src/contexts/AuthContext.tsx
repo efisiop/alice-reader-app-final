@@ -184,14 +184,48 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const signIn = async (email: string, password: string) => {
     setLoading(true);
     try {
+      appLog('AuthContext', `Signing in user with email: ${email}`, 'info');
+      console.log('AuthContext: Signing in user with email:', email);
+
       const { data, error } = await backendSignIn(email, password);
 
-      if (error) throw error;
-      if (!data?.user) throw new Error('User not found');
+      if (error) {
+        appLog('AuthContext', 'Error during sign in', 'error', error);
+        console.error('AuthContext: Error during sign in:', error);
+        throw error;
+      }
+
+      if (!data?.user) {
+        appLog('AuthContext', 'User not found during sign in', 'error');
+        console.error('AuthContext: User not found during sign in');
+        throw new Error('User not found');
+      }
+
+      appLog('AuthContext', 'Sign in successful', 'success');
+      console.log('AuthContext: Sign in successful, user:', data.user);
+
+      // Fetch the user profile after successful sign in
+      try {
+        const { data: profile, error: profileError } = await backendGetUserProfile(data.user.id);
+
+        if (profileError) {
+          appLog('AuthContext', 'Warning: Could not fetch profile after sign in', 'warning', profileError);
+          console.warn('AuthContext: Could not fetch profile after sign in:', profileError);
+        } else if (profile) {
+          appLog('AuthContext', 'Profile fetched successfully after sign in', 'success');
+          console.log('AuthContext: Profile fetched successfully after sign in:', profile);
+          setProfile(profile);
+          setIsVerified(profile.book_verified || false);
+        }
+      } catch (profileError) {
+        appLog('AuthContext', 'Error fetching profile after sign in', 'warning', profileError);
+        console.warn('AuthContext: Error fetching profile after sign in:', profileError);
+      }
 
       return { user: data.user, error: null };
     } catch (error) {
-      console.error('Error signing in:', error);
+      appLog('AuthContext', 'Error signing in', 'error', error);
+      console.error('AuthContext: Error signing in:', error);
       return { user: null, error: error instanceof Error ? error : new Error('Unknown error') };
     } finally {
       setLoading(false);
@@ -203,27 +237,57 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setLoading(true);
     try {
       appLog('AuthContext', `Signing up user with email: ${email}`, 'info');
+      console.log('AuthContext: Signing up user with email:', email);
 
       // Create auth user
       const { data, error } = await backendSignUp(email, password);
 
       if (error) {
         appLog('AuthContext', 'Error during signup', 'error', error);
+        console.error('AuthContext: Error during signup:', error);
         throw error;
       }
 
       if (!data?.user) {
         appLog('AuthContext', 'User creation failed - no user returned', 'error');
+        console.error('AuthContext: User creation failed - no user returned');
         throw new Error('User creation failed');
       }
 
-      // The database trigger should automatically create the profile
-      // No manual profile creation here - rely solely on the database trigger
-      appLog('AuthContext', `User created successfully. Database trigger should create profile for: ${data.user.id}`, 'info');
+      // The database trigger should create the profile, but let's explicitly update it with first/last name
+      appLog('AuthContext', `User created successfully. Updating profile for: ${data.user.id}`, 'info');
+      console.log('AuthContext: User created successfully. Updating profile for:', data.user.id);
+
+      try {
+        // Wait a moment for the database trigger to create the profile
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Now update the profile with first name and last name
+        const { error: updateError } = await backendCreateUserProfile(
+          data.user.id,
+          firstName,
+          lastName,
+          email
+        );
+
+        if (updateError) {
+          appLog('AuthContext', `Warning: Could not update profile with names: ${updateError.message}`, 'warning');
+          console.warn('AuthContext: Could not update profile with names:', updateError);
+          // Continue despite this error - we'll try to fix it during verification
+        } else {
+          appLog('AuthContext', 'Profile updated successfully with names', 'success');
+          console.log('AuthContext: Profile updated successfully with names');
+        }
+      } catch (profileError) {
+        appLog('AuthContext', 'Error updating profile during signup', 'warning', profileError);
+        console.warn('AuthContext: Error updating profile during signup:', profileError);
+        // Continue despite this error - we'll try to fix it during verification
+      }
 
       return { user: data.user, error: null };
     } catch (error) {
       appLog('AuthContext', 'Error signing up', 'error', error);
+      console.error('AuthContext: Error signing up:', error);
       return { user: null, error: error instanceof Error ? error : new Error('Unknown error') };
     } finally {
       setLoading(false);
@@ -237,16 +301,43 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return { success: false, error: new Error('User not authenticated') };
       }
 
+      console.log('AuthContext: Starting book verification with code:', code);
+      console.log('AuthContext: User ID:', user.id);
+      console.log('AuthContext: First name:', firstName);
+      console.log('AuthContext: Last name:', lastName);
+
       const result = await verifyBookCodeComprehensive(code, user.id, firstName, lastName);
+      console.log('AuthContext: Verification result:', result);
+
       if (result.error) {
+        console.error('AuthContext: Verification error:', result.error);
         return {
           success: false,
           error: new Error(String(result.error))
         };
       }
+
+      // Immediately update our local state to reflect verification
+      console.log('AuthContext: Verification successful, updating isVerified state to true');
       setIsVerified(true);
+
+      // Force a re-fetch of the profile to ensure all data is in sync
+      try {
+        console.log('AuthContext: Re-fetching user profile after verification');
+        const { data: userProfile } = await backendGetUserProfile(user.id);
+        if (userProfile) {
+          console.log('AuthContext: Updated profile after verification:', userProfile);
+          setProfile(userProfile);
+        }
+      } catch (profileError) {
+        console.error('AuthContext: Error fetching profile after verification:', profileError);
+        // Continue with success even if profile fetch fails - the verification was successful
+      }
+
+      console.log('AuthContext: Book verification completed successfully');
       return { success: true };
     } catch (error) {
+      console.error('AuthContext: Unexpected error during verification:', error);
       return {
         success: false,
         error: error instanceof Error ? error : new Error('Unknown error during verification')

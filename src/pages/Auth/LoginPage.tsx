@@ -1,13 +1,13 @@
 // src/pages/Auth/LoginPage.tsx
 import React, { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Typography, 
-  TextField, 
-  Button, 
-  Paper, 
-  Link, 
-  Alert, 
+import {
+  Box,
+  Typography,
+  TextField,
+  Button,
+  Paper,
+  Link,
+  Alert,
   CircularProgress,
   Container
 } from '@mui/material';
@@ -26,14 +26,14 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  
+
   // Track performance
   usePerformance({
     trackPageLoad: true,
     trackRender: true,
     componentName: 'LoginPage'
   });
-  
+
   // Check if user is already logged in
   useEffect(() => {
     if (user) {
@@ -44,7 +44,7 @@ const LoginPage: React.FC = () => {
       }
     }
   }, [user, isVerified, navigate]);
-  
+
   // Check for redirect message in location state
   useEffect(() => {
     if (location.state && location.state.message) {
@@ -54,46 +54,62 @@ const LoginPage: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [location.state]);
-  
+
   // Track page view
   useEffect(() => {
     if (analyticsService) {
       analyticsService.trackPageView('login_page');
     }
   }, [analyticsService]);
-  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email.trim() || !password.trim()) {
       setError('Please enter both email and password');
       return;
     }
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
+      console.log('LoginPage: Attempting login with email:', email);
       const startTime = performance.now();
       const { error, user } = await signIn(email, password);
-      
+
       if (error) {
+        console.error('LoginPage: Login error:', error);
         throw error;
       }
-      
+
+      console.log('LoginPage: Login successful, user:', user);
+      console.log('LoginPage: Verification status:', isVerified);
+
       if (analyticsService) {
         analyticsService.trackEvent('login_attempt', {
           success: true,
           timeToComplete: performance.now() - startTime
         });
       }
-      
+
       setSuccessMessage('Login successful!');
-      
-      // The useEffect will handle redirection based on verification status
+
+      // Add a small delay to ensure the profile is loaded
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Manually navigate based on verification status
+      if (isVerified) {
+        console.log('LoginPage: User is verified, navigating to dashboard');
+        navigate('/dashboard');
+      } else {
+        console.log('LoginPage: User is not verified, navigating to verification page');
+        navigate('/verify');
+      }
     } catch (err: any) {
+      console.error('LoginPage: Login failed:', err);
       setError(err.message || 'Login failed. Please check your credentials.');
-      
+
       if (analyticsService) {
         analyticsService.trackEvent('login_attempt', {
           success: false,
@@ -104,7 +120,7 @@ const LoginPage: React.FC = () => {
       setLoading(false);
     }
   };
-  
+
   return (
     <Container maxWidth="sm">
       <Box
@@ -129,19 +145,19 @@ const LoginPage: React.FC = () => {
           <Typography variant="body1" align="center" color="text.secondary" sx={{ mb: 3 }}>
             Sign in to continue your reading journey
           </Typography>
-          
+
           {error && (
             <Alert severity="error" sx={{ mb: 3 }}>
               {error}
             </Alert>
           )}
-          
+
           {successMessage && (
             <Alert severity="success" sx={{ mb: 3 }}>
               {successMessage}
             </Alert>
           )}
-          
+
           <Box component="form" onSubmit={handleSubmit} noValidate>
             <TextField
               margin="normal"
@@ -169,7 +185,7 @@ const LoginPage: React.FC = () => {
               onChange={(e) => setPassword(e.target.value)}
               error={!!error && !password.trim()}
             />
-            
+
             <Button
               type="submit"
               fullWidth
@@ -179,13 +195,13 @@ const LoginPage: React.FC = () => {
             >
               {loading ? <CircularProgress size={24} /> : 'Sign In'}
             </Button>
-            
+
             <Box sx={{ mt: 2, textAlign: 'center' }}>
               <Link component={RouterLink} to="/forgot-password" variant="body2">
                 Forgot password?
               </Link>
             </Box>
-            
+
             <Box sx={{ mt: 3, textAlign: 'center' }}>
               <Typography variant="body2">
                 Don't have an account?{' '}

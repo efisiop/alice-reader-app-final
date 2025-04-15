@@ -116,6 +116,7 @@ const VerificationPage: React.FC = () => {
     }
 
     setLoading(true);
+    setError(null);
 
     try {
       // Determine which user ID to use
@@ -128,6 +129,8 @@ const VerificationPage: React.FC = () => {
 
       console.log('VerificationPage: Verifying with user ID:', effectiveUserId);
       console.log('VerificationPage: Verification code:', verificationCode);
+      console.log('VerificationPage: First name:', firstName);
+      console.log('VerificationPage: Last name:', lastName);
 
       // Use the comprehensive verification function from AuthContext
       const { success, error: verifyError } = await verifyBook(verificationCode, firstName, lastName);
@@ -138,31 +141,30 @@ const VerificationPage: React.FC = () => {
       }
 
       // Explicitly update verification state in the frontend
+      console.log('VerificationPage: Verification successful, updating isVerified state');
       setIsVerified(true);
 
       // Show success message
-      setSuccessMessage('Book verified successfully! Redirecting to reader...');
+      setSuccessMessage('Book verified successfully! Redirecting to dashboard...');
 
       // Add debug info
       console.log('VerificationPage: Verification successful for user:', effectiveUserId);
-      console.log('VerificationPage: Verification state updated, redirecting to reader dashboard');
+      console.log('VerificationPage: Verification state updated, redirecting to dashboard');
 
-      // Short delay to show success message, then navigate
+      // Ensure we're redirecting to the correct page
+      const redirectPath = '/dashboard';
+      console.log(`VerificationPage: Will redirect to ${redirectPath} after success`);
+
+      // Use a more reliable redirection method
+      // First set a short delay to show success message
       setTimeout(() => {
-        navigate('/reader');
+        console.log(`VerificationPage: Redirecting to ${redirectPath} now`);
+        navigate(redirectPath, { replace: true });
       }, 1500);
 
-      // Failsafe: If setTimeout doesn't trigger for some reason, force navigation after 2 seconds
-      const navigationTimeout = setTimeout(() => {
-        console.log('VerificationPage: Failsafe navigation triggered');
-        navigate('/reader');
-      }, 2000);
-
-      // Clean up the failsafe timeout if component unmounts
-      return () => clearTimeout(navigationTimeout);
     } catch (err: any) {
       console.error('VerificationPage: Verification error:', err);
-      setError(err.message || 'Verification failed');
+      setError(err.message || 'Verification failed. Please try again.');
     } finally {
       setLoading(false);
     }

@@ -156,27 +156,84 @@ export async function createUserProfile(
   email: string
 ) {
   appLog('SupabaseClient', `Creating profile for user: ${userId}`, 'info');
-  return await executeWithRetries(async () => {
+  console.log('SupabaseClient: Creating profile for user:', userId, { firstName, lastName, email });
+
+  try {
+    // First check if profile already exists
     const client = await getSupabaseClient();
-    const { data, error } = await client
+    const { data: existingProfile, error: checkError } = await client
       .from('profiles')
-      .insert({
-        id: userId,
-        first_name: firstName,
-        last_name: lastName,
-        email: email
-      })
-      .select()
+      .select('*')
+      .eq('id', userId)
       .single();
 
-    if (error) {
-      appLog('SupabaseClient', `Error creating profile for user ${userId}:`, 'error', error.message);
-      throw error;
-    }
+    console.log('SupabaseClient: Profile check result:', { existingProfile, checkError });
 
-    appLog('SupabaseClient', `Profile created successfully for user ${userId}`, 'success');
-    return data;
-  }, 'createUserProfile');
+    if (existingProfile) {
+      // Profile exists, update it
+      appLog('SupabaseClient', `Profile already exists for user ${userId}, updating it`, 'info');
+      console.log('SupabaseClient: Profile already exists, updating it');
+
+      const { data: updatedProfile, error: updateError } = await client
+        .from('profiles')
+        .update({
+          first_name: firstName,
+          last_name: lastName,
+          email: email,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId)
+        .select()
+        .single();
+
+      console.log('SupabaseClient: Profile update result:', { updatedProfile, updateError });
+
+      if (updateError) {
+        appLog('SupabaseClient', `Error updating profile for user ${userId}:`, 'error', updateError.message);
+        console.error('SupabaseClient: Error updating profile:', updateError);
+        throw updateError;
+      }
+
+      appLog('SupabaseClient', `Profile updated successfully for user ${userId}`, 'success');
+      console.log('SupabaseClient: Profile updated successfully');
+      return updatedProfile;
+    } else {
+      // Profile doesn't exist, create it
+      appLog('SupabaseClient', `Creating new profile for user ${userId}`, 'info');
+      console.log('SupabaseClient: Creating new profile');
+
+      return await executeWithRetries(async () => {
+        const { data, error } = await client
+          .from('profiles')
+          .insert({
+            id: userId,
+            first_name: firstName,
+            last_name: lastName,
+            email: email,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        console.log('SupabaseClient: Profile creation result:', { data, error });
+
+        if (error) {
+          appLog('SupabaseClient', `Error creating profile for user ${userId}:`, 'error', error.message);
+          console.error('SupabaseClient: Error creating profile:', error);
+          throw error;
+        }
+
+        appLog('SupabaseClient', `Profile created successfully for user ${userId}`, 'success');
+        console.log('SupabaseClient: Profile created successfully');
+        return data;
+      }, 'createUserProfile');
+    }
+  } catch (error) {
+    appLog('SupabaseClient', `Error in createUserProfile for user ${userId}:`, 'error', error);
+    console.error('SupabaseClient: Error in createUserProfile:', error);
+    throw error;
+  }
 }
 
 // Helper function to update user profile with retry logic
@@ -309,59 +366,32 @@ export async function verifyBookCode(code: string, userId: string, firstName?: s
 
     console.log('DEBUG: Profile updates to apply:', updates);
 
-    // First try direct update method
+    // Use a direct executeWithRetries to ensure the profile update happens
     try {
-      console.log('DEBUG: Attempting direct profile update');
-      const { data: updateData, error: profileError } = await client
-        .from('profiles')
-        .update(updates)
-        .eq('id', userId)
-        .select();
+      const updatedProfile = await executeWithRetries(async () => {
+        const { data: updateData, error: profileError } = await client
+          .from('profiles')
+          .update(updates)
+          .eq('id', userId)
+          .select()
+          .single();
 
-      console.log('DEBUG: Direct profile update result:', { updateData, profileError });
+        if (profileError) {
+          throw profileError;
+        }
 
-      if (!profileError) {
-        appLog('SupabaseClient', 'User profile updated with verification info using direct method', 'success');
-        console.log('DEBUG: User profile updated with verification info using direct method');
-        appLog('SupabaseClient', 'Book code verified successfully', 'success');
-        return { success: true, data };
-      }
+        return updateData;
+      }, 'verifyBookCode_profileUpdate');
 
-      // If direct update fails, log and try RPC method
-      appLog('SupabaseClient', `Direct profile update failed: ${profileError.message}`, 'warning');
-      console.log('DEBUG: Direct profile update failed:', profileError);
-
-      // Try RPC method as fallback
-      console.log('DEBUG: Attempting RPC profile update');
-      const { data: rpcData, error: rpcError } = await client
-        .rpc('update_profile', {
-          user_id: userId,
-          profile_updates: updates
-        });
-
-      console.log('DEBUG: RPC profile update result:', { rpcData, rpcError });
-
-      if (!rpcError) {
-        appLog('SupabaseClient', 'User profile updated with verification info using RPC method', 'success');
-        console.log('DEBUG: User profile updated with verification info using RPC method');
-        appLog('SupabaseClient', 'Book code verified successfully', 'success');
-        return { success: true, data };
-      }
-
-      // If both methods fail, return error
-      appLog('SupabaseClient', `RPC profile update failed: ${rpcError.message}`, 'error');
-      console.log('DEBUG: RPC profile update failed:', rpcError);
+      console.log('DEBUG: Profile updated successfully:', updatedProfile);
+      appLog('SupabaseClient', 'Book code verified successfully', 'success');
+      return { success: true, data };
+    } catch (updateError) {
+      console.error('DEBUG: Failed to update profile:', updateError);
+      appLog('SupabaseClient', 'Error updating profile during verification', 'error', updateError);
       return {
         success: false,
-        error: `Profile update failed: ${rpcError.message}`,
-        verificationStatus: 'code_marked_used_profile_update_failed'
-      };
-    } catch (error) {
-      appLog('SupabaseClient', 'Error updating user profile during verification', 'error', error);
-      console.log('DEBUG: Error updating user profile during verification:', error);
-      return {
-        success: false,
-        error: `Profile update failed: ${error.message}`,
+        error: `Profile update failed: ${updateError.message}`,
         verificationStatus: 'code_marked_used_profile_update_failed'
       };
     }
