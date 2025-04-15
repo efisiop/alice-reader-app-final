@@ -10,6 +10,11 @@ const getBase = (mode: string) => {
   return '/'
 }
 
+// Log the base path for debugging
+console.log(`Base path: ${getBase(process.env.NODE_ENV || 'development')}`);
+console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
+console.log(`Current directory: ${__dirname}`);
+
 export default defineConfig(({ mode }) => {
   // Load environment variables based on mode
   const env = loadEnv(mode, process.cwd(), '');
