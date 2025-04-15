@@ -8,6 +8,7 @@ import { ServiceStatusCheck } from '@components/Admin/ServiceStatusCheck';
 import { AccessibilityProvider } from './components/common/AccessibilityMenu';
 import SkipToContent from './components/common/SkipToContent';
 import { RouteGuard } from './components/common/RouteGuard';
+import Header from './components/common/Header';
 
 // Pages
 import LandingPage from './pages/LandingPage';
@@ -24,6 +25,7 @@ import HelpRequests from './pages/Consultant/HelpRequests';
 import AdminDashboard from './pages/Admin/AdminDashboard';
 import { ConsultantDashboardPage } from './pages/Consultant/ConsultantDashboardPage';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
+import TestPage from './pages/TestPage';
 
 // Services
 import { initializeServices } from './services';
@@ -40,11 +42,19 @@ function App() {
     const init = async () => {
       try {
         appLog('App', 'Initializing services', 'info');
-        await initializeServices();
+        console.log('App: Initializing services');
+
+        // Initialize services
+        const result = await initializeServices();
+        console.log('App: Services initialization result:', result);
+
+        // Even if initializeServices returns false, we'll continue
+        // This is to handle the case where services are already initialized
         setInitialized(true);
         appLog('App', 'Services initialized successfully', 'success');
+        console.log('App: Services initialized successfully');
       } catch (err: any) {
-        console.error('Failed to initialize services:', err);
+        console.error('App: Failed to initialize services:', err);
         appLog('App', `Failed to initialize services: ${err.message}`, 'error');
         setError('Failed to initialize application. Please check the console for details.');
       }
@@ -76,6 +86,7 @@ function App() {
     <Router>
       <div className="App">
         <SkipToContent contentId="main-content" />
+        <Header />
         <main id="main-content">
           <Routes>
             {/* Public Routes - Accessible to everyone */}
@@ -112,6 +123,9 @@ function App() {
 
             {/* Admin Routes - Service Status */}
             <Route path="/service-status" element={<RouteGuard routeType="admin"><ServiceStatusCheck /></RouteGuard>} />
+
+            {/* Test Route - Accessible to everyone */}
+            <Route path="/test" element={<TestPage />} />
           </Routes>
         </main>
       </div>

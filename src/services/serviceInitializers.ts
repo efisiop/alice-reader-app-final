@@ -17,14 +17,42 @@ export function registerServiceInitializers(): void {
 
   // Auth Service
   registry.registerInitializer(SERVICE_NAMES.AUTH_SERVICE, async () => {
-    const { createAuthService } = await import('./authService');
-    return createAuthService();
+    try {
+      console.log('ServiceInitializers: Importing authService module');
+      const authModule = await import('./authService');
+      console.log('ServiceInitializers: authService module imported:', authModule);
+
+      if (typeof authModule.createAuthService !== 'function') {
+        console.error('ServiceInitializers: createAuthService is not a function in the imported module');
+        throw new Error('createAuthService is not a function');
+      }
+
+      console.log('ServiceInitializers: Creating auth service');
+      return authModule.createAuthService();
+    } catch (error) {
+      console.error('ServiceInitializers: Error initializing auth service:', error);
+      throw error;
+    }
   });
 
   // Book Service
   registry.registerInitializer(SERVICE_NAMES.BOOK_SERVICE, async () => {
-    const { createBookService } = await import('./bookService');
-    return createBookService();
+    try {
+      console.log('ServiceInitializers: Importing bookService module');
+      const bookModule = await import('./bookService');
+      console.log('ServiceInitializers: bookService module imported:', bookModule);
+
+      if (typeof bookModule.createBookService !== 'function') {
+        console.error('ServiceInitializers: createBookService is not a function in the imported module');
+        throw new Error('createBookService is not a function');
+      }
+
+      console.log('ServiceInitializers: Creating book service');
+      return bookModule.createBookService();
+    } catch (error) {
+      console.error('ServiceInitializers: Error initializing book service:', error);
+      throw error;
+    }
   });
 
   // Dictionary Service
@@ -102,9 +130,15 @@ export function registerServiceInitializers(): void {
  * and marks the initialization as complete
  */
 export function initializeServices(): void {
+  console.log('ServiceInitializers: initializeServices called, initialized =', initialized);
   if (!initialized) {
+    console.log('ServiceInitializers: Calling registerServiceInitializers');
     registerServiceInitializers();
+    console.log('ServiceInitializers: Service initializers registered');
     initialized = true;
+    console.log('ServiceInitializers: Services initialized successfully');
+  } else {
+    console.log('ServiceInitializers: Services already initialized');
   }
 }
 

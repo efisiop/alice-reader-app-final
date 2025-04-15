@@ -78,8 +78,10 @@ async function initializeApp() {
 
     // Dynamically import App to avoid issues with Supabase initialization
     appLog('Main', 'Loading App component...', 'info');
+    console.log('main.tsx: Loading App component...');
     const { default: App } = await import('./App');
     appLog('Main', 'App component loaded successfully', 'success');
+    console.log('main.tsx: App component loaded successfully');
 
     // Render the app
     appLog('Main', 'Rendering application to DOM...', 'info');

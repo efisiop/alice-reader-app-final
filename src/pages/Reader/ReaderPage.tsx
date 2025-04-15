@@ -1,14 +1,14 @@
 // src/pages/Reader/ReaderPage.tsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { 
-  Box, 
-  Typography, 
-  Paper, 
-  IconButton, 
-  Drawer, 
-  Divider, 
-  TextField, 
-  Button, 
+import {
+  Box,
+  Typography,
+  Paper,
+  IconButton,
+  Drawer,
+  Divider,
+  TextField,
+  Button,
   CircularProgress,
   Tooltip,
   Popover,
@@ -17,7 +17,8 @@ import {
   Fab,
   Zoom,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  Container
 } from '@mui/material';
 import { useParams, useNavigate } from 'react-router-dom';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
@@ -70,9 +71,9 @@ const DefinitionPopup: React.FC<{
         <Typography variant="body2" paragraph>
           {definition}
         </Typography>
-        <Button 
-          size="small" 
-          startIcon={<SmartToyIcon />} 
+        <Button
+          size="small"
+          startIcon={<SmartToyIcon />}
           onClick={onAskAI}
           sx={{ mt: 1 }}
         >
@@ -96,7 +97,7 @@ const AIAssistant: React.FC<{
   const { service: aiService } = useAIService();
   const { service: analyticsService } = useAnalyticsService();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
+
   // Set initial query based on context
   useEffect(() => {
     if (context && open) {
@@ -105,22 +106,22 @@ const AIAssistant: React.FC<{
       }
     }
   }, [context, open]);
-  
+
   // Scroll to bottom of messages
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [conversation]);
-  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!query.trim() || !aiService) return;
-    
+
     // Add user message to conversation
     setConversation([...conversation, { role: 'user', content: query }]);
-    
+
     // Track AI query
     if (analyticsService) {
       analyticsService.trackReaderAction('ai_query', {
@@ -129,22 +130,22 @@ const AIAssistant: React.FC<{
         content: query
       });
     }
-    
+
     setLoading(true);
-    
+
     try {
       const startTime = performance.now();
       const result = await aiService.getResponse(query, context?.sentence || '');
-      
+
       // Add AI response to conversation
-      setConversation([...conversation, 
+      setConversation([...conversation,
         { role: 'user', content: query },
         { role: 'assistant', content: result.response }
       ]);
-      
+
       // Clear query input
       setQuery('');
-      
+
       // Track response time
       if (analyticsService) {
         analyticsService.trackPerformance('api_call', performance.now() - startTime, {
@@ -154,13 +155,13 @@ const AIAssistant: React.FC<{
       }
     } catch (error) {
       console.error('Error getting AI response:', error);
-      
+
       // Add error message to conversation
-      setConversation([...conversation, 
+      setConversation([...conversation,
         { role: 'user', content: query },
         { role: 'assistant', content: 'I apologize, but I encountered an error processing your request. Please try again.' }
       ]);
-      
+
       // Track error
       if (analyticsService) {
         analyticsService.trackEvent('ai_error', {
@@ -172,7 +173,7 @@ const AIAssistant: React.FC<{
       setLoading(false);
     }
   };
-  
+
   return (
     <Drawer
       anchor="right"
@@ -195,9 +196,9 @@ const AIAssistant: React.FC<{
           <CloseIcon />
         </IconButton>
       </Box>
-      
+
       <Divider sx={{ mb: 2 }} />
-      
+
       <Box sx={{ flexGrow: 1, overflow: 'auto', mb: 2 }}>
         {conversation.length === 0 ? (
           <Box sx={{ p: 2, textAlign: 'center' }}>
@@ -235,9 +236,9 @@ const AIAssistant: React.FC<{
           </Box>
         )}
       </Box>
-      
+
       <Divider sx={{ mb: 2 }} />
-      
+
       <Box component="form" onSubmit={handleSubmit}>
         <TextField
           fullWidth
@@ -286,9 +287,9 @@ const SubtlePrompt: React.FC<{
       anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       sx={{ mb: 8 }}
     >
-      <Alert 
-        severity="info" 
-        sx={{ 
+      <Alert
+        severity="info"
+        sx={{
           width: '100%',
           '& .MuiAlert-message': {
             width: '100%'
@@ -302,9 +303,9 @@ const SubtlePrompt: React.FC<{
         {prompt.type === 'feedback' && (
           <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
             {['😊', '🤔', '😕', '😄'].map((emoji) => (
-              <Button 
+              <Button
                 key={emoji}
-                variant="outlined" 
+                variant="outlined"
                 size="small"
                 onClick={() => onRespond(prompt.id, emoji)}
                 sx={{ minWidth: 'auto' }}
@@ -330,12 +331,12 @@ const ReaderPage: React.FC = () => {
   const { service: analyticsService } = useAnalyticsService();
   const { service: triggerService } = useTriggerService();
   const { settings: accessibilitySettings } = useAccessibility();
-  
+
   // Content state
   const [bookContent, setBookContent] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState<any>(null);
   const [totalPages, setTotalPages] = useState(0);
-  
+
   // UI state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -346,38 +347,38 @@ const ReaderPage: React.FC = () => {
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
   const [aiContext, setAiContext] = useState<{ word: string; sentence: string } | undefined>(undefined);
   const [subtlePrompt, setSubtlePrompt] = useState<any>(null);
-  
+
   // Refs
   const contentRef = useRef<HTMLDivElement>(null);
   const pageStartTime = useRef<number>(performance.now());
-  
+
   // Track performance
   const performance = usePerformance({
     trackPageLoad: true,
     trackRender: true,
     componentName: 'ReaderPage'
   });
-  
+
   // Load book content
   useEffect(() => {
     if (!bookService) return;
-    
+
     const loadBookContent = async () => {
       setLoading(true);
       setError(null);
-      
+
       try {
         const startTime = performance.now();
         const book = await bookService.getBook(bookId);
         performance.trackApiCall('getBook', startTime);
-        
+
         setBookContent(book);
         setTotalPages(book.totalPages || 100);
-        
+
         // Get current page content
         const page = await bookService.getPage(bookId, parseInt(pageNumber));
         setCurrentPage(page);
-        
+
         // Track page view
         if (analyticsService && user) {
           analyticsService.trackPageView('reader_page', {
@@ -386,13 +387,13 @@ const ReaderPage: React.FC = () => {
             pageNumber
           });
         }
-        
+
         // Reset page timer
         pageStartTime.current = performance.now();
       } catch (error) {
         console.error('Error loading book content:', error);
         setError('Failed to load book content. Please try again.');
-        
+
         // Track error
         if (analyticsService) {
           analyticsService.trackEvent('reader_error', {
@@ -405,29 +406,29 @@ const ReaderPage: React.FC = () => {
         setLoading(false);
       }
     };
-    
+
     loadBookContent();
   }, [bookId, pageNumber, bookService, analyticsService, user, performance]);
-  
+
   // Subscribe to subtle prompts
   useEffect(() => {
     if (!triggerService || !user) return;
-    
+
     const unsubscribe = triggerService.subscribeToTriggers(user.id, (prompt) => {
       setSubtlePrompt(prompt);
     });
-    
+
     return () => {
       if (unsubscribe) unsubscribe();
     };
   }, [triggerService, user]);
-  
+
   // Update reading progress when unmounting
   useEffect(() => {
     return () => {
       if (bookService && user && bookId && pageNumber) {
         const readingTime = Math.round((performance.now() - pageStartTime.current) / 1000);
-        
+
         // Only update if they spent at least 5 seconds on the page
         if (readingTime >= 5) {
           bookService.updateReadingProgress(
@@ -436,7 +437,7 @@ const ReaderPage: React.FC = () => {
             parseInt(pageNumber),
             readingTime
           );
-          
+
           // Track reading session
           if (analyticsService) {
             analyticsService.trackEvent('reading_session', {
@@ -449,33 +450,33 @@ const ReaderPage: React.FC = () => {
       }
     };
   }, [bookService, user, bookId, pageNumber, analyticsService]);
-  
+
   // Handle word selection
   const handleTextSelection = useCallback(async (event: React.MouseEvent) => {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
-    
+
     const selectedText = selection.toString().trim();
     if (!selectedText || selectedText.split(' ').length > 3) return;
-    
+
     // Get the sentence containing the selected word
     const range = selection.getRangeAt(0);
     const sentenceNode = range.startContainer.parentNode;
     const sentence = sentenceNode?.textContent || '';
-    
+
     setSelectedWord(selectedText);
     setSelectedSentence(sentence);
     setDefinitionAnchorEl(event.currentTarget as HTMLElement);
-    
+
     // Look up definition
     if (dictionaryService) {
       try {
         const startTime = performance.now();
         const result = await dictionaryService.getDefinition(selectedText);
         performance.trackApiCall('getDefinition', startTime);
-        
+
         setDefinition(result.definition || 'No definition found');
-        
+
         // Track word lookup
         if (analyticsService && user) {
           analyticsService.trackReaderAction('definition', {
@@ -490,15 +491,15 @@ const ReaderPage: React.FC = () => {
       }
     }
   }, [dictionaryService, analyticsService, user, bookId, pageNumber, performance]);
-  
+
   // Handle navigation
   const navigateToPage = (newPage: number) => {
     if (newPage < 1 || newPage > totalPages) return;
-    
+
     // Update reading progress before navigating
     if (bookService && user && bookId) {
       const readingTime = Math.round((performance.now() - pageStartTime.current) / 1000);
-      
+
       if (readingTime >= 5) {
         bookService.updateReadingProgress(
           user.id,
@@ -508,27 +509,27 @@ const ReaderPage: React.FC = () => {
         );
       }
     }
-    
+
     navigate(`/reader/${bookId}/page/${newPage}`);
   };
-  
+
   // Handle AI assistant
   const openAIAssistant = (withContext?: boolean) => {
     setAiContext(withContext && selectedWord ? {
       word: selectedWord,
       sentence: selectedSentence || ''
     } : undefined);
-    
+
     setAiDrawerOpen(true);
     setDefinitionAnchorEl(null);
   };
-  
+
   // Handle prompt response
   const handlePromptResponse = (promptId: string, response: string) => {
     if (triggerService) {
       triggerService.markTriggerProcessed(promptId, response);
     }
-    
+
     // Track response
     if (analyticsService) {
       analyticsService.trackEvent('prompt_response', {
@@ -536,38 +537,38 @@ const ReaderPage: React.FC = () => {
         response
       });
     }
-    
+
     setSubtlePrompt(null);
   };
-  
+
   // Handle prompt dismiss
   const handlePromptDismiss = (promptId: string) => {
     if (triggerService) {
       triggerService.markTriggerProcessed(promptId, 'dismissed');
     }
-    
+
     // Track dismiss
     if (analyticsService) {
       analyticsService.trackEvent('prompt_dismissed', {
         promptId
       });
     }
-    
+
     setSubtlePrompt(null);
   };
-  
+
   if (loading || bookLoading || dictionaryLoading) {
     return <LoadingSkeleton type="reader" />;
   }
-  
+
   if (error) {
     return (
       <Box sx={{ p: 3, textAlign: 'center' }}>
         <Typography color="error" variant="h6" gutterBottom>
           {error}
         </Typography>
-        <Button 
-          variant="contained" 
+        <Button
+          variant="contained"
           onClick={() => navigate('/reader')}
           startIcon={<HomeIcon />}
           sx={{ mt: 2 }}
@@ -577,20 +578,20 @@ const ReaderPage: React.FC = () => {
       </Box>
     );
   }
-  
+
   // Apply font size from accessibility settings
   const fontSizeStyle = {
     fontSize: `${accessibilitySettings.fontSize / 100}rem`,
     lineHeight: accessibilitySettings.lineHeight
   };
-  
+
   return (
     <Box sx={{ position: 'relative', minHeight: '100vh' }}>
       {/* Top Navigation */}
-      <Box 
-        sx={{ 
-          position: 'sticky', 
-          top: 0, 
+      <Box
+        sx={{
+          position: 'sticky',
+          top: 0,
           zIndex: 10,
           bgcolor: 'background.paper',
           boxShadow: 1,
@@ -599,14 +600,14 @@ const ReaderPage: React.FC = () => {
       >
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <IconButton onClick={() => navigate('/reader')}>
-              <HomeIcon />
+            <IconButton onClick={() => navigate('/reader')} aria-label="Back to dashboard">
+              <ArrowBackIcon />
             </IconButton>
             <Typography variant="subtitle1" sx={{ ml: 1, display: { xs: 'none', sm: 'block' } }}>
-              Alice in Wonderland
+              {bookData?.title || "Alice in Wonderland"}
             </Typography>
           </Box>
-          
+
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Typography variant="body2" sx={{ mr: 2 }}>
               Page {pageNumber} of {totalPages}
@@ -615,13 +616,13 @@ const ReaderPage: React.FC = () => {
           </Box>
         </Box>
       </Box>
-      
+
       {/* Content */}
       <Container maxWidth="md" sx={{ py: 4 }}>
-        <Paper 
-          elevation={2} 
-          sx={{ 
-            p: 4, 
+        <Paper
+          elevation={2}
+          sx={{
+            p: 4,
             borderRadius: 2,
             position: 'relative'
           }}
@@ -629,13 +630,13 @@ const ReaderPage: React.FC = () => {
           <Typography variant="h5" component="h1" gutterBottom>
             {currentPage?.title || `Chapter ${pageNumber}`}
           </Typography>
-          
+
           <Divider sx={{ my: 2 }} />
-          
-          <Box 
+
+          <Box
             ref={contentRef}
             onClick={handleTextSelection}
-            sx={{ 
+            sx={{
               mt: 2,
               '& p': {
                 ...fontSizeStyle,
@@ -645,9 +646,9 @@ const ReaderPage: React.FC = () => {
           >
             {currentPage?.content ? (
               currentPage.content.split('\n\n').map((paragraph: string, index: number) => (
-                <Typography 
-                  key={index} 
-                  component="p" 
+                <Typography
+                  key={index}
+                  component="p"
                   paragraph
                   sx={fontSizeStyle}
                 >
@@ -660,11 +661,11 @@ const ReaderPage: React.FC = () => {
               </Typography>
             )}
           </Box>
-          
+
           {/* Page Navigation */}
-          <Box 
-            sx={{ 
-              display: 'flex', 
+          <Box
+            sx={{
+              display: 'flex',
               justifyContent: 'space-between',
               mt: 4
             }}
@@ -677,7 +678,7 @@ const ReaderPage: React.FC = () => {
             >
               Previous
             </Button>
-            
+
             <Button
               variant="outlined"
               endIcon={<ArrowForwardIcon />}
@@ -689,7 +690,7 @@ const ReaderPage: React.FC = () => {
           </Box>
         </Paper>
       </Container>
-      
+
       {/* Definition Popup */}
       {selectedWord && (
         <DefinitionPopup
@@ -700,14 +701,14 @@ const ReaderPage: React.FC = () => {
           anchorEl={definitionAnchorEl}
         />
       )}
-      
+
       {/* AI Assistant Drawer */}
       <AIAssistant
         open={aiDrawerOpen}
         onClose={() => setAiDrawerOpen(false)}
         context={aiContext}
       />
-      
+
       {/* AI Assistant FAB */}
       <Zoom in={!aiDrawerOpen}>
         <Fab
@@ -723,7 +724,7 @@ const ReaderPage: React.FC = () => {
           <SmartToyIcon />
         </Fab>
       </Zoom>
-      
+
       {/* Subtle Prompt */}
       {subtlePrompt && (
         <SubtlePrompt

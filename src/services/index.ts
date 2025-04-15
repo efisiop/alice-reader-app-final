@@ -14,16 +14,37 @@ export * from './serviceInitializers';
 // Export initialization function for backward compatibility
 export const initializeServices = async () => {
   appLog('Services', 'Initializing services using new registry pattern', 'info');
+  console.log('Services: Initializing services using new registry pattern');
 
   try {
     // Use the new service initializers
-    const { initializeServices: initServices } = await import('./serviceInitializers');
-    initServices();
+    console.log('Services: Importing serviceInitializers module');
+    const serviceInitializersModule = await import('./serviceInitializers');
+    console.log('Services: serviceInitializers module imported:', serviceInitializersModule);
+
+    if (typeof serviceInitializersModule.initializeServices !== 'function') {
+      console.error('Services: initializeServices is not a function in the imported module:', serviceInitializersModule);
+      throw new Error('initializeServices is not a function in the serviceInitializers module');
+    }
+
+    console.log('Services: Calling initializeServices from serviceInitializers');
+    serviceInitializersModule.initializeServices();
+
+    // Manually initialize critical services
+    console.log('Services: Manually initializing authService');
+    const { createAuthService } = await import('./authService');
+    console.log('Services: authService module imported, createAuthService:', createAuthService);
+
+    console.log('Services: Manually initializing bookService');
+    const { createBookService } = await import('./bookService');
+    console.log('Services: bookService module imported, createBookService:', createBookService);
+
     appLog('Services', 'Services initialized successfully', 'success');
+    console.log('Services: Services initialized successfully');
     return true;
   } catch (error: any) {
     appLog('Services', `Error initializing services: ${error.message}`, 'error');
-    console.error('Error initializing services:', error);
+    console.error('Services: Error initializing services:', error);
     return false;
   }
 };

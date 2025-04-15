@@ -17,19 +17,23 @@ import {
   ListItemText,
   ListItemIcon,
   Chip,
-  CircularProgress
+  CircularProgress,
+  IconButton
 } from '@mui/material';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import TimerIcon from '@mui/icons-material/Timer';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
+import HomeIcon from '@mui/icons-material/Home';
+import { localAliceCover } from '../../assets';
 import { useBookService, useAuthService, useAnalyticsService } from '../../hooks/useService';
 import { usePerformance } from '../../hooks/usePerformance';
 import { useAuth } from '../../contexts/AuthContext';
 
 const ReaderDashboard: React.FC = () => {
   console.log('ReaderDashboard: Rendering component');
+  const navigate = useNavigate();
   const { service: bookService, loading: bookLoading } = useBookService();
   const { service: authService, loading: authLoading } = useAuthService();
   const { service: analyticsService } = useAnalyticsService();
@@ -170,13 +174,26 @@ const ReaderDashboard: React.FC = () => {
   return (
     <Box sx={{ p: 3, maxWidth: '1200px', mx: 'auto' }}>
       {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" gutterBottom>
-          Welcome back, {profile?.first_name || 'Reader'}!
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Continue your journey through Wonderland
-        </Typography>
+      <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Box>
+          <Typography variant="h4" gutterBottom>
+            Welcome back, {profile?.first_name || 'Reader'}!
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Continue your journey through Wonderland
+          </Typography>
+        </Box>
+        <IconButton
+          onClick={() => navigate('/')}
+          aria-label="Go to home page"
+          sx={{
+            bgcolor: 'primary.main',
+            color: 'white',
+            '&:hover': { bgcolor: 'primary.dark' }
+          }}
+        >
+          <HomeIcon />
+        </IconButton>
       </Box>
 
       <Grid container spacing={4}>
@@ -208,8 +225,8 @@ const ReaderDashboard: React.FC = () => {
               >
                 <Box
                   component="img"
-                  src="https://m.media-amazon.com/images/I/71pmz7EqjdL._AC_UF1000,1000_QL80_.jpg"
-                  alt="Alice in Wonderland"
+                  src={localAliceCover}
+                  alt={bookData?.title || "Alice in Wonderland"}
                   sx={{
                     width: '100%',
                     height: '100%',
@@ -226,10 +243,10 @@ const ReaderDashboard: React.FC = () => {
                 flexDirection: 'column'
               }}>
                 <Typography variant="h5" gutterBottom>
-                  Alice's Adventures in Wonderland
+                  {bookData?.title || "Alice's Adventures in Wonderland"}
                 </Typography>
                 <Typography variant="subtitle1" gutterBottom>
-                  By Lewis Carroll
+                  By {bookData?.author || "Lewis Carroll"}
                 </Typography>
 
                 <Divider sx={{ my: 2 }} />
@@ -394,11 +411,21 @@ const ReaderDashboard: React.FC = () => {
             <List>
               {[
                 { title: 'Start from beginning', link: '/reader/alice-in-wonderland/page/1' },
-                { title: 'View chapters', link: '/reader/alice-in-wonderland/chapters' },
+                { title: 'Return to home page', link: '/' },
                 { title: 'Reading statistics', link: '/reader/statistics' },
-                { title: 'Your notes', link: '/reader/notes' }
+                { title: 'Sign out', link: '#', onClick: () => {
+                  if (authService) {
+                    authService.signOut().then(() => navigate('/'));
+                  }
+                }}
               ].map((item, index) => (
-                <ListItem key={index} component={RouterLink} to={item.link} button>
+                <ListItem
+                  key={index}
+                  component={item.onClick ? 'div' : RouterLink}
+                  to={item.onClick ? undefined : item.link}
+                  onClick={item.onClick}
+                  button
+                >
                   <ListItemText primary={item.title} />
                 </ListItem>
               ))}

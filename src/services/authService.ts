@@ -30,7 +30,7 @@ export interface AuthServiceInterface {
  *
  * Factory function to create the auth service implementation
  */
-const createAuthService = async (): Promise<AuthServiceInterface> => {
+export const createAuthService = async (): Promise<AuthServiceInterface> => {
   appLog('AuthService', 'Creating auth service', 'info');
 
   // Helper function to check if we should use the real backend

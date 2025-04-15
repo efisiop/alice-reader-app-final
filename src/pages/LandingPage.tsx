@@ -21,7 +21,7 @@ import { usePerformance } from '../hooks/usePerformance';
 import BookIcon from '@mui/icons-material/Book';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import PersonIcon from '@mui/icons-material/Person';
-import { aliceCover } from '../assets';
+import { localAliceCover } from '../assets';
 import localAliceCoverImg from '../assets/local_images/alice_book_cover.jpg';
 
 const LandingPage: React.FC = () => {
