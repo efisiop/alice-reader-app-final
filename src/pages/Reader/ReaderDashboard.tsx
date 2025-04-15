@@ -29,6 +29,7 @@ import { usePerformance } from '../../hooks/usePerformance';
 import { useAuth } from '../../contexts/AuthContext';
 
 const ReaderDashboard: React.FC = () => {
+  console.log('ReaderDashboard: Rendering component');
   const { service: bookService, loading: bookLoading } = useBookService();
   const { service: authService, loading: authLoading } = useAuthService();
   const { service: analyticsService } = useAnalyticsService();
@@ -42,6 +43,7 @@ const ReaderDashboard: React.FC = () => {
     currentChapter: 'Chapter 1',
   });
   const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Track performance
   usePerformance({
@@ -52,17 +54,31 @@ const ReaderDashboard: React.FC = () => {
 
   // Load user data and book data
   useEffect(() => {
-    if (!bookService || !user) return;
+    console.log('ReaderDashboard: useEffect triggered', {
+      hasBookService: !!bookService,
+      hasUser: !!user,
+      userId: user?.id
+    });
+
+    if (!bookService || !user) {
+      console.log('ReaderDashboard: Missing bookService or user, skipping data load');
+      return;
+    }
 
     const loadData = async () => {
+      console.log('ReaderDashboard: Starting to load data');
       try {
         // Get book data
+        console.log('ReaderDashboard: Fetching book data');
         const book = await bookService.getBook('alice-in-wonderland');
+        console.log('ReaderDashboard: Book data received', book);
         setBookData(book);
 
         // Get reading progress
         if (user.id) {
+          console.log('ReaderDashboard: Fetching reading progress for user', user.id);
           const progress = await bookService.getReadingProgress(user.id, 'alice-in-wonderland');
+          console.log('ReaderDashboard: Reading progress received', progress);
 
           if (progress) {
             setReadingStats({
@@ -72,19 +88,25 @@ const ReaderDashboard: React.FC = () => {
               currentPage: progress.current_page || 1,
               currentChapter: progress.current_chapter || 'Chapter 1',
             });
+            console.log('ReaderDashboard: Reading stats updated');
+          } else {
+            console.log('ReaderDashboard: No reading progress found, using defaults');
           }
         }
 
         // Track page view
         if (analyticsService) {
+          console.log('ReaderDashboard: Tracking page view');
           analyticsService.trackPageView('reader_dashboard', {
             userId: user.id,
             bookId: 'alice-in-wonderland'
           });
         }
       } catch (error) {
-        console.error('Error loading data:', error);
+        console.error('ReaderDashboard: Error loading data:', error);
+        setError(error instanceof Error ? error.message : 'An error occurred while loading data');
       } finally {
+        console.log('ReaderDashboard: Finished loading data, setting loading to false');
         setLoading(false);
       }
     };
@@ -92,10 +114,55 @@ const ReaderDashboard: React.FC = () => {
     loadData();
   }, [bookService, user, analyticsService]);
 
+  // Show loading state
   if (authLoading || bookLoading || loading) {
+    console.log('ReaderDashboard: Showing loading state');
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
         <CircularProgress />
+      </Box>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    console.log('ReaderDashboard: Showing error state:', error);
+    return (
+      <Box sx={{ p: 3, maxWidth: '1200px', mx: 'auto' }}>
+        <Paper sx={{ p: 4, borderRadius: 2, textAlign: 'center' }}>
+          <Typography variant="h5" color="error" gutterBottom>
+            Something went wrong
+          </Typography>
+          <Typography variant="body1" paragraph>
+            {error}
+          </Typography>
+          <Button
+            variant="contained"
+            onClick={() => window.location.reload()}
+          >
+            Reload Page
+          </Button>
+        </Paper>
+      </Box>
+    );
+  }
+
+  // Fallback if no book data
+  if (!bookData) {
+    console.log('ReaderDashboard: No book data available, showing fallback');
+    return (
+      <Box sx={{ p: 3, maxWidth: '1200px', mx: 'auto' }}>
+        <Typography variant="h4" gutterBottom>
+          Welcome back, {profile?.first_name || 'Reader'}!
+        </Typography>
+        <Paper sx={{ p: 4, borderRadius: 2, textAlign: 'center' }}>
+          <Typography variant="h6" gutterBottom>
+            Dashboard Test
+          </Typography>
+          <Typography variant="body1" paragraph>
+            Your book data is being loaded. If this message persists, please try refreshing the page.
+          </Typography>
+        </Paper>
       </Box>
     );
   }

@@ -41,7 +41,7 @@ const LandingPage: React.FC = () => {
   // Redirect if already logged in and verified
   useEffect(() => {
     if (user && isVerified) {
-      navigate('/dashboard');
+      navigate('/reader');
     }
   }, [user, isVerified, navigate]);
 
