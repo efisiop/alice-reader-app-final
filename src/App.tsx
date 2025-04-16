@@ -136,20 +136,15 @@ function App() {
             <Route path="/service-status" element={<RouteGuard routeType="admin"><ServiceStatusCheck /></RouteGuard>} />
 
             {/* Test Routes - Only available in development mode */}
-            {import.meta.env.DEV && (
-              <React.Suspense fallback={<div>Loading test routes...</div>}>
-                <>
-                  <Route path="/test" element={<TestPage />} />
-                  <Route path="/test-reader" element={<TestReaderPage />} />
-                  <Route path="/test-reader-interface" element={<TestReaderInterfacePage />} />
-                  <Route path="/test-direct-reader" element={<TestDirectReaderPage />} />
-                  <Route path="/test-links" element={<TestLinks />} />
-                  <Route path="/hash-test-links" element={<HashTestLinks />} />
-                  <Route path="/test-reader-page/:pageNumber" element={<ReaderPage />} />
-                  <Route path="/test-main-interaction" element={<MainInteractionPage />} />
-                </>
-              </React.Suspense>
-            )}
+            {/* We need to use individual conditional rendering for each Route */}
+            {import.meta.env.DEV && <Route path="/test" element={<TestPage />} />}
+            {import.meta.env.DEV && <Route path="/test-reader" element={<TestReaderPage />} />}
+            {import.meta.env.DEV && <Route path="/test-reader-interface" element={<TestReaderInterfacePage />} />}
+            {import.meta.env.DEV && <Route path="/test-direct-reader" element={<TestDirectReaderPage />} />}
+            {import.meta.env.DEV && <Route path="/test-links" element={<TestLinks />} />}
+            {import.meta.env.DEV && <Route path="/hash-test-links" element={<HashTestLinks />} />}
+            {import.meta.env.DEV && <Route path="/test-reader-page/:pageNumber" element={<ReaderPage />} />}
+            {import.meta.env.DEV && <Route path="/test-main-interaction" element={<MainInteractionPage />} />}
           </Routes>
         </main>
       </div>

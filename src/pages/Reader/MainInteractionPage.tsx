@@ -75,12 +75,18 @@ const MainInteractionPage: React.FC = () => {
   // State for book structure and selection
   const [bookData, setBookData] = useState<any>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
-  const [selectedChapterId, setSelectedChapterId] = useState<string>('');
-  const [selectedSectionId, setSelectedSectionId] = useState<string>('');
   const [isLoadingBook, setIsLoadingBook] = useState(true);
   const [bookError, setBookError] = useState<string | null>(null);
 
-  // State for section content
+  // State for page and section selection
+  const [currentPageNumber, setCurrentPageNumber] = useState<number>(1);
+  const [pageInputValue, setPageInputValue] = useState<string>('1');
+  const [availableSections, setAvailableSections] = useState<any[]>([]);
+  const [isLoadingSections, setIsLoadingSections] = useState(false);
+  const [sectionsError, setSectionsError] = useState<string | null>(null);
+
+  // State for selected section
+  const [selectedSectionId, setSelectedSectionId] = useState<string>('');
   const [sectionContent, setSectionContent] = useState<string | null>(null);
   const [isLoadingSection, setIsLoadingSection] = useState(false);
   const [sectionError, setSectionError] = useState<string | null>(null);
@@ -101,32 +107,11 @@ const MainInteractionPage: React.FC = () => {
   // Refs
   const textAreaRef = useRef<HTMLDivElement>(null);
 
-  // Load book data and structure
+  // Load book data and reading progress
   useEffect(() => {
     loadBookData();
     loadReadingProgress();
   }, []);
-
-  // Update selected chapter/section when reading progress changes
-  useEffect(() => {
-    if (readingProgress && chapters.length > 0) {
-      // Find the chapter that contains the current page
-      const currentPage = readingProgress.currentPage || 1;
-
-      // This is a simplified example - in a real app, you'd need to map pages to chapters/sections
-      const chapterIndex = Math.min(Math.floor((currentPage - 1) / 10), chapters.length - 1);
-      const chapter = chapters[chapterIndex];
-
-      if (chapter) {
-        setSelectedChapterId(chapter.id);
-
-        // If the chapter has sections, select the first one
-        if (chapter.sections && chapter.sections.length > 0) {
-          setSelectedSectionId(chapter.sections[0].id);
-        }
-      }
-    }
-  }, [readingProgress, chapters]);
 
   // Load section content when selection changes
   useEffect(() => {
@@ -134,6 +119,14 @@ const MainInteractionPage: React.FC = () => {
       loadSectionContent(selectedSectionId);
     }
   }, [selectedSectionId]);
+
+  // Update page input value when reading progress changes
+  useEffect(() => {
+    if (readingProgress && readingProgress.currentPage) {
+      setCurrentPageNumber(readingProgress.currentPage);
+      setPageInputValue(readingProgress.currentPage.toString());
+    }
+  }, [readingProgress]);
 
   const loadBookData = async () => {
     if (!bookService) return;
@@ -203,21 +196,78 @@ const MainInteractionPage: React.FC = () => {
     }
   };
 
+  const fetchSectionsByPage = async (pageNumber: number) => {
+    if (!bookService) return;
+
+    try {
+      setIsLoadingSections(true);
+      setSectionsError(null);
+      console.log('Fetching sections for page:', pageNumber);
+
+      // Update current page number
+      setCurrentPageNumber(pageNumber);
+
+      // In a real app, you'd call the getSectionsByPage API
+      // For now, we'll generate mock sections
+      const bookId = 'alice-in-wonderland'; // Hardcoded for now
+
+      // Simulate API call with timeout
+      setTimeout(() => {
+        // Generate 2-4 mock sections for this page
+        const numSections = Math.floor(Math.random() * 3) + 2;
+        const mockSections = Array.from({ length: numSections }, (_, i) => {
+          const sectionId = `page_${pageNumber}_section_${i + 1}`;
+          return {
+            id: sectionId,
+            title: `Page ${pageNumber} - Section ${i + 1}`,
+            preview: `This is a preview of section ${i + 1} on page ${pageNumber}...`,
+            page_number: pageNumber
+          };
+        });
+
+        setAvailableSections(mockSections);
+        setIsLoadingSections(false);
+
+        // Update reading progress
+        if (user) {
+          const bookId = 'alice-in-wonderland';
+          const readingTime = 0; // Not tracking reading time in this example
+          bookService.updateReadingProgress(user.id, bookId, pageNumber, readingTime)
+            .then(() => {
+              // Update local state
+              setReadingProgress({
+                ...readingProgress,
+                currentPage: pageNumber,
+                percentage_complete: Math.round((pageNumber / 100) * 100) // Assuming 100 total pages
+              });
+            })
+            .catch(error => {
+              console.error('Error updating reading progress:', error);
+            });
+        }
+      }, 500);
+    } catch (error) {
+      console.error('Error fetching sections by page:', error);
+      setSectionsError(error instanceof Error ? error.message : 'Failed to fetch sections');
+      setIsLoadingSections(false);
+    }
+  };
+
   const loadSectionContent = async (sectionId: string) => {
     try {
       setIsLoadingSection(true);
       setSectionError(null);
       console.log('Loading section content for:', sectionId);
 
-      // Extract chapter and section numbers from the ID
-      const [chapterId, _, sectionNumber] = sectionId.split('_');
+      // Extract page and section numbers from the ID
+      const [_, pageNumber, __, sectionNumber] = sectionId.split('_');
 
       // In a real app, you'd fetch the actual section content
       // For now, we'll generate mock content
-      const chapterObj = chapters.find(ch => ch.id === chapterId);
-      const chapterTitle = chapterObj ? chapterObj.title : 'Unknown Chapter';
+      const section = availableSections.find(sec => sec.id === sectionId);
+      const sectionTitle = section ? section.title : `Page ${pageNumber}, Section ${sectionNumber}`;
 
-      const content = `This is the content for ${chapterTitle}, Section ${sectionNumber}.\n\n` +
+      const content = `This is the content for ${sectionTitle}.\n\n` +
         `Alice was beginning to get very tired of sitting by her sister on the bank, ` +
         `and of having nothing to do: once or twice she had peeped into the book her sister was reading, ` +
         `but it had no pictures or conversations in it, 'and what is the use of a book,' thought Alice ` +
@@ -229,7 +279,7 @@ const MainInteractionPage: React.FC = () => {
       setSectionContent(content);
 
       // Update the sidebar with context for this section
-      updateSidebarContext(chapterId, sectionId);
+      updateSidebarContext(pageNumber, sectionId);
     } catch (error) {
       console.error('Error loading section content:', error);
       setSectionError(error instanceof Error ? error.message : 'Failed to load section content');
@@ -238,10 +288,30 @@ const MainInteractionPage: React.FC = () => {
     }
   };
 
-  const updateSidebarContext = (chapterId: string, sectionId: string) => {
+  const updateSidebarContext = (pageNumber: string, sectionId: string) => {
     // In a real app, you'd fetch contextual information about this section
     // For now, we'll just set some placeholder content
     setSidebarContent('context');
+  };
+
+  const handlePageInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setPageInputValue(event.target.value);
+  };
+
+  const handlePageSubmit = () => {
+    const pageNumber = parseInt(pageInputValue);
+    if (isNaN(pageNumber) || pageNumber < 1) {
+      enqueueSnackbar('Please enter a valid page number', { variant: 'error' });
+      return;
+    }
+
+    // Fetch sections for this page
+    fetchSectionsByPage(pageNumber);
+  };
+
+  const handleSectionSelect = (sectionId: string) => {
+    setSelectedSectionId(sectionId);
+    setShowSectionContent(true);
   };
 
   const handleChapterChange = (event: SelectChangeEvent) => {
@@ -460,11 +530,11 @@ const MainInteractionPage: React.FC = () => {
                 <CardContent>
                   <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center' }}>
                     <MenuBookIcon sx={{ mr: 1, color: 'primary.main', fontSize: '0.9rem' }} />
-                    {chapters.find(ch => ch.id === selectedChapterId)?.title || 'Select a chapter'}
+                    Page {currentPageNumber}
                   </Typography>
                   <Typography variant="body2" sx={{ mt: 1, display: 'flex', alignItems: 'center' }}>
                     <BookmarkIcon sx={{ mr: 1, color: 'primary.main', fontSize: '0.9rem' }} />
-                    {chapters.find(ch => ch.id === selectedChapterId)?.sections?.find(sec => sec.id === selectedSectionId)?.title || 'Select a section'}
+                    {availableSections.find(sec => sec.id === selectedSectionId)?.title || 'Select a section'}
                   </Typography>
                 </CardContent>
               </Card>
@@ -623,74 +693,109 @@ const MainInteractionPage: React.FC = () => {
 
               <Alert severity="info" sx={{ mb: 3 }}>
                 <Typography variant="body2">
-                  This page is designed to be used <strong>alongside your physical book</strong>. Select your current chapter and section, then use the tools below to enhance your reading experience.
+                  This companion is designed to <strong>enhance your physical book reading experience</strong>. Tell us what page you're on, and we'll provide contextual help, definitions, and AI assistance to deepen your understanding of the story.
                 </Typography>
               </Alert>
 
               <Divider sx={{ mb: 3 }} />
 
-              {/* Chapter/Section Selection */}
+              {/* Page Number Input */}
               <Box sx={{ mb: 4 }}>
                 <Typography variant="h6" gutterBottom>
-                  Select Your Current Location
+                  Sync with your Physical Book
                 </Typography>
                 <Typography variant="body2" color="text.secondary" paragraph>
-                  Choose the chapter and section you're currently reading in your physical book.
+                  Tell us what page you're currently reading in your physical copy of "Alice in Wonderland".
                 </Typography>
 
-                <Grid container spacing={2}>
-                  {/* Chapter Selection */}
-                  <Grid item xs={12} sm={6}>
-                    <FormControl fullWidth>
-                      <InputLabel id="chapter-select-label">Chapter</InputLabel>
-                      <Select
-                        labelId="chapter-select-label"
-                        id="chapter-select"
-                        value={selectedChapterId}
-                        label="Chapter"
-                        onChange={handleChapterChange}
-                      >
-                        {chapters.map((chapter) => (
-                          <MenuItem key={chapter.id} value={chapter.id}>
-                            {chapter.title}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Grid>
+                <Box sx={{
+                  p: 3,
+                  bgcolor: 'background.default',
+                  borderRadius: 2,
+                  border: '1px dashed',
+                  borderColor: 'primary.light',
+                  mb: 3
+                }}>
+                  <Typography variant="subtitle1" gutterBottom fontWeight="medium">
+                    What page are you currently reading in 'Alice in Wonderland'?
+                  </Typography>
 
-                  {/* Section Selection */}
-                  <Grid item xs={12} sm={6}>
-                    <FormControl fullWidth disabled={!selectedChapterId}>
-                      <InputLabel id="section-select-label">Section</InputLabel>
-                      <Select
-                        labelId="section-select-label"
-                        id="section-select"
-                        value={selectedSectionId}
-                        label="Section"
-                        onChange={handleSectionChange}
+                  <Grid container spacing={2} alignItems="center">
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Page Number"
+                        type="number"
+                        value={pageInputValue}
+                        onChange={handlePageInputChange}
+                        variant="outlined"
+                        InputProps={{
+                          inputProps: { min: 1 }
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <LoadingButton
+                        variant="contained"
+                        onClick={handlePageSubmit}
+                        loading={isLoadingSections}
+                        startIcon={<UpdateIcon />}
+                        fullWidth
                       >
-                        {chapters
-                          .find(ch => ch.id === selectedChapterId)
-                          ?.sections?.map((section) => (
-                            <MenuItem key={section.id} value={section.id}>
-                              {section.title}
-                            </MenuItem>
-                          ))}
-                      </Select>
-                    </FormControl>
+                        Find Page
+                      </LoadingButton>
+                    </Grid>
                   </Grid>
-                </Grid>
+                </Box>
 
-                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
-                  <LoadingButton
-                    variant="contained"
-                    onClick={handleUpdateProgress}
-                    loading={false}
-                    startIcon={<UpdateIcon />}
-                  >
-                    Update My Progress
-                  </LoadingButton>
+                {/* Section Snippets */}
+                <Box>
+                  <Typography variant="subtitle1" gutterBottom>
+                    {availableSections.length > 0 ? 'Sections on this page:' : 'Enter a page number above to see sections'}
+                  </Typography>
+
+                  {sectionsError && (
+                    <Alert severity="error" sx={{ mb: 2 }}>
+                      {sectionsError}
+                    </Alert>
+                  )}
+
+                  {isLoadingSections ? (
+                    <Box sx={{ p: 2 }}>
+                      <LoadingSkeleton variant="text" count={3} />
+                    </Box>
+                  ) : availableSections.length > 0 ? (
+                    <List sx={{ bgcolor: 'background.paper', borderRadius: 1 }}>
+                      {availableSections.map((section) => (
+                        <ListItem
+                          key={section.id}
+                          disablePadding
+                          sx={{
+                            borderBottom: '1px solid',
+                            borderColor: 'divider',
+                            '&:last-child': {
+                              borderBottom: 'none'
+                            }
+                          }}
+                        >
+                          <ListItemButton
+                            onClick={() => handleSectionSelect(section.id)}
+                            selected={selectedSectionId === section.id}
+                          >
+                            <ListItemText
+                              primary={section.title}
+                              secondary={section.preview}
+                              primaryTypographyProps={{ fontWeight: selectedSectionId === section.id ? 'bold' : 'regular' }}
+                            />
+                          </ListItemButton>
+                        </ListItem>
+                      ))}
+                    </List>
+                  ) : currentPageNumber > 0 ? (
+                    <Alert severity="info">
+                      No sections found on page {currentPageNumber}. Try a different page number.
+                    </Alert>
+                  ) : null}
                 </Box>
               </Box>
 

@@ -8,24 +8,23 @@ import {
   Button,
   Card,
   CardContent,
-  CardActions,
-  LinearProgress,
   Divider,
-  Avatar,
   List,
   ListItem,
   ListItemText,
   ListItemIcon,
-  Chip,
   CircularProgress,
   IconButton
 } from '@mui/material';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
-import TimerIcon from '@mui/icons-material/Timer';
-import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import HomeIcon from '@mui/icons-material/Home';
+import EqualizerIcon from '@mui/icons-material/Equalizer';
+import NoteIcon from '@mui/icons-material/Note';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import ExitToAppIcon from '@mui/icons-material/ExitToApp';
+import HelpIcon from '@mui/icons-material/Help';
 import { localAliceCover } from '../../assets';
 import { useBookService, useAuthService, useAnalyticsService } from '../../hooks/useService';
 import { usePerformance } from '../../hooks/usePerformance';
@@ -177,7 +176,7 @@ const ReaderDashboard: React.FC = () => {
       <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Box>
           <Typography variant="h4" gutterBottom>
-            Welcome back, {profile?.first_name || 'Reader'}!
+            Welcome, {profile?.first_name || 'Reader'}!
           </Typography>
           <Typography variant="body1" color="text.secondary">
             Your reading companion for Alice in Wonderland
@@ -199,13 +198,15 @@ const ReaderDashboard: React.FC = () => {
       <Grid container spacing={4}>
         {/* Main Content */}
         <Grid item xs={12} md={8}>
-          {/* Current Book Card */}
+          {/* Main Call to Action Card */}
           <Paper
-            elevation={2}
+            elevation={3}
             sx={{
-              mb: 4,
               borderRadius: 2,
-              overflow: 'hidden'
+              overflow: 'hidden',
+              mb: 4,
+              textAlign: 'center',
+              p: 0
             }}
           >
             <Box sx={{
@@ -235,12 +236,15 @@ const ReaderDashboard: React.FC = () => {
                 />
               </Box>
 
-              {/* Book Info */}
+              {/* Book Info and Main CTA */}
               <Box sx={{
                 p: 3,
                 flex: 1,
                 display: 'flex',
-                flexDirection: 'column'
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                textAlign: 'center'
               }}>
                 <Typography variant="h5" gutterBottom>
                   {bookData?.title || "Alice's Adventures in Wonderland"}
@@ -249,157 +253,71 @@ const ReaderDashboard: React.FC = () => {
                   By {bookData?.author || "Lewis Carroll"}
                 </Typography>
 
-                <Divider sx={{ my: 2 }} />
+                <Divider sx={{ my: 2, width: '100%' }} />
 
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="body2" gutterBottom>
-                    <strong>Progress in Physical Book:</strong>
-                  </Typography>
-                  <LinearProgress
-                    variant="determinate"
-                    value={readingStats.progress}
-                    sx={{ height: 10, borderRadius: 5 }}
-                  />
-                  <Box sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    mt: 1
-                  }}>
-                    <Typography variant="body2" color="text.secondary">
-                      {Math.round(readingStats.progress)}% complete
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Page {readingStats.currentPage}/{bookData?.totalPages || 100}
-                    </Typography>
-                  </Box>
-                </Box>
+                <Typography variant="body1" sx={{ mb: 3 }}>
+                  Ready to continue your reading journey? Sync with your physical book to get contextual help, definitions, and AI assistance.
+                </Typography>
 
-                <Box sx={{ mt: 'auto', pt: 2 }}>
-                  <Button
-                    onClick={() => {
-                      console.log('ReaderDashboard: Navigating to reader page', {
-                        currentPage: readingStats.currentPage || 1
-                      });
-                      navigate('/reader/interaction');
-                    }}
-                    variant="contained"
-                    color="primary"
-                    fullWidth
-                    startIcon={<BookmarkIcon />}
-                  >
-                    Sync My Reading
-                  </Button>
-                </Box>
+                <Button
+                  onClick={() => {
+                    console.log('ReaderDashboard: Navigating to reader page');
+                    navigate('/reader/interaction');
+                  }}
+                  variant="contained"
+                  color="primary"
+                  size="large"
+                  startIcon={<BookmarkIcon />}
+                  sx={{
+                    py: 1.5,
+                    px: 4,
+                    fontSize: '1.1rem',
+                    minWidth: '250px',
+                    boxShadow: 3
+                  }}
+                >
+                  Open Reading Companion
+                </Button>
               </Box>
             </Box>
           </Paper>
 
-          {/* Reading Stats */}
-          <Typography variant="h6" gutterBottom>
-            Your Physical Book Progress
-          </Typography>
-          <Grid container spacing={3} sx={{ mb: 4 }}>
-            {[
-              {
-                title: 'Reading Time',
-                value: `${Math.round((readingStats.totalTimeRead || 0) / 60)} mins`,
-                icon: <TimerIcon />,
-                color: '#4caf50'
-              },
-              {
-                title: 'Current Chapter',
-                value: readingStats.currentChapter,
-                icon: <MenuBookIcon />,
-                color: '#2196f3'
-              },
-              {
-                title: 'Reading Pace',
-                value: '3 pages/day',
-                icon: <TrendingUpIcon />,
-                color: '#ff9800'
-              }
-            ].map((stat, index) => (
-              <Grid item xs={12} sm={4} key={index}>
-                <Paper
-                  elevation={1}
-                  sx={{
-                    p: 2,
-                    display: 'flex',
-                    alignItems: 'center',
-                    height: '100%'
-                  }}
-                >
-                  <Avatar
-                    sx={{
-                      bgcolor: stat.color,
-                      mr: 2
-                    }}
-                  >
-                    {stat.icon}
-                  </Avatar>
-                  <Box>
-                    <Typography variant="body2" color="text.secondary">
-                      {stat.title}
-                    </Typography>
-                    <Typography variant="h6">
-                      {stat.value}
-                    </Typography>
-                  </Box>
-                </Paper>
-              </Grid>
-            ))}
-          </Grid>
-
-          {/* Recent Activity */}
-          <Typography variant="h6" gutterBottom>
-            Recent Activity
-          </Typography>
-          <Paper sx={{ p: 0, borderRadius: 2, overflow: 'hidden' }}>
+          {/* Welcome Message */}
+          <Paper sx={{ p: 3, borderRadius: 2, mb: 4 }}>
+            <Typography variant="h6" gutterBottom>
+              How to Use Your Reading Companion
+            </Typography>
+            <Typography variant="body1" paragraph>
+              The Alice Reader App is designed to enhance your experience with the physical book, not replace it.
+            </Typography>
             <List>
               {[
-                {
-                  action: 'Looked up definition',
-                  item: 'curiosity',
-                  time: '2 hours ago'
-                },
-                {
-                  action: 'Asked AI Assistant',
-                  item: 'Why does the White Rabbit have a watch?',
-                  time: '2 hours ago'
-                },
-                {
-                  action: 'Completed reading',
-                  item: 'Chapter 1',
-                  time: '3 days ago'
-                }
-              ].map((activity, index) => (
-                <React.Fragment key={index}>
-                  <ListItem alignItems="flex-start">
-                    <ListItemText
-                      primary={activity.action}
-                      secondary={
-                        <>
-                          <Typography
-                            component="span"
-                            variant="body2"
-                            color="text.primary"
-                          >
-                            {activity.item}
-                          </Typography>
-                          {` — ${activity.time}`}
-                        </>
-                      }
-                    />
-                    <Chip
-                      label="View"
-                      size="small"
-                      component={RouterLink}
-                      to="#"
-                      clickable
-                    />
-                  </ListItem>
-                  {index < 2 && <Divider component="li" />}
-                </React.Fragment>
+                "Tell us what page you're on in your physical copy of Alice in Wonderland",
+                "Get contextual information about characters, themes, and plot points",
+                "Look up definitions for unfamiliar words by highlighting text",
+                "Ask the AI assistant questions about what you're reading"
+              ].map((item, index) => (
+                <ListItem key={index}>
+                  <ListItemIcon sx={{ minWidth: '36px' }}>
+                    <Box
+                      sx={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: '50%',
+                        bgcolor: 'primary.main',
+                        color: 'white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '0.8rem',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      {index + 1}
+                    </Box>
+                  </ListItemIcon>
+                  <ListItemText primary={item} />
+                </ListItem>
               ))}
             </List>
           </Paper>
@@ -407,28 +325,42 @@ const ReaderDashboard: React.FC = () => {
 
         {/* Sidebar */}
         <Grid item xs={12} md={4}>
-          {/* Quick Access */}
-          <Paper sx={{ p: 3, mb: 4, borderRadius: 2 }}>
+          {/* Navigation Menu */}
+          <Paper sx={{ p: 3, borderRadius: 2, mb: 4 }}>
             <Typography variant="h6" gutterBottom>
-              Quick Access
+              Menu
             </Typography>
             <List>
               {[
-                { title: 'Sync My Reading', onClick: () => {
-                  console.log('ReaderDashboard: Navigating to reader page');
-                  navigate('/reader/interaction');
-                }},
-                { title: 'Reading Statistics', link: '/reader/statistics' },
-                { title: 'Take Chapter Quiz', onClick: () => {
-                  console.log('ReaderDashboard: Opening AI drawer for quiz');
-                  // This will be implemented later
-                  alert('Quiz feature coming soon!');
-                }},
-                { title: 'Sign Out', link: '#', onClick: () => {
-                  if (authService) {
-                    authService.signOut().then(() => navigate('/'));
+                {
+                  title: 'Open Reading Companion',
+                  icon: <BookmarkIcon color="primary" />,
+                  onClick: () => navigate('/reader/interaction')
+                },
+                {
+                  title: 'My Progress & Stats',
+                  icon: <EqualizerIcon color="primary" />,
+                  link: '/reader/statistics'
+                },
+                {
+                  title: 'My Notes',
+                  icon: <NoteIcon color="primary" />,
+                  onClick: () => alert('Notes feature coming soon!')
+                },
+                {
+                  title: 'Account Settings',
+                  icon: <AccountCircleIcon color="primary" />,
+                  onClick: () => alert('Account settings coming soon!')
+                },
+                {
+                  title: 'Sign Out',
+                  icon: <ExitToAppIcon color="error" />,
+                  onClick: () => {
+                    if (authService) {
+                      authService.signOut().then(() => navigate('/'));
+                    }
                   }
-                }}
+                }
               ].map((item, index) => (
                 <ListItem
                   key={index}
@@ -436,7 +368,15 @@ const ReaderDashboard: React.FC = () => {
                   to={item.onClick ? undefined : item.link}
                   onClick={item.onClick}
                   button
+                  sx={{
+                    borderRadius: 1,
+                    mb: 0.5,
+                    '&:hover': { bgcolor: 'action.hover' }
+                  }}
                 >
+                  <ListItemIcon>
+                    {item.icon}
+                  </ListItemIcon>
                   <ListItemText primary={item.title} />
                 </ListItem>
               ))}
@@ -445,7 +385,8 @@ const ReaderDashboard: React.FC = () => {
 
           {/* Help & Resources */}
           <Paper sx={{ p: 3, borderRadius: 2 }}>
-            <Typography variant="h6" gutterBottom>
+            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+              <HelpIcon sx={{ mr: 1, color: 'primary.main' }} />
               Help & Resources
             </Typography>
             <Typography variant="body2" paragraph>
@@ -457,7 +398,16 @@ const ReaderDashboard: React.FC = () => {
                 { title: 'FAQ', link: '/help/faq' },
                 { title: 'Contact Support', link: '/help/contact' }
               ].map((item, index) => (
-                <ListItem key={index} component={RouterLink} to={item.link} button>
+                <ListItem
+                  key={index}
+                  component={RouterLink}
+                  to={item.link}
+                  button
+                  sx={{
+                    borderRadius: 1,
+                    '&:hover': { bgcolor: 'action.hover' }
+                  }}
+                >
                   <ListItemText primary={item.title} />
                 </ListItem>
               ))}
