@@ -112,14 +112,14 @@ const MainInteractionPage: React.FC = () => {
     if (readingProgress && chapters.length > 0) {
       // Find the chapter that contains the current page
       const currentPage = readingProgress.currentPage || 1;
-      
+
       // This is a simplified example - in a real app, you'd need to map pages to chapters/sections
       const chapterIndex = Math.min(Math.floor((currentPage - 1) / 10), chapters.length - 1);
       const chapter = chapters[chapterIndex];
-      
+
       if (chapter) {
         setSelectedChapterId(chapter.id);
-        
+
         // If the chapter has sections, select the first one
         if (chapter.sections && chapter.sections.length > 0) {
           setSelectedSectionId(chapter.sections[0].id);
@@ -152,7 +152,7 @@ const MainInteractionPage: React.FC = () => {
 
       console.log('Book data loaded:', data);
       setBookData(data);
-      
+
       // Transform chapters data to include sections
       const chaptersWithSections = data.chapters.map((chapter: any) => ({
         ...chapter,
@@ -162,13 +162,13 @@ const MainInteractionPage: React.FC = () => {
           title: `Section ${i + 1}`,
         })),
       }));
-      
+
       setChapters(chaptersWithSections);
-      
+
       // Select first chapter by default
       if (chaptersWithSections.length > 0) {
         setSelectedChapterId(chaptersWithSections[0].id);
-        
+
         // Select first section by default
         if (chaptersWithSections[0].sections && chaptersWithSections[0].sections.length > 0) {
           setSelectedSectionId(chaptersWithSections[0].sections[0].id);
@@ -211,12 +211,12 @@ const MainInteractionPage: React.FC = () => {
 
       // Extract chapter and section numbers from the ID
       const [chapterId, _, sectionNumber] = sectionId.split('_');
-      
+
       // In a real app, you'd fetch the actual section content
       // For now, we'll generate mock content
       const chapterObj = chapters.find(ch => ch.id === chapterId);
       const chapterTitle = chapterObj ? chapterObj.title : 'Unknown Chapter';
-      
+
       const content = `This is the content for ${chapterTitle}, Section ${sectionNumber}.\n\n` +
         `Alice was beginning to get very tired of sitting by her sister on the bank, ` +
         `and of having nothing to do: once or twice she had peeped into the book her sister was reading, ` +
@@ -225,9 +225,9 @@ const MainInteractionPage: React.FC = () => {
         `So she was considering in her own mind (as well as she could, for the hot day made her feel very ` +
         `sleepy and stupid), whether the pleasure of making a daisy-chain would be worth the trouble of ` +
         `getting up and picking the daisies, when suddenly a White Rabbit with pink eyes ran close by her.`;
-      
+
       setSectionContent(content);
-      
+
       // Update the sidebar with context for this section
       updateSidebarContext(chapterId, sectionId);
     } catch (error) {
@@ -247,7 +247,7 @@ const MainInteractionPage: React.FC = () => {
   const handleChapterChange = (event: SelectChangeEvent) => {
     const chapterId = event.target.value;
     setSelectedChapterId(chapterId);
-    
+
     // When chapter changes, select the first section by default
     const chapter = chapters.find(ch => ch.id === chapterId);
     if (chapter && chapter.sections && chapter.sections.length > 0) {
@@ -268,22 +268,22 @@ const MainInteractionPage: React.FC = () => {
       // Find the current chapter and section
       const chapter = chapters.find(ch => ch.id === selectedChapterId);
       const section = chapter?.sections?.find(sec => sec.id === selectedSectionId);
-      
+
       if (!chapter || !section) {
         enqueueSnackbar('Please select a chapter and section first', { variant: 'error' });
         return;
       }
-      
+
       // Calculate the page number based on chapter and section
       // This is a simplified example - in a real app, you'd have a more accurate mapping
       const pageNumber = (chapter.chapter_number - 1) * 10 + section.section_number;
-      
+
       // Update reading progress
       const bookId = 'alice-in-wonderland'; // Hardcoded for now
       const readingTime = 0; // Not tracking reading time in this example
-      
+
       await bookService.updateReadingProgress(user.id, bookId, pageNumber, readingTime);
-      
+
       // Update local state
       setReadingProgress({
         ...readingProgress,
@@ -291,7 +291,7 @@ const MainInteractionPage: React.FC = () => {
         currentChapter: chapter.title,
         percentage_complete: Math.round((pageNumber / 100) * 100) // Assuming 100 total pages
       });
-      
+
       enqueueSnackbar('Reading progress updated successfully', { variant: 'success' });
     } catch (error) {
       console.error('Error updating reading progress:', error);
@@ -301,22 +301,36 @@ const MainInteractionPage: React.FC = () => {
 
   const handleTextSelection = () => {
     if (!textAreaRef.current) return;
-    
+
     const selection = window.getSelection();
     if (!selection || selection.isCollapsed) return;
-    
+
     const selectedText = selection.toString().trim();
     if (selectedText) {
+      console.log('Text selected:', selectedText);
       setSelectedText(selectedText);
       setSidebarContent('definition');
-      
-      // In a real app, you'd fetch the definition from a dictionary API
-      // For now, we'll just set a placeholder
-      setDefinitionData({
-        word: selectedText,
-        definition: `Definition for "${selectedText}" would appear here.`,
-        examples: [`Example sentence using "${selectedText}".`]
-      });
+
+      // Show loading state
+      setIsLoadingDefinition(true);
+
+      // Simulate API call with timeout
+      setTimeout(() => {
+        // In a real app, you'd fetch the definition from a dictionary API
+        // For now, we'll just set a placeholder
+        setDefinitionData({
+          word: selectedText,
+          definition: `Definition for "${selectedText}" would appear here.`,
+          examples: [`Example sentence using "${selectedText}".`]
+        });
+        setIsLoadingDefinition(false);
+
+        // Show a success message
+        enqueueSnackbar(`Looking up "${selectedText}"`, {
+          variant: 'success',
+          anchorOrigin: { vertical: 'bottom', horizontal: 'center' }
+        });
+      }, 500);
     }
   };
 
@@ -335,7 +349,14 @@ const MainInteractionPage: React.FC = () => {
             <Typography variant="h6" gutterBottom>
               Definition
             </Typography>
-            {definitionData ? (
+            {isLoadingDefinition ? (
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 3 }}>
+                <CircularProgress size={40} sx={{ mb: 2 }} />
+                <Typography variant="body2" color="text.secondary">
+                  Looking up definition...
+                </Typography>
+              </Box>
+            ) : definitionData ? (
               <>
                 <Typography variant="subtitle1" fontWeight="bold">
                   {definitionData.word}
@@ -353,23 +374,40 @@ const MainInteractionPage: React.FC = () => {
                     ))}
                   </>
                 )}
-                <Button
-                  variant="outlined"
-                  startIcon={<ChatIcon />}
-                  onClick={handleOpenAI}
-                  sx={{ mt: 2 }}
-                >
-                  Ask AI about this word
-                </Button>
+                <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<ChatIcon />}
+                    onClick={handleOpenAI}
+                  >
+                    Ask AI about this word
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="secondary"
+                    startIcon={<SearchIcon />}
+                    onClick={() => window.open(`https://www.merriam-webster.com/dictionary/${encodeURIComponent(definitionData.word)}`, '_blank')}
+                  >
+                    Full Dictionary
+                  </Button>
+                </Box>
               </>
             ) : (
-              <Typography variant="body2" color="text.secondary">
-                Select text in the content area to see its definition.
-              </Typography>
+              <Box sx={{ textAlign: 'center', py: 2 }}>
+                <Typography variant="body2" color="text.secondary" paragraph>
+                  Select text in the content area to see its definition.
+                </Typography>
+                <Box
+                  component="img"
+                  src="https://cdn-icons-png.flaticon.com/512/1829/1829371.png"
+                  alt="Select text illustration"
+                  sx={{ width: 80, height: 80, opacity: 0.6, mt: 2 }}
+                />
+              </Box>
             )}
           </Box>
         );
-      
+
       case 'ai':
         return (
           <Box>
@@ -404,7 +442,7 @@ const MainInteractionPage: React.FC = () => {
             </Typography>
           </Box>
         );
-      
+
       case 'context':
       default:
         return (
@@ -412,7 +450,7 @@ const MainInteractionPage: React.FC = () => {
             <Typography variant="h6" gutterBottom>
               Context & Notes
             </Typography>
-            
+
             {/* Current Location */}
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle2" gutterBottom>
@@ -431,7 +469,7 @@ const MainInteractionPage: React.FC = () => {
                 </CardContent>
               </Card>
             </Box>
-            
+
             {/* Characters in this section */}
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle2" gutterBottom>
@@ -441,7 +479,7 @@ const MainInteractionPage: React.FC = () => {
                 Alice, White Rabbit
               </Typography>
             </Box>
-            
+
             {/* Key themes */}
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle2" gutterBottom>
@@ -451,7 +489,7 @@ const MainInteractionPage: React.FC = () => {
                 Curiosity, Adventure, Fantasy
               </Typography>
             </Box>
-            
+
             {/* Reading notes */}
             <Box>
               <Typography variant="subtitle2" gutterBottom>
@@ -583,6 +621,12 @@ const MainInteractionPage: React.FC = () => {
                 Reading Companion
               </Typography>
 
+              <Alert severity="info" sx={{ mb: 3 }}>
+                <Typography variant="body2">
+                  This page is designed to be used <strong>alongside your physical book</strong>. Select your current chapter and section, then use the tools below to enhance your reading experience.
+                </Typography>
+              </Alert>
+
               <Divider sx={{ mb: 3 }} />
 
               {/* Chapter/Section Selection */}
@@ -593,7 +637,7 @@ const MainInteractionPage: React.FC = () => {
                 <Typography variant="body2" color="text.secondary" paragraph>
                   Choose the chapter and section you're currently reading in your physical book.
                 </Typography>
-                
+
                 <Grid container spacing={2}>
                   {/* Chapter Selection */}
                   <Grid item xs={12} sm={6}>
@@ -614,7 +658,7 @@ const MainInteractionPage: React.FC = () => {
                       </Select>
                     </FormControl>
                   </Grid>
-                  
+
                   {/* Section Selection */}
                   <Grid item xs={12} sm={6}>
                     <FormControl fullWidth disabled={!selectedChapterId}>
@@ -637,7 +681,7 @@ const MainInteractionPage: React.FC = () => {
                     </FormControl>
                   </Grid>
                 </Grid>
-                
+
                 <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
                   <LoadingButton
                     variant="contained"
@@ -665,13 +709,17 @@ const MainInteractionPage: React.FC = () => {
                     {showSectionContent ? 'Hide Text' : 'Show Text'}
                   </Button>
                 </Box>
-                
+
                 <Typography variant="body2" color="text.secondary" paragraph>
-                  {showSectionContent 
-                    ? 'Select text to look up definitions or ask the AI assistant for help.'
-                    : 'Click "Show Text" to display the content of this section for highlighting and interaction.'}
+                  {showSectionContent
+                    ? <>
+                        <strong>This is NOT for reading the entire book.</strong> Instead, <span style={{ color: theme.palette.primary.main }}>select any text</span> to look up definitions or ask the AI assistant for help.
+                      </>
+                    : <>
+                        Click "Show Text" to display a snippet of this section for highlighting and interaction. <strong>Remember:</strong> This is a companion to your physical book, not a replacement.
+                      </>}
                 </Typography>
-                
+
                 <Collapse in={showSectionContent}>
                   {isLoadingSection ? (
                     <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
@@ -682,17 +730,34 @@ const MainInteractionPage: React.FC = () => {
                       {sectionError}
                     </Alert>
                   ) : (
-                    <Box 
+                    <Box
                       ref={textAreaRef}
                       onClick={handleTextSelection}
                       onMouseUp={handleTextSelection}
-                      sx={{ 
-                        p: 2, 
-                        bgcolor: 'background.default', 
+                      sx={{
+                        p: 2,
+                        bgcolor: 'background.default',
                         borderRadius: 1,
                         whiteSpace: 'pre-wrap',
+                        border: '2px dashed',
+                        borderColor: 'primary.light',
+                        position: 'relative',
+                        '&::before': {
+                          content: '"Try selecting some text here"',
+                          position: 'absolute',
+                          top: '-12px',
+                          right: '10px',
+                          bgcolor: 'primary.light',
+                          color: 'primary.contrastText',
+                          px: 1,
+                          py: 0.5,
+                          borderRadius: 1,
+                          fontSize: '0.75rem',
+                          fontWeight: 'bold',
+                          zIndex: 1,
+                        },
                         '& ::selection': {
-                          backgroundColor: theme.palette.primary.light,
+                          backgroundColor: theme.palette.primary.main,
                           color: theme.palette.primary.contrastText,
                         }
                       }}
@@ -701,11 +766,11 @@ const MainInteractionPage: React.FC = () => {
                     </Box>
                   )}
                 </Collapse>
-                
+
                 {!showSectionContent && (
                   <Alert severity="info" sx={{ mt: 2 }}>
                     <Typography variant="body2">
-                      This area is for interaction with the text, not for continuous reading. 
+                      This area is for interaction with the text, not for continuous reading.
                       Use your physical book for reading, and this tool as a companion.
                     </Typography>
                   </Alert>
@@ -808,7 +873,7 @@ const MainInteractionPage: React.FC = () => {
           <Box p={2}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="h6">
-                {sidebarContent === 'ai' ? 'AI Assistant' : 
+                {sidebarContent === 'ai' ? 'AI Assistant' :
                  sidebarContent === 'definition' ? 'Definition' : 'Context & Notes'}
               </Typography>
               <IconButton onClick={() => setAiDrawerOpen(false)}>
