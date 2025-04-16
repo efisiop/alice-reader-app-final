@@ -30,11 +30,6 @@ import { ProtectedRoute } from './components/common/ProtectedRoute';
 // Import test pages only in development mode
 // These imports are conditionally loaded to prevent 404 errors in production
 const TestPage = import.meta.env.DEV ? React.lazy(() => import('./pages/TestPage')) : () => null;
-const TestReaderPage = import.meta.env.DEV ? React.lazy(() => import('./pages/TestReaderPage')) : () => null;
-const TestReaderInterfacePage = import.meta.env.DEV ? React.lazy(() => import('./pages/TestReaderInterfacePage')) : () => null;
-const TestDirectReaderPage = import.meta.env.DEV ? React.lazy(() => import('./pages/TestDirectReaderPage')) : () => null;
-const TestLinks = import.meta.env.DEV ? React.lazy(() => import('./pages/TestLinks')) : () => null;
-const HashTestLinks = import.meta.env.DEV ? React.lazy(() => import('./pages/HashTestLinks')) : () => null;
 
 // Services
 import { initializeServices } from './services';
@@ -138,13 +133,9 @@ function App() {
             {/* Test Routes - Only available in development mode */}
             {/* We need to use individual conditional rendering for each Route */}
             {import.meta.env.DEV && <Route path="/test" element={<TestPage />} />}
-            {import.meta.env.DEV && <Route path="/test-reader" element={<TestReaderPage />} />}
-            {import.meta.env.DEV && <Route path="/test-reader-interface" element={<TestReaderInterfacePage />} />}
-            {import.meta.env.DEV && <Route path="/test-direct-reader" element={<TestDirectReaderPage />} />}
-            {import.meta.env.DEV && <Route path="/test-links" element={<TestLinks />} />}
-            {import.meta.env.DEV && <Route path="/hash-test-links" element={<HashTestLinks />} />}
             {import.meta.env.DEV && <Route path="/test-reader-page/:pageNumber" element={<ReaderPage />} />}
             {import.meta.env.DEV && <Route path="/test-main-interaction" element={<MainInteractionPage />} />}
+            {/* Direct access routes are removed for production */}
           </Routes>
         </main>
       </div>
