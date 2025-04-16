@@ -31,6 +31,9 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.VITE_BETA_MODE': JSON.stringify(env.VITE_BETA_MODE === 'true'),
       'import.meta.env.VITE_BETA_VERSION': JSON.stringify(env.VITE_BETA_VERSION || '0.0.0'),
     },
+    optimizeDeps: {
+      include: ['notistack'],
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
@@ -56,7 +59,7 @@ export default defineConfig(({ mode }) => {
           chunkFileNames: `assets/[name]-[hash].js`,
           assetFileNames: `assets/[name]-[hash].[ext]`,
           manualChunks: {
-            vendor: ['react', 'react-dom', 'react-router-dom'],
+            vendor: ['react', 'react-dom', 'react-router-dom', 'notistack'],
             ui: ['@mui/material', '@mui/icons-material'],
             supabase: ['@supabase/supabase-js'],
           },

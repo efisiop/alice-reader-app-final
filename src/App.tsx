@@ -6,6 +6,7 @@ import './styles/accessibility.css';
 // Components
 import { ServiceStatusCheck } from '@components/Admin/ServiceStatusCheck';
 import { AccessibilityProvider } from './components/common/AccessibilityMenu';
+import SnackbarProvider from './components/common/SnackbarProvider';
 import SkipToContent from './components/common/SkipToContent';
 import { RouteGuard } from './components/common/RouteGuard';
 import Header from './components/common/Header';
@@ -157,7 +158,9 @@ function App() {
   return (
     <AuthProvider>
       <AccessibilityProvider>
-        <AppContent />
+        <SnackbarProvider>
+          <AppContent />
+        </SnackbarProvider>
       </AccessibilityProvider>
     </AuthProvider>
   );
