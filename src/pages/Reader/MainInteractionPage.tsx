@@ -46,6 +46,7 @@ import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import TextFieldsIcon from '@mui/icons-material/TextFields';
 import ChatIcon from '@mui/icons-material/Chat';
 import BookIcon from '@mui/icons-material/Book';
+import CloseIcon from '@mui/icons-material/Close';
 
 // Types
 interface Chapter {
@@ -106,6 +107,21 @@ const MainInteractionPage: React.FC = () => {
 
   // Refs
   const textAreaRef = useRef<HTMLDivElement>(null);
+
+  // Add keyboard event listener for Escape key to clear definition
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && sidebarContent === 'definition') {
+        clearDefinition();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [sidebarContent]);
 
   // Load book data and reading progress
   useEffect(() => {
@@ -305,11 +321,30 @@ const MainInteractionPage: React.FC = () => {
       return;
     }
 
+    // Clear any existing definition when changing pages
+    clearDefinition();
+
+    // Reset section selection
+    setSelectedSectionId('');
+    setShowSectionContent(false);
+    setSectionContent(null);
+
     // Fetch sections for this page
     fetchSectionsByPage(pageNumber);
   };
 
+  const clearDefinition = () => {
+    setSelectedText(null);
+    setDefinitionData(null);
+    setIsLoadingDefinition(false);
+    setSidebarContent('context');
+  };
+
   const handleSectionSelect = (sectionId: string) => {
+    // Clear any existing definition when selecting a new section
+    clearDefinition();
+
+    // Set the new section and show its content
     setSelectedSectionId(sectionId);
     setShowSectionContent(true);
   };
@@ -369,7 +404,7 @@ const MainInteractionPage: React.FC = () => {
     }
   };
 
-  const handleTextSelection = () => {
+  const handleTextSelection = async () => {
     if (!textAreaRef.current) return;
 
     const selection = window.getSelection();
@@ -384,23 +419,64 @@ const MainInteractionPage: React.FC = () => {
       // Show loading state
       setIsLoadingDefinition(true);
 
-      // Simulate API call with timeout
-      setTimeout(() => {
-        // In a real app, you'd fetch the definition from a dictionary API
-        // For now, we'll just set a placeholder
+      try {
+        // Call the dictionary service to get the definition
+        const bookId = 'alice-in-wonderland'; // Hardcoded for now
+
+        if (!bookService) {
+          throw new Error('Book service not available');
+        }
+
+        // Get the definition from the service
+        const result = await bookService.getDefinition(bookId, selectedText, selectedSectionId);
+
+        if (result && result.data) {
+          // Format the definition data
+          setDefinitionData({
+            word: selectedText,
+            definition: result.data,
+            examples: [],
+            source: 'database'
+          });
+
+          // Show a success message
+          enqueueSnackbar(`Found definition for "${selectedText}"`, {
+            variant: 'success',
+            anchorOrigin: { vertical: 'bottom', horizontal: 'center' }
+          });
+        } else {
+          // No definition found
+          setDefinitionData({
+            word: selectedText,
+            definition: `No definition found for "${selectedText}".`,
+            examples: [],
+            source: 'not_found'
+          });
+
+          enqueueSnackbar(`No definition found for "${selectedText}"`, {
+            variant: 'info',
+            anchorOrigin: { vertical: 'bottom', horizontal: 'center' }
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching definition:', error);
+
+        // Set error state
         setDefinitionData({
           word: selectedText,
-          definition: `Definition for "${selectedText}" would appear here.`,
-          examples: [`Example sentence using "${selectedText}".`]
+          definition: `Error looking up definition for "${selectedText}".`,
+          examples: [],
+          source: 'error'
         });
-        setIsLoadingDefinition(false);
 
-        // Show a success message
-        enqueueSnackbar(`Looking up "${selectedText}"`, {
-          variant: 'success',
+        // Show error message
+        enqueueSnackbar(`Error looking up definition for "${selectedText}"`, {
+          variant: 'error',
           anchorOrigin: { vertical: 'bottom', horizontal: 'center' }
         });
-      }, 500);
+      } finally {
+        setIsLoadingDefinition(false);
+      }
     }
   };
 
@@ -416,9 +492,21 @@ const MainInteractionPage: React.FC = () => {
       case 'definition':
         return (
           <Box>
-            <Typography variant="h6" gutterBottom>
-              Definition
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">
+                Definition
+              </Typography>
+              {definitionData && (
+                <IconButton
+                  size="small"
+                  onClick={clearDefinition}
+                  aria-label="Clear definition"
+                  title="Clear definition"
+                >
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              )}
+            </Box>
             {isLoadingDefinition ? (
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 3 }}>
                 <CircularProgress size={40} sx={{ mb: 2 }} />
@@ -428,21 +516,66 @@ const MainInteractionPage: React.FC = () => {
               </Box>
             ) : definitionData ? (
               <>
-                <Typography variant="subtitle1" fontWeight="bold">
-                  {definitionData.word}
-                </Typography>
-                <Typography variant="body1" paragraph>
+                <Box sx={{
+                  mb: 2,
+                  pb: 2,
+                  borderBottom: '1px solid',
+                  borderColor: 'divider'
+                }}>
+                  <Typography variant="h6" fontWeight="bold" color="primary.main">
+                    {definitionData.word}
+                  </Typography>
+                  {definitionData.source === 'database' ? (
+                    <Chip
+                      size="small"
+                      label="From Dictionary"
+                      color="primary"
+                      variant="outlined"
+                      sx={{ mt: 0.5, mb: 1.5 }}
+                    />
+                  ) : definitionData.source === 'not_found' ? (
+                    <Chip
+                      size="small"
+                      label="Not Found"
+                      color="warning"
+                      variant="outlined"
+                      sx={{ mt: 0.5, mb: 1.5 }}
+                    />
+                  ) : (
+                    <Chip
+                      size="small"
+                      label="Error"
+                      color="error"
+                      variant="outlined"
+                      sx={{ mt: 0.5, mb: 1.5 }}
+                    />
+                  )}
+                </Box>
+
+                <Typography variant="body1" paragraph sx={{
+                  fontStyle: definitionData.source === 'not_found' || definitionData.source === 'error' ? 'italic' : 'normal',
+                  color: definitionData.source === 'not_found' ? 'text.secondary' :
+                         definitionData.source === 'error' ? 'error.main' : 'text.primary'
+                }}>
                   {definitionData.definition}
                 </Typography>
+
                 {definitionData.examples && definitionData.examples.length > 0 && (
-                  <>
-                    <Typography variant="subtitle2">Examples:</Typography>
+                  <Box sx={{ mt: 2, bgcolor: 'background.default', p: 1.5, borderRadius: 1 }}>
+                    <Typography variant="subtitle2" color="primary.main" gutterBottom>
+                      Examples:
+                    </Typography>
                     {definitionData.examples.map((example: string, index: number) => (
-                      <Typography key={index} variant="body2" paragraph>
+                      <Typography key={index} variant="body2" paragraph sx={{
+                        pl: 1,
+                        borderLeft: '2px solid',
+                        borderColor: 'primary.light',
+                        mb: index === definitionData.examples.length - 1 ? 0 : 1.5
+                      }}>
                         {example}
                       </Typography>
                     ))}
-                  </>
+                  </Box>
                 )}
                 <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                   <Button
@@ -465,14 +598,35 @@ const MainInteractionPage: React.FC = () => {
             ) : (
               <Box sx={{ textAlign: 'center', py: 2 }}>
                 <Typography variant="body2" color="text.secondary" paragraph>
-                  Select text in the content area to see its definition.
+                  Select any word or phrase in the text area to look up its definition.
                 </Typography>
-                <Box
-                  component="img"
-                  src="https://cdn-icons-png.flaticon.com/512/1829/1829371.png"
-                  alt="Select text illustration"
-                  sx={{ width: 80, height: 80, opacity: 0.6, mt: 2 }}
-                />
+
+                <Box sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  bgcolor: 'background.default',
+                  p: 2,
+                  borderRadius: 1,
+                  mt: 2,
+                  mb: 2
+                }}>
+                  <Box
+                    component="img"
+                    src="https://cdn-icons-png.flaticon.com/512/1829/1829371.png"
+                    alt="Select text illustration"
+                    sx={{ width: 60, height: 60, opacity: 0.7, mb: 1.5 }}
+                  />
+                  <Typography variant="caption" color="text.secondary" align="center">
+                    <strong>How it works:</strong> Highlight any text in the section to instantly see its definition here.
+                  </Typography>
+                </Box>
+
+                <Alert severity="info" sx={{ mt: 2 }}>
+                  <Typography variant="caption">
+                    Try words like "curious", "rabbit", "wonderland", or any unfamiliar terms you encounter while reading.
+                  </Typography>
+                </Alert>
               </Box>
             )}
           </Box>
@@ -835,39 +989,48 @@ const MainInteractionPage: React.FC = () => {
                       {sectionError}
                     </Alert>
                   ) : (
-                    <Box
-                      ref={textAreaRef}
-                      onClick={handleTextSelection}
-                      onMouseUp={handleTextSelection}
-                      sx={{
-                        p: 2,
-                        bgcolor: 'background.default',
-                        borderRadius: 1,
-                        whiteSpace: 'pre-wrap',
-                        border: '2px dashed',
-                        borderColor: 'primary.light',
-                        position: 'relative',
-                        '&::before': {
-                          content: '"Try selecting some text here"',
+                    <Box sx={{ position: 'relative' }}>
+                      <Box
+                        ref={textAreaRef}
+                        onClick={handleTextSelection}
+                        onMouseUp={handleTextSelection}
+                        sx={{
+                          p: 2,
+                          bgcolor: 'background.default',
+                          borderRadius: 1,
+                          whiteSpace: 'pre-wrap',
+                          border: '2px dashed',
+                          borderColor: 'primary.light',
+                          position: 'relative',
+                          '& ::selection': {
+                            backgroundColor: theme.palette.primary.main,
+                            color: theme.palette.primary.contrastText,
+                          }
+                        }}
+                      >
+                        {/* Tooltip overlay */}
+                        <Box sx={{
                           position: 'absolute',
                           top: '-12px',
                           right: '10px',
-                          bgcolor: 'primary.light',
+                          bgcolor: 'primary.main',
                           color: 'primary.contrastText',
-                          px: 1,
+                          px: 1.5,
                           py: 0.5,
                           borderRadius: 1,
                           fontSize: '0.75rem',
                           fontWeight: 'bold',
                           zIndex: 1,
-                        },
-                        '& ::selection': {
-                          backgroundColor: theme.palette.primary.main,
-                          color: theme.palette.primary.contrastText,
-                        }
-                      }}
-                    >
-                      {sectionContent || 'No content available for this section.'}
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 0.5,
+                          boxShadow: 1
+                        }}>
+                          <SearchIcon fontSize="inherit" />
+                          Highlight any text to look up
+                        </Box>
+                        {sectionContent || 'No content available for this section.'}
+                      </Box>
                     </Box>
                   )}
                 </Collapse>
