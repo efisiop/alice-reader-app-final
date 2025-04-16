@@ -28,12 +28,13 @@ import AdminDashboard from './pages/Admin/AdminDashboard';
 import { ConsultantDashboardPage } from './pages/Consultant/ConsultantDashboardPage';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
 // Import test pages only in development mode
-import TestPage from './pages/TestPage';
-import TestReaderPage from './pages/TestReaderPage';
-import TestReaderInterfacePage from './pages/TestReaderInterfacePage';
-import TestDirectReaderPage from './pages/TestDirectReaderPage';
-import TestLinks from './pages/TestLinks';
-import HashTestLinks from './pages/HashTestLinks';
+// These imports are conditionally loaded to prevent 404 errors in production
+const TestPage = import.meta.env.DEV ? React.lazy(() => import('./pages/TestPage')) : () => null;
+const TestReaderPage = import.meta.env.DEV ? React.lazy(() => import('./pages/TestReaderPage')) : () => null;
+const TestReaderInterfacePage = import.meta.env.DEV ? React.lazy(() => import('./pages/TestReaderInterfacePage')) : () => null;
+const TestDirectReaderPage = import.meta.env.DEV ? React.lazy(() => import('./pages/TestDirectReaderPage')) : () => null;
+const TestLinks = import.meta.env.DEV ? React.lazy(() => import('./pages/TestLinks')) : () => null;
+const HashTestLinks = import.meta.env.DEV ? React.lazy(() => import('./pages/HashTestLinks')) : () => null;
 
 // Services
 import { initializeServices } from './services';
@@ -135,18 +136,19 @@ function App() {
             <Route path="/service-status" element={<RouteGuard routeType="admin"><ServiceStatusCheck /></RouteGuard>} />
 
             {/* Test Routes - Only available in development mode */}
-            {/* These routes are defined in src/routes/TestRoutes.tsx */}
             {import.meta.env.DEV && (
-              <>
-                <Route path="/test" element={<TestPage />} />
-                <Route path="/test-reader" element={<TestReaderPage />} />
-                <Route path="/test-reader-interface" element={<TestReaderInterfacePage />} />
-                <Route path="/test-direct-reader" element={<TestDirectReaderPage />} />
-                <Route path="/test-links" element={<TestLinks />} />
-                <Route path="/hash-test-links" element={<HashTestLinks />} />
-                <Route path="/test-reader-page/:pageNumber" element={<ReaderPage />} />
-                <Route path="/test-main-interaction" element={<MainInteractionPage />} />
-              </>
+              <React.Suspense fallback={<div>Loading test routes...</div>}>
+                <>
+                  <Route path="/test" element={<TestPage />} />
+                  <Route path="/test-reader" element={<TestReaderPage />} />
+                  <Route path="/test-reader-interface" element={<TestReaderInterfacePage />} />
+                  <Route path="/test-direct-reader" element={<TestDirectReaderPage />} />
+                  <Route path="/test-links" element={<TestLinks />} />
+                  <Route path="/hash-test-links" element={<HashTestLinks />} />
+                  <Route path="/test-reader-page/:pageNumber" element={<ReaderPage />} />
+                  <Route path="/test-main-interaction" element={<MainInteractionPage />} />
+                </>
+              </React.Suspense>
             )}
           </Routes>
         </main>
