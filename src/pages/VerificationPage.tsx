@@ -4,7 +4,7 @@ import {
   Paper, Alert, CircularProgress, Link, Checkbox, FormControlLabel,
   Snackbar
 } from '@mui/material';
-import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import LoadingState from '../components/common/LoadingState';
 
@@ -20,18 +20,16 @@ const VerificationPage: React.FC = () => {
   const [initialLoading, setInitialLoading] = useState(true);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const { setIsVerified, user, isVerified, verifyBook } = useAuth();
+  const { setIsVerified, user, isVerified, verifyBook, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   // Check if user is already verified
   useEffect(() => {
-    console.log('VerificationPage: Checking verification status...');
     const checkVerificationStatus = async () => {
       try {
         // If user is already verified, redirect to reader dashboard
         if (isVerified) {
-          console.log('VerificationPage: User already verified, redirecting to reader...');
           navigate('/reader');
           return;
         }
@@ -39,7 +37,6 @@ const VerificationPage: React.FC = () => {
         // Get user data from location state if available
         const state = location.state as any;
         if (state) {
-          console.log('VerificationPage: Found user data in location state');
           if (state.firstName) setFirstName(state.firstName);
           if (state.lastName) setLastName(state.lastName);
           if (state.email) setEmail(state.email);
@@ -47,13 +44,12 @@ const VerificationPage: React.FC = () => {
           if (state.message) setSuccessMessage(state.message);
         } else if (user) {
           // If no state but user is logged in, use user data
-          console.log('VerificationPage: Using logged in user data');
           setEmail(user.email || '');
           // We don't have first/last name in the user object directly
           // This would be fetched from the user profile in a real app
         }
       } catch (err) {
-        console.error('VerificationPage: Error checking verification status:', err);
+        console.error('Error checking verification status:', err);
       } finally {
         setInitialLoading(false);
       }
@@ -108,7 +104,6 @@ const VerificationPage: React.FC = () => {
   // Handle verification
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('VerificationPage: Starting verification process...');
 
     // Validate form
     if (!validateForm()) {
@@ -123,47 +118,33 @@ const VerificationPage: React.FC = () => {
       const effectiveUserId = user?.id || userId;
 
       if (!effectiveUserId) {
-        console.error('VerificationPage: No user ID available for verification');
         throw new Error('User not found. Please log in again.');
       }
-
-      console.log('VerificationPage: Verifying with user ID:', effectiveUserId);
-      console.log('VerificationPage: Verification code:', verificationCode);
-      console.log('VerificationPage: First name:', firstName);
-      console.log('VerificationPage: Last name:', lastName);
 
       // Use the comprehensive verification function from AuthContext
       const { success, error: verifyError } = await verifyBook(verificationCode, firstName, lastName);
 
       if (!success || verifyError) {
-        console.error('VerificationPage: Verification error:', verifyError);
         throw verifyError || new Error('Verification failed');
       }
 
       // Explicitly update verification state in the frontend
-      console.log('VerificationPage: Verification successful, updating isVerified state');
       setIsVerified(true);
 
       // Show success message
       setSuccessMessage('Book verified successfully! Redirecting to dashboard...');
 
-      // Add debug info
-      console.log('VerificationPage: Verification successful for user:', effectiveUserId);
-      console.log('VerificationPage: Verification state updated, redirecting to dashboard');
-
       // Ensure we're redirecting to the correct page
       const redirectPath = '/dashboard';
-      console.log(`VerificationPage: Will redirect to ${redirectPath} after success`);
 
       // Use a more reliable redirection method
       // First set a short delay to show success message
       setTimeout(() => {
-        console.log(`VerificationPage: Redirecting to ${redirectPath} now`);
         navigate(redirectPath, { replace: true });
       }, 1500);
 
     } catch (err: any) {
-      console.error('VerificationPage: Verification error:', err);
+      console.error('Verification error:', err);
       setError(err.message || 'Verification failed. Please try again.');
     } finally {
       setLoading(false);
@@ -318,13 +299,18 @@ const VerificationPage: React.FC = () => {
               {loading ? <CircularProgress size={24} /> : 'Verify & Activate'}
             </Button>
 
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Link href="/test-codes.html" target="_blank" variant="body2">
-                Test Verification Codes
-              </Link>
-              <Link component={RouterLink} to="/status" variant="body2">
-                System Status
-              </Link>
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 2 }}>
+              <Button
+                variant="outlined"
+                color="secondary"
+                onClick={() => {
+                  // Sign out and redirect to login
+                  signOut();
+                  navigate('/');
+                }}
+              >
+                Sign Out
+              </Button>
             </Box>
           </Box>
         </Paper>

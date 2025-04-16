@@ -22,7 +22,6 @@ import BookIcon from '@mui/icons-material/Book';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import PersonIcon from '@mui/icons-material/Person';
 import { localAliceCover } from '../assets';
-import localAliceCoverImg from '../assets/local_images/alice_book_cover.jpg';
 
 const LandingPage: React.FC = () => {
   const theme = useTheme();
@@ -155,7 +154,7 @@ const LandingPage: React.FC = () => {
             <Grid item xs={12} md={4}>
               <Box
                 component="img"
-                src={localAliceCoverImg}
+                src={localAliceCover}
                 alt="Alice in Wonderland"
                 sx={{
                   width: '100%',
