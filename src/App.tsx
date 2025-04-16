@@ -26,7 +26,7 @@ import HelpRequests from './pages/Consultant/HelpRequests';
 import AdminDashboard from './pages/Admin/AdminDashboard';
 import { ConsultantDashboardPage } from './pages/Consultant/ConsultantDashboardPage';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
-// Import test pages
+// Import test pages only in development mode
 import TestPage from './pages/TestPage';
 import TestReaderPage from './pages/TestReaderPage';
 import TestReaderInterfacePage from './pages/TestReaderInterfacePage';
@@ -134,7 +134,8 @@ function App() {
             <Route path="/service-status" element={<RouteGuard routeType="admin"><ServiceStatusCheck /></RouteGuard>} />
 
             {/* Test Routes - Only available in development mode */}
-            {process.env.NODE_ENV === 'development' && (
+            {/* These routes are defined in src/routes/TestRoutes.tsx */}
+            {import.meta.env.DEV && (
               <>
                 <Route path="/test" element={<TestPage />} />
                 <Route path="/test-reader" element={<TestReaderPage />} />

@@ -61,6 +61,16 @@ export default defineConfig(({ mode }) => {
             supabase: ['@supabase/supabase-js'],
           },
         },
+        // Exclude test pages from production build
+        external: mode === 'production' ? [
+          './pages/TestPage',
+          './pages/TestReaderPage',
+          './pages/TestReaderInterfacePage',
+          './pages/TestDirectReaderPage',
+          './pages/TestLinks',
+          './pages/HashTestLinks',
+          './routes/TestRoutes',
+        ] : [],
       },
       // Generate 404.html for GitHub Pages SPA support
       assetsDir: 'assets',
