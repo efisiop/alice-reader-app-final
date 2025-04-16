@@ -10,7 +10,7 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { useSnackbar } from 'notistack';
+import { useSnackbar } from '../../utils/notistackUtils';
 import { consultantService } from '../../services/consultantService';
 import { HelpRequest } from '../../types/helpRequest';
 import { HelpRequestCard } from '../../components/HelpRequestCard';
@@ -22,7 +22,7 @@ export const HelpRequestsTab: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
-  
+
   const [helpRequests, setHelpRequests] = useState<HelpRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -74,12 +74,12 @@ export const HelpRequestsTab: React.FC = () => {
   if (loading) {
     return (
       <Box p={isMobile ? 2 : 3}>
-        <Box 
-          mb={isMobile ? 2 : 3} 
-          display="flex" 
+        <Box
+          mb={isMobile ? 2 : 3}
+          display="flex"
           flexDirection={isMobile ? 'column' : 'row'}
           gap={isMobile ? 2 : 0}
-          justifyContent="space-between" 
+          justifyContent="space-between"
           alignItems={isMobile ? 'stretch' : 'center'}
         >
           <Typography variant={isMobile ? 'h6' : 'h5'}>Help Requests</Typography>
@@ -98,12 +98,12 @@ export const HelpRequestsTab: React.FC = () => {
 
   return (
     <Box p={isMobile ? 2 : 3}>
-      <Box 
-        mb={isMobile ? 2 : 3} 
-        display="flex" 
+      <Box
+        mb={isMobile ? 2 : 3}
+        display="flex"
         flexDirection={isMobile ? 'column' : 'row'}
         gap={isMobile ? 2 : 0}
-        justifyContent="space-between" 
+        justifyContent="space-between"
         alignItems={isMobile ? 'stretch' : 'center'}
       >
         <Typography variant={isMobile ? 'h6' : 'h5'}>Help Requests</Typography>
@@ -124,11 +124,11 @@ export const HelpRequestsTab: React.FC = () => {
 
       <Grid container spacing={isMobile ? 1.5 : 2}>
         {helpRequests.map(request => (
-          <Grid 
-            item 
-            xs={12} 
-            sm={isTablet ? 12 : 6} 
-            md={4} 
+          <Grid
+            item
+            xs={12}
+            sm={isTablet ? 12 : 6}
+            md={4}
             key={request.id}
           >
             <HelpRequestCard
@@ -141,9 +141,9 @@ export const HelpRequestsTab: React.FC = () => {
         ))}
         {helpRequests.length === 0 && (
           <Grid item xs={12}>
-            <Typography 
-              variant="body1" 
-              textAlign="center" 
+            <Typography
+              variant="body1"
+              textAlign="center"
               color="text.secondary"
               sx={{ py: isMobile ? 4 : 6 }}
             >

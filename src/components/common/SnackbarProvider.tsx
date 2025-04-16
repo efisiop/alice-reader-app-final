@@ -1,5 +1,5 @@
 import React from 'react';
-import { SnackbarProvider as NotistackProvider } from 'notistack';
+import { SnackbarProvider as NotistackProvider } from '../../utils/notistackUtils';
 import { useTheme } from '@mui/material/styles';
 
 interface SnackbarProviderProps {

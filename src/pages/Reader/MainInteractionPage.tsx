@@ -25,7 +25,7 @@ import {
   CircularProgress,
 } from '@mui/material';
 import { useParams, Link as RouterLink, useNavigate } from 'react-router-dom';
-import { useSnackbar } from 'notistack';
+import { useSnackbar } from '../../utils/notistackUtils';
 import { useBookService, useAuthService } from '../../hooks/useService';
 import { useAuth } from '../../contexts/AuthContext';
 import { LoadingSkeleton } from '../../components/common/LoadingSkeleton';

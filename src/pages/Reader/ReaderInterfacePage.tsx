@@ -11,9 +11,14 @@ import {
   IconButton,
   Button,
   Alert,
+  TextField,
+  Divider,
+  Card,
+  CardContent,
+  InputAdornment,
 } from '@mui/material';
 import { useParams, Link as RouterLink, useNavigate } from 'react-router-dom';
-import { useSnackbar } from 'notistack';
+import { useSnackbar } from '../../utils/notistackUtils';
 import { readerService } from '../../services/readerService';
 import { Section } from '../../types/section';
 import { LoadingIndicator } from '../../components/common/LoadingIndicator';
@@ -22,6 +27,10 @@ import { LoadingButton } from '../../components/common/LoadingButton';
 import HelpIcon from '@mui/icons-material/Help';
 import HomeIcon from '@mui/icons-material/Home';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import BookmarkIcon from '@mui/icons-material/Bookmark';
+import SearchIcon from '@mui/icons-material/Search';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
+import UpdateIcon from '@mui/icons-material/Update';
 
 export const ReaderInterfacePage: React.FC = () => {
   const theme = useTheme();
@@ -49,6 +58,8 @@ export const ReaderInterfacePage: React.FC = () => {
 
   // UI state
   const [helpDrawerOpen, setHelpDrawerOpen] = useState(false);
+  const [currentPageInput, setCurrentPageInput] = useState<string>('');
+  const [isUpdatingLocation, setIsUpdatingLocation] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
@@ -56,6 +67,13 @@ export const ReaderInterfacePage: React.FC = () => {
     loadBookData();
     loadReadingProgress();
   }, [sectionId]);
+
+  // Initialize currentPageInput when readingProgress is loaded
+  useEffect(() => {
+    if (readingProgress && readingProgress.currentPage) {
+      setCurrentPageInput(readingProgress.currentPage.toString());
+    }
+  }, [readingProgress]);
 
   const loadSection = async () => {
     if (!sectionId) {
@@ -143,6 +161,35 @@ export const ReaderInterfacePage: React.FC = () => {
       enqueueSnackbar('Failed to submit help request', { variant: 'error' });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleUpdateLocation = async () => {
+    const pageNumber = parseInt(currentPageInput);
+    if (isNaN(pageNumber) || pageNumber < 1) {
+      enqueueSnackbar('Please enter a valid page number', { variant: 'error' });
+      return;
+    }
+
+    try {
+      setIsUpdatingLocation(true);
+      // Here you would update the reading progress in your database
+      // For example: await bookService.updateReadingProgress(userId, 'alice-in-wonderland', pageNumber);
+
+      // For now, we'll just update the local state
+      setReadingProgress({
+        ...readingProgress,
+        currentPage: pageNumber,
+        // Calculate percentage based on total pages
+        percentage_complete: Math.round((pageNumber / (readingProgress?.totalPages || 100)) * 100)
+      });
+
+      enqueueSnackbar('Reading location updated successfully', { variant: 'success' });
+    } catch (error) {
+      console.error('Error updating reading location:', error);
+      enqueueSnackbar('Failed to update reading location', { variant: 'error' });
+    } finally {
+      setIsUpdatingLocation(false);
     }
   };
 
@@ -291,48 +338,123 @@ export const ReaderInterfacePage: React.FC = () => {
         <Grid container spacing={isMobile ? 2 : 3}>
           <Grid item xs={12} md={8}>
             <Paper sx={{ p: isMobile ? 2 : 3, position: 'relative' }}>
-              {isMobile && (
-                <IconButton
-                  color="primary"
-                  onClick={() => setHelpDrawerOpen(true)}
-                  sx={{
-                    position: 'absolute',
-                    top: 8,
-                    right: 8,
-                    zIndex: 1,
-                  }}
+              <Typography variant="h5" gutterBottom>
+                Reading Companion
+              </Typography>
+
+              <Divider sx={{ mb: 3 }} />
+
+              {/* Current Location Display */}
+              <Box sx={{ mb: 4 }}>
+                <Typography variant="h6" gutterBottom>
+                  Current Location
+                </Typography>
+                <Card variant="outlined" sx={{ mb: 2, bgcolor: 'background.default' }}>
+                  <CardContent>
+                    <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center' }}>
+                      <MenuBookIcon sx={{ mr: 1, color: 'primary.main' }} />
+                      {readingProgress?.currentChapter || 'Chapter 1'}
+                    </Typography>
+                    <Typography variant="body1" sx={{ mt: 1, display: 'flex', alignItems: 'center' }}>
+                      <BookmarkIcon sx={{ mr: 1, color: 'primary.main' }} />
+                      Page {readingProgress?.currentPage || '1'} of {readingProgress?.totalPages || '100'}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Box>
+
+              {/* Page Input */}
+              <Box sx={{ mb: 4 }}>
+                <Typography variant="h6" gutterBottom>
+                  What page are you on in your physical book?
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                  <TextField
+                    label="Page Number"
+                    type="number"
+                    value={currentPageInput}
+                    onChange={(e) => setCurrentPageInput(e.target.value)}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <BookmarkIcon />
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={{ flexGrow: 1 }}
+                  />
+                  <LoadingButton
+                    variant="contained"
+                    onClick={handleUpdateLocation}
+                    loading={isUpdatingLocation}
+                    loadingText="Updating..."
+                    startIcon={<UpdateIcon />}
+                  >
+                    Update Location
+                  </LoadingButton>
+                </Box>
+              </Box>
+
+              {/* Interaction Placeholders */}
+              <Box sx={{ mb: 4 }}>
+                <Typography variant="h6" gutterBottom>
+                  Reading Tools
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <Button
+                      variant="outlined"
+                      fullWidth
+                      startIcon={<SearchIcon />}
+                      onClick={() => enqueueSnackbar('Dictionary lookup coming soon!', { variant: 'info' })}
+                    >
+                      Look Up Word
+                    </Button>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Button
+                      variant="outlined"
+                      fullWidth
+                      startIcon={<HelpIcon />}
+                      onClick={() => setHelpDrawerOpen(true)}
+                    >
+                      Ask AI Assistant
+                    </Button>
+                  </Grid>
+                </Grid>
+              </Box>
+
+              <Divider sx={{ mb: 3 }} />
+
+              <Box sx={{ textAlign: 'center' }}>
+                <Button
+                  component={RouterLink}
+                  to="/reader"
+                  variant="contained"
+                  startIcon={<HomeIcon />}
                 >
-                  <HelpIcon />
-                </IconButton>
-              )}
-              <Typography
-                variant={isMobile ? 'h6' : 'h5'}
-                gutterBottom
-                sx={{ pr: isMobile ? 5 : 0 }}
-              >
-                {section.chapter.title}
-              </Typography>
-              <Typography
-                variant={isMobile ? 'subtitle1' : 'h6'}
-                color="text.secondary"
-                gutterBottom
-              >
-                {section.title}
-              </Typography>
-              <Typography
-                variant="body1"
-                sx={{
-                  fontSize: isMobile ? '0.9rem' : '1rem',
-                  lineHeight: 1.6,
-                }}
-              >
-                {section.content}
-              </Typography>
+                  Back to Dashboard
+                </Button>
+              </Box>
             </Paper>
           </Grid>
+
+          {/* Context Sidebar */}
           {!isMobile && (
             <Grid item xs={12} md={4}>
               <Paper sx={{ p: 3, position: 'sticky', top: 24 }}>
+                <Typography variant="h6" gutterBottom>
+                  Context & Notes
+                </Typography>
+                <Typography variant="body2" color="text.secondary" paragraph>
+                  This is where context about your current reading location will appear.
+                </Typography>
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  <Typography variant="body2">
+                    As you read and update your location, we'll provide helpful context, definitions, and insights about the story.
+                  </Typography>
+                </Alert>
+                <Divider sx={{ my: 2 }} />
                 {renderHelpPanel()}
               </Paper>
             </Grid>

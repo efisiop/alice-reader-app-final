@@ -33,6 +33,40 @@ export default defineConfig(({ mode }) => {
     },
     optimizeDeps: {
       include: ['notistack'],
+      force: true,
+    },
+    build: {
+      outDir: 'dist',
+      sourcemap: mode !== 'production',
+      assetsDir: 'assets',
+      emptyOutDir: true,
+      commonjsOptions: {
+        include: [/notistack/, /node_modules/],
+      },
+      rollupOptions: {
+        ...(mode === 'production' ? {
+          external: [
+            './pages/TestPage',
+            './pages/TestReaderPage',
+            './pages/TestReaderInterfacePage',
+            './pages/TestDirectReaderPage',
+            './pages/TestLinks',
+            './pages/HashTestLinks',
+            './routes/TestRoutes',
+          ],
+        } : {}),
+        output: {
+          // Add hashes to filenames for cache busting
+          entryFileNames: `assets/[name]-[hash].js`,
+          chunkFileNames: `assets/[name]-[hash].js`,
+          assetFileNames: `assets/[name]-[hash].[ext]`,
+          manualChunks: {
+            vendor: ['react', 'react-dom', 'react-router-dom', 'notistack'],
+            ui: ['@mui/material', '@mui/icons-material'],
+            supabase: ['@supabase/supabase-js'],
+          },
+        },
+      },
     },
     resolve: {
       alias: {
@@ -49,35 +83,6 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       open: true,
     },
-    build: {
-      outDir: 'dist',
-      sourcemap: mode !== 'production',
-      rollupOptions: {
-        output: {
-          // Add hashes to filenames for cache busting
-          entryFileNames: `assets/[name]-[hash].js`,
-          chunkFileNames: `assets/[name]-[hash].js`,
-          assetFileNames: `assets/[name]-[hash].[ext]`,
-          manualChunks: {
-            vendor: ['react', 'react-dom', 'react-router-dom', 'notistack'],
-            ui: ['@mui/material', '@mui/icons-material'],
-            supabase: ['@supabase/supabase-js'],
-          },
-        },
-        // Exclude test pages from production build
-        external: mode === 'production' ? [
-          './pages/TestPage',
-          './pages/TestReaderPage',
-          './pages/TestReaderInterfacePage',
-          './pages/TestDirectReaderPage',
-          './pages/TestLinks',
-          './pages/HashTestLinks',
-          './routes/TestRoutes',
-        ] : [],
-      },
-      // Generate 404.html for GitHub Pages SPA support
-      assetsDir: 'assets',
-      emptyOutDir: true,
-    },
+
   }
 })
