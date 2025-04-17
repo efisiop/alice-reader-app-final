@@ -15,12 +15,10 @@ import {
 } from '@mui/material';
 import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import MenuIcon from '@mui/icons-material/Menu';
-import HomeIcon from '@mui/icons-material/Home';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LogoutIcon from '@mui/icons-material/Logout';
-import BookIcon from '@mui/icons-material/Book';
 import { useAuth } from '../../contexts/AuthContext';
-import { localAliceCover } from '../../assets';
+
 
 const Header: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -94,10 +92,6 @@ const Header: React.FC = () => {
 
       <Divider />
 
-      <MenuItem onClick={() => handleNavigate('/reader')}>
-        <BookIcon sx={{ mr: 1 }} fontSize="small" />
-        {location.pathname.includes('/reader/interaction') ? 'Welcome Dashboard' : 'Reader Dashboard'}
-      </MenuItem>
 
       <MenuItem onClick={handleSignOut}>
         <LogoutIcon sx={{ mr: 1 }} fontSize="small" />
@@ -123,12 +117,7 @@ const Header: React.FC = () => {
     >
       {user ? (
         <>
-          <MenuItem onClick={() => handleNavigate('/reader')}>
-            <BookIcon sx={{ mr: 1 }} fontSize="small" />
-            {location.pathname.includes('/reader/interaction') ? 'Welcome Dashboard' : 'Reader Dashboard'}
-          </MenuItem>
 
-          <Divider />
 
           <MenuItem onClick={handleSignOut}>
             <LogoutIcon sx={{ mr: 1 }} fontSize="small" />
@@ -154,36 +143,7 @@ const Header: React.FC = () => {
   return (
     <AppBar position="static" color="default" elevation={1}>
       <Toolbar>
-        <Box
-          component={RouterLink}
-          to={user && location.pathname.includes('/reader/interaction') ? '/reader' : '/'}
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            textDecoration: 'none',
-            color: 'inherit'
-          }}
-        >
-          <Box
-            component="img"
-            src={localAliceCover}
-            alt="Alice Reader"
-            sx={{
-              height: 40,
-              width: 'auto',
-              mr: 1,
-              borderRadius: 1
-            }}
-          />
-          <Typography
-            variant="h6"
-            noWrap
-            component="div"
-            sx={{ display: { xs: 'none', sm: 'block' } }}
-          >
-            Alice Reader
-          </Typography>
-        </Box>
+        {/* Removed Alice image and title */}
 
         <Box sx={{ flexGrow: 1 }} />
 
@@ -191,14 +151,6 @@ const Header: React.FC = () => {
           <Box sx={{ display: 'flex' }}>
             {user ? (
               <>
-                <Button
-                  color="inherit"
-                  component={RouterLink}
-                  to="/reader"
-                >
-                  {location.pathname.includes('/reader/interaction') ? 'Welcome Dashboard' : 'Reader Dashboard'}
-                </Button>
-
                 <IconButton
                   edge="end"
                   aria-label="account of current user"

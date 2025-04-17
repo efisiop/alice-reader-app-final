@@ -26,6 +26,8 @@ import { useSnackbar } from '../../utils/notistackUtils';
 import CloseIcon from '@mui/icons-material/Close';
 import EqualizerIcon from '@mui/icons-material/Equalizer';
 import NoteIcon from '@mui/icons-material/Note';
+import HelpIcon from '@mui/icons-material/Help';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
 
 // Define types for Section data
 interface SectionSnippet {
@@ -345,6 +347,26 @@ const MainInteractionPage: React.FC = () => {
                   <NoteIcon fontSize="small" color="primary" />
                 </ListItemIcon>
                 <ListItemText primary="My Notes" primaryTypographyProps={{ variant: 'body2' }} />
+              </ListItem>
+            </List>
+         </Box>
+
+         <Divider sx={{ my: 2 }} />
+         {/* Help & Tutorials */}
+         <Box>
+            <Typography variant="overline">Help & Tutorials</Typography>
+            <List dense sx={{ mt: 1 }}>
+              <ListItem button component={RouterLink} to="/reader" sx={{ borderRadius: 1, '&:hover': { bgcolor: 'action.hover' } }}>
+                <ListItemIcon sx={{ minWidth: '30px' }}>
+                  <MenuBookIcon fontSize="small" color="primary" />
+                </ListItemIcon>
+                <ListItemText primary="Welcome Page" primaryTypographyProps={{ variant: 'body2' }} />
+              </ListItem>
+              <ListItem button onClick={() => alert('Tutorials coming soon!')} sx={{ borderRadius: 1, '&:hover': { bgcolor: 'action.hover' } }}>
+                <ListItemIcon sx={{ minWidth: '30px' }}>
+                  <HelpIcon fontSize="small" color="primary" />
+                </ListItemIcon>
+                <ListItemText primary="Tutorials" primaryTypographyProps={{ variant: 'body2' }} />
               </ListItem>
             </List>
          </Box>
