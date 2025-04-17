@@ -121,11 +121,6 @@ const Header: React.FC = () => {
       open={isMobileMenuOpen}
       onClose={handleMenuClose}
     >
-      <MenuItem onClick={() => handleNavigate('/')}>
-        <HomeIcon sx={{ mr: 1 }} fontSize="small" />
-        Home
-      </MenuItem>
-
       {user ? (
         <>
           <MenuItem onClick={() => handleNavigate('/reader')}>
@@ -159,17 +154,6 @@ const Header: React.FC = () => {
   return (
     <AppBar position="static" color="default" elevation={1}>
       <Toolbar>
-        <IconButton
-          component={RouterLink}
-          to="/"
-          edge="start"
-          color="inherit"
-          aria-label="home"
-          sx={{ mr: 2 }}
-        >
-          <HomeIcon />
-        </IconButton>
-
         <Box
           component={RouterLink}
           to={user && location.pathname.includes('/reader/interaction') ? '/reader' : '/'}
@@ -205,14 +189,6 @@ const Header: React.FC = () => {
 
         {!isMobile ? (
           <Box sx={{ display: 'flex' }}>
-            <Button
-              color="inherit"
-              component={RouterLink}
-              to="/"
-            >
-              Home
-            </Button>
-
             {user ? (
               <>
                 <Button
