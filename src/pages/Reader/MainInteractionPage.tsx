@@ -28,6 +28,7 @@ import EqualizerIcon from '@mui/icons-material/Equalizer';
 import NoteIcon from '@mui/icons-material/Note';
 import HelpIcon from '@mui/icons-material/Help';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
+import QuestionAnswerIcon from '@mui/icons-material/QuestionAnswer';
 import { readerService, SectionSnippet } from '../../services/readerService';
 
 // Define types for Section data
@@ -99,7 +100,7 @@ const MainInteractionPage: React.FC = () => {
       // This fixes the "invalid input syntax for type uuid" error
       const snippets = await readerService.getSectionSnippetsForPage(ALICE_BOOK_UUID, pageNum);
       setSectionSnippets(snippets || []);
-      
+
       if (snippets.length === 0) {
         setFetchError(`No sections found on page ${pageNum}.`);
       }
@@ -124,7 +125,7 @@ const MainInteractionPage: React.FC = () => {
      try {
         // Use the readerService to get full section content
         const fullSection = await readerService.getSection(sectionId);
-        
+
         // Transform to expected format
         setSelectedSection({
           id: fullSection.id,
@@ -181,6 +182,13 @@ const MainInteractionPage: React.FC = () => {
      setSelectedText(null);
      setDefinitionData(null);
      setIsLoadingDefinition(false);
+  };
+
+  // Handle AI Assistant button click
+  const handleAskAI = () => {
+    console.log('AI Assistant Clicked - Section Context:', selectedSection);
+    // Future implementation will open the AI chat interface
+    enqueueSnackbar('AI Assistant feature coming soon!', { variant: 'info' });
   };
 
    // Add Escape key listener (keep existing logic)
@@ -317,12 +325,33 @@ const MainInteractionPage: React.FC = () => {
         </Box>
         <Divider sx={{ mb: 2 }} />
 
-        {/* AI Assistant Area (Placeholder) */}
+        {/* AI Assistant Area */}
         <Box>
            <Typography variant="overline">AI Assistant</Typography>
-           <Button size="small" variant="outlined" sx={{ mt: 1 }} disabled={!selectedSection}>
+           <Button
+              size="small"
+              variant="contained"
+              color="primary"
+              startIcon={<QuestionAnswerIcon />}
+              sx={{
+                mt: 1,
+                width: '100%',
+                display: 'flex',
+                justifyContent: 'flex-start',
+                textTransform: 'none',
+                boxShadow: 2,
+                '&:hover': { boxShadow: 3 }
+              }}
+              disabled={!selectedSection}
+              onClick={handleAskAI}
+           >
               Ask AI about this section
            </Button>
+           {!selectedSection && (
+             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+               Select a section to enable AI assistance.
+             </Typography>
+           )}
            {/* AI Chat interface will go here */}
         </Box>
          <Divider sx={{ my: 2 }} />
