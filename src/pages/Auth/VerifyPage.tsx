@@ -62,8 +62,8 @@ const VerifyPage: React.FC = () => {
 
     // Only redirect if we're not coming from registration and the user is verified
     if (!isFromRegistration && user && isVerified) {
-      console.log('VerifyPage: User already verified, redirecting to reader dashboard');
-      navigate('/reader', { replace: true });
+      console.log('VerifyPage: User already verified, redirecting to reader interaction page');
+      navigate('/reader/interaction', { replace: true });
     } else if (!user && !isFromRegistration) {
       // If there's no user and we're not coming from registration, redirect to login
       console.log('VerifyPage: No user found, redirecting to login');
@@ -105,8 +105,8 @@ const VerifyPage: React.FC = () => {
   // Monitor isVerified changes and redirect if needed
   useEffect(() => {
     if (isVerified && user) {
-      console.log('VerifyPage: isVerified changed to true, redirecting to reader dashboard');
-      navigate('/reader', { replace: true });
+      console.log('VerifyPage: isVerified changed to true, redirecting to reader interaction page');
+      navigate('/reader/interaction', { replace: true });
     }
   }, [isVerified, user, navigate]);
 
@@ -172,10 +172,10 @@ const VerifyPage: React.FC = () => {
       setActiveStep(1);
 
       // Short delay to show the success message before redirecting
-      console.log('VerifyPage: Setting up redirect to reader dashboard');
+      console.log('VerifyPage: Setting up redirect to reader interaction page');
       setTimeout(() => {
-        console.log('VerifyPage: Executing redirect to reader dashboard');
-        navigate('/reader', { replace: true });
+        console.log('VerifyPage: Executing redirect to reader interaction page');
+        navigate('/reader/interaction', { replace: true });
       }, 1000);
 
     } catch (err: any) {

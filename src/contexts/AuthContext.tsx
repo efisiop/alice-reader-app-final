@@ -321,6 +321,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('AuthContext: Verification successful, updating isVerified state to true');
       setIsVerified(true);
 
+      // Note: After verification, the user will be redirected to the reader dashboard
+      // This happens in the VerifyPage component's useEffect that watches isVerified
+
       // Force a re-fetch of the profile to ensure all data is in sync
       try {
         console.log('AuthContext: Re-fetching user profile after verification');

@@ -13,7 +13,7 @@ interface RouteGuardProps {
 
 /**
  * RouteGuard component to handle routing based on authentication and verification status
- * 
+ *
  * routeType options:
  * - 'public': Accessible to everyone (landing, login, register, etc.)
  * - 'auth': Requires authentication but not verification (verify page, logout)
@@ -40,10 +40,10 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({ children, routeType }) =
   switch (routeType) {
     case 'public':
       // Public routes are always accessible
-      // If user is logged in and verified, some public routes might redirect to dashboard
+      // If user is logged in and verified, some public routes might redirect to reader interaction page
       if (user && isVerified && (location.pathname === '/login' || location.pathname === '/register')) {
-        appLog('RouteGuard', 'User is verified, redirecting from public route to reader dashboard', 'info');
-        return <Navigate to="/reader" replace />;
+        appLog('RouteGuard', 'User is verified, redirecting from public route to reader interaction page', 'info');
+        return <Navigate to="/reader/interaction" replace />;
       }
       return <>{children}</>;
 
@@ -61,12 +61,12 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({ children, routeType }) =
         appLog('RouteGuard', 'User not authenticated, redirecting to login', 'info');
         return <Navigate to="/login" state={{ from: location }} replace />;
       }
-      
+
       if (!isVerified) {
         appLog('RouteGuard', 'User not verified, redirecting to verification page', 'info');
         return <Navigate to="/verify" state={{ from: location }} replace />;
       }
-      
+
       return <>{children}</>;
 
     case 'admin':
@@ -75,31 +75,31 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({ children, routeType }) =
         appLog('RouteGuard', 'User not authenticated, redirecting to login', 'info');
         return <Navigate to="/login" state={{ from: location }} replace />;
       }
-      
+
       // Check admin status (adjust this based on how admin status is stored)
-      const isAdmin = profile?.is_admin || 
+      const isAdmin = profile?.is_admin ||
                      user.email?.endsWith('@alicereader.com') ||
                      user.email === 'admin@example.com';
-      
+
       if (!isAdmin) {
         appLog('RouteGuard', 'User not authorized for admin access', 'warning');
         return <Navigate to="/reader" replace />;
       }
-      
+
       return <>{children}</>;
 
     default:
       // Default to requiring verification for unknown route types
       appLog('RouteGuard', `Unknown route type: ${routeType}, treating as verified route`, 'warning');
-      
+
       if (!user) {
         return <Navigate to="/login" state={{ from: location }} replace />;
       }
-      
+
       if (!isVerified) {
         return <Navigate to="/verify" state={{ from: location }} replace />;
       }
-      
+
       return <>{children}</>;
   }
 };

@@ -1,14 +1,14 @@
 import React from 'react';
-import { 
-  AppBar, 
-  Toolbar, 
-  Typography, 
-  Button, 
-  IconButton, 
-  Box, 
-  Menu, 
-  MenuItem, 
-  Avatar, 
+import {
+  AppBar,
+  Toolbar,
+  Typography,
+  Button,
+  IconButton,
+  Box,
+  Menu,
+  MenuItem,
+  Avatar,
   Divider,
   useMediaQuery,
   useTheme
@@ -28,26 +28,26 @@ const Header: React.FC = () => {
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  
+
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const [mobileMenuAnchorEl, setMobileMenuAnchorEl] = React.useState<null | HTMLElement>(null);
-  
+
   const isMenuOpen = Boolean(anchorEl);
   const isMobileMenuOpen = Boolean(mobileMenuAnchorEl);
-  
+
   const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
   };
-  
+
   const handleMobileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setMobileMenuAnchorEl(event.currentTarget);
   };
-  
+
   const handleMenuClose = () => {
     setAnchorEl(null);
     setMobileMenuAnchorEl(null);
   };
-  
+
   const handleSignOut = async () => {
     handleMenuClose();
     try {
@@ -57,17 +57,17 @@ const Header: React.FC = () => {
       console.error('Error signing out:', error);
     }
   };
-  
+
   const handleNavigate = (path: string) => {
     handleMenuClose();
     navigate(path);
   };
-  
+
   // Don't show header on landing page
   if (location.pathname === '/') {
     return null;
   }
-  
+
   const renderMenu = (
     <Menu
       anchorEl={anchorEl}
@@ -91,21 +91,21 @@ const Header: React.FC = () => {
           <Typography variant="body2">{user.email}</Typography>
         </Box>
       )}
-      
+
       <Divider />
-      
+
       <MenuItem onClick={() => handleNavigate('/reader')}>
         <BookIcon sx={{ mr: 1 }} fontSize="small" />
-        Reader Dashboard
+        {location.pathname.includes('/reader/interaction') ? 'Welcome Dashboard' : 'Reader Dashboard'}
       </MenuItem>
-      
+
       <MenuItem onClick={handleSignOut}>
         <LogoutIcon sx={{ mr: 1 }} fontSize="small" />
         Sign Out
       </MenuItem>
     </Menu>
   );
-  
+
   const renderMobileMenu = (
     <Menu
       anchorEl={mobileMenuAnchorEl}
@@ -125,16 +125,16 @@ const Header: React.FC = () => {
         <HomeIcon sx={{ mr: 1 }} fontSize="small" />
         Home
       </MenuItem>
-      
+
       {user ? (
         <>
           <MenuItem onClick={() => handleNavigate('/reader')}>
             <BookIcon sx={{ mr: 1 }} fontSize="small" />
-            Reader Dashboard
+            {location.pathname.includes('/reader/interaction') ? 'Welcome Dashboard' : 'Reader Dashboard'}
           </MenuItem>
-          
+
           <Divider />
-          
+
           <MenuItem onClick={handleSignOut}>
             <LogoutIcon sx={{ mr: 1 }} fontSize="small" />
             Sign Out
@@ -146,7 +146,7 @@ const Header: React.FC = () => {
             <AccountCircleIcon sx={{ mr: 1 }} fontSize="small" />
             Sign In
           </MenuItem>
-          
+
           <MenuItem onClick={() => handleNavigate('/register')}>
             <AccountCircleIcon sx={{ mr: 1 }} fontSize="small" />
             Register
@@ -155,7 +155,7 @@ const Header: React.FC = () => {
       )}
     </Menu>
   );
-  
+
   return (
     <AppBar position="static" color="default" elevation={1}>
       <Toolbar>
@@ -169,24 +169,24 @@ const Header: React.FC = () => {
         >
           <HomeIcon />
         </IconButton>
-        
-        <Box 
-          component={RouterLink} 
-          to="/"
-          sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            textDecoration: 'none', 
-            color: 'inherit' 
+
+        <Box
+          component={RouterLink}
+          to={user && location.pathname.includes('/reader/interaction') ? '/reader' : '/'}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            textDecoration: 'none',
+            color: 'inherit'
           }}
         >
           <Box
             component="img"
             src={localAliceCover}
             alt="Alice Reader"
-            sx={{ 
-              height: 40, 
-              width: 'auto', 
+            sx={{
+              height: 40,
+              width: 'auto',
               mr: 1,
               borderRadius: 1
             }}
@@ -200,29 +200,29 @@ const Header: React.FC = () => {
             Alice Reader
           </Typography>
         </Box>
-        
+
         <Box sx={{ flexGrow: 1 }} />
-        
+
         {!isMobile ? (
           <Box sx={{ display: 'flex' }}>
-            <Button 
-              color="inherit" 
-              component={RouterLink} 
+            <Button
+              color="inherit"
+              component={RouterLink}
               to="/"
             >
               Home
             </Button>
-            
+
             {user ? (
               <>
-                <Button 
-                  color="inherit" 
-                  component={RouterLink} 
+                <Button
+                  color="inherit"
+                  component={RouterLink}
                   to="/reader"
                 >
-                  Reader Dashboard
+                  {location.pathname.includes('/reader/interaction') ? 'Welcome Dashboard' : 'Reader Dashboard'}
                 </Button>
-                
+
                 <IconButton
                   edge="end"
                   aria-label="account of current user"
@@ -237,18 +237,18 @@ const Header: React.FC = () => {
               </>
             ) : (
               <>
-                <Button 
-                  color="inherit" 
-                  component={RouterLink} 
+                <Button
+                  color="inherit"
+                  component={RouterLink}
                   to="/login"
                 >
                   Sign In
                 </Button>
-                
-                <Button 
-                  color="primary" 
+
+                <Button
+                  color="primary"
                   variant="contained"
-                  component={RouterLink} 
+                  component={RouterLink}
                   to="/register"
                   sx={{ ml: 1 }}
                 >
