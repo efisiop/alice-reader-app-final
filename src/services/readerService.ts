@@ -1,8 +1,16 @@
-import { supabase } from './supabaseClient';
-import { Section } from '../types/section';
+import { getSupabaseClient } from './supabaseClient';
+import { Section, Chapter } from '../types/section';
+
+// Interface for section snippets
+export interface SectionSnippet {
+  id: string;
+  number: number;
+  preview: string;
+}
 
 class ReaderService {
   async getSection(sectionId: string): Promise<Section> {
+    const supabase = await getSupabaseClient();
     const { data, error } = await supabase
       .from('sections')
       .select(`
@@ -18,10 +26,35 @@ class ReaderService {
       .single();
 
     if (error) throw error;
-    return data;
+    
+    // Transform the data to match the Section interface
+    // The chapter comes back as an array but we need it as a single object
+    const section: Section = {
+      id: data.id,
+      title: data.title,
+      content: data.content,
+      chapter: data.chapter.length > 0 ? data.chapter[0] : {} as Chapter
+    };
+    
+    return section;
+  }
+
+  async getSectionSnippetsForPage(bookId: string, pageNumber: number): Promise<SectionSnippet[]> {
+    const supabase = await getSupabaseClient();
+    const { data, error } = await supabase
+      .rpc('get_section_snippets_for_page', {
+        book_id_param: bookId,
+        page_number_param: pageNumber
+      });
+
+    if (error) throw error;
+    
+    // Return empty array if no data
+    return data || [];
   }
 
   async requestHelp(sectionId: string): Promise<void> {
+    const supabase = await getSupabaseClient();
     const { error } = await supabase
       .from('help_requests')
       .insert({

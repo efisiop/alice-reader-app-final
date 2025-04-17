@@ -28,13 +28,9 @@ import EqualizerIcon from '@mui/icons-material/Equalizer';
 import NoteIcon from '@mui/icons-material/Note';
 import HelpIcon from '@mui/icons-material/Help';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
+import { readerService, SectionSnippet } from '../../services/readerService';
 
 // Define types for Section data
-interface SectionSnippet {
-  id: string;
-  number: number;
-  preview: string; // e.g., first ~50 chars of content
-}
 interface SectionDetail extends SectionSnippet {
   content: string;
 }
@@ -96,20 +92,13 @@ const MainInteractionPage: React.FC = () => {
     setActivePage(pageNum);
     console.log(`Fetching sections for page: ${pageNum}`);
     try {
-      // TODO: Implement/Call bookService.getSectionsForPage(bookId, pageNum)
-      // This service needs to return an array of SectionSnippet objects
-      // const sections = await bookService.getSectionsForPage(bookId, pageNum);
-      // setSectionSnippets(sections || []); // Update state with fetched snippets
-
-      // --- MOCK SNIPPETS FOR NOW ---
-      await new Promise(res => setTimeout(res, 500)); // Simulate fetch
-      setSectionSnippets([
-          {id: 'sec1', number: 1, preview: 'Section 1: Alice was beginning to get very tired...'},
-          {id: 'sec2', number: 2, preview: 'Section 2: Suddenly a White Rabbit with pink eyes...'},
-          {id: 'sec3', number: 3, preview: 'Section 3: Down, down, down. Would the fall never...'},
-      ]);
-      // --- END MOCK SNIPPETS ---
-
+      // Use the new readerService method to get section snippets
+      const snippets = await readerService.getSectionSnippetsForPage(bookId, pageNum);
+      setSectionSnippets(snippets || []);
+      
+      if (snippets.length === 0) {
+        setFetchError(`No sections found on page ${pageNum}.`);
+      }
     } catch (err: any) {
       console.error('Error fetching sections:', err);
       setFetchError(`Failed to load sections for page ${pageNum}. ${err.message || ''}`);
@@ -129,15 +118,16 @@ const MainInteractionPage: React.FC = () => {
      setSelectedSection(null);
      console.log(`Fetching full content for section: ${sectionId}`);
      try {
-        // TODO: Implement/Call bookService.getSectionContent(sectionId)
-        // This service needs to return the full SectionDetail object (including content)
-        // const fullSection = await bookService.getSectionContent(sectionId);
-        // setSelectedSection(fullSection); // Update state with full section details
-
-        // --- MOCK FULL SECTION FOR NOW ---
-         await new Promise(res => setTimeout(res, 500)); // Simulate fetch
-         setSelectedSection({ ...snippet, content: `This is the full text content for ${snippet.preview}` });
-        // --- END MOCK ---
+        // Use the readerService to get full section content
+        const fullSection = await readerService.getSection(sectionId);
+        
+        // Transform to expected format
+        setSelectedSection({
+          id: fullSection.id,
+          number: snippet.number, // Keep the number from snippet since it might not be in the full section object
+          preview: snippet.preview,
+          content: fullSection.content
+        });
 
         setSectionSnippets([]); // Hide snippets once full section is loaded
         clearDefinition(); // Clear any previous definition
