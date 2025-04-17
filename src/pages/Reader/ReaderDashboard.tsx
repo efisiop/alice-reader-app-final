@@ -19,7 +19,8 @@ import {
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
-import HomeIcon from '@mui/icons-material/Home';
+import OndemandVideoIcon from '@mui/icons-material/OndemandVideo';
+import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import EqualizerIcon from '@mui/icons-material/Equalizer';
 import NoteIcon from '@mui/icons-material/Note';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
@@ -147,26 +148,13 @@ const ReaderDashboard: React.FC = () => {
   return (
     <Box sx={{ p: 3, maxWidth: '1200px', mx: 'auto' }}>
       {/* Header */}
-      <Box sx={{ mb: 5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Box>
-          <Typography variant="h3" gutterBottom sx={{ fontWeight: 'bold' }}>
-            Welcome, {profile?.first_name || 'Reader'}!
-          </Typography>
-          <Typography variant="h6" color="text.secondary">
-            Your reading companion for Alice in Wonderland
-          </Typography>
-        </Box>
-        <IconButton
-          onClick={() => navigate('/')}
-          aria-label="Go to home page"
-          sx={{
-            bgcolor: 'primary.main',
-            color: 'white',
-            '&:hover': { bgcolor: 'primary.dark' }
-          }}
-        >
-          <HomeIcon />
-        </IconButton>
+      <Box sx={{ mb: 5 }}>
+        <Typography variant="h3" gutterBottom sx={{ fontWeight: 'bold' }}>
+          Welcome, {profile?.first_name || 'Reader'}!
+        </Typography>
+        <Typography variant="h6" color="text.secondary">
+          Your reading companion for Alice in Wonderland
+        </Typography>
       </Box>
 
       <Grid container spacing={4}>
@@ -338,7 +326,25 @@ const ReaderDashboard: React.FC = () => {
             </List>
           </Paper>
 
-          {/* Removed Quick Links section */}
+          {/* Demo Video Placeholder */}
+          <Paper sx={{ p: 3, borderRadius: 2, mb: 4 }}>
+            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+              <OndemandVideoIcon sx={{ mr: 1, color: 'primary.main' }} />
+              Quick Demo
+            </Typography>
+            <Typography variant="body2" paragraph>
+              See how the Alice Reader App enhances your reading experience:
+            </Typography>
+            <Button
+              variant="outlined"
+              fullWidth
+              startIcon={<PlayCircleOutlineIcon />}
+              disabled
+              sx={{ mt: 1 }}
+            >
+              Watch Demo (Coming Soon)
+            </Button>
+          </Paper>
         </Grid>
       </Grid>
     </Box>
