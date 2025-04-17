@@ -16,26 +16,20 @@ import {
   StepContent,
   Fade,
   Grow,
-  Chip,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails
+  Chip
 } from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+
+import { useNavigate, useLocation } from 'react-router-dom';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import PersonAddIcon from '@mui/icons-material/PersonAdd';
-import LogoutIcon from '@mui/icons-material/Logout';
 import { useAuthService, useAnalyticsService } from '../../hooks/useService';
 import { usePerformance } from '../../hooks/usePerformance';
 import { useAuth } from '../../contexts/AuthContext';
-import ProfileUpdateTester from '../../components/Debug/ProfileUpdateTester';
+
 
 const VerifyPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isVerified, setIsVerified, verifyBook, signOut } = useAuth();
+  const { user, isVerified, setIsVerified, verifyBook } = useAuth();
   const { service: analyticsService } = useAnalyticsService();
 
   // Form state
@@ -351,51 +345,6 @@ const VerifyPage: React.FC = () => {
           </Box>
 
           <Divider sx={{ my: 3 }} />
-
-          {/* Debug Tools */}
-          <Accordion sx={{ mb: 3 }}>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography color="primary" variant="subtitle1">Debug Tools</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <ProfileUpdateTester />
-            </AccordionDetails>
-          </Accordion>
-
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Button
-                variant="text"
-                color="primary"
-                startIcon={<ArrowBackIcon />}
-                onClick={() => navigate('/login', { replace: true })}
-              >
-                Already Verified? Log In
-              </Button>
-
-              <Button
-                variant="text"
-                color="primary"
-                endIcon={<PersonAddIcon />}
-                onClick={() => navigate('/register', { replace: true })}
-              >
-                Need a New Account? Sign Up
-              </Button>
-            </Box>
-
-            <Divider sx={{ my: 1 }} />
-
-            <Button
-              variant="outlined"
-              color="secondary"
-              fullWidth
-              onClick={() => signOut()}
-              sx={{ mt: 1 }}
-              startIcon={<LogoutIcon />}
-            >
-              Sign Out
-            </Button>
-          </Box>
         </Paper>
       </Box>
     </Container>
