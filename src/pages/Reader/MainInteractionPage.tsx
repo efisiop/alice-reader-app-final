@@ -50,6 +50,9 @@ const MainInteractionPage: React.FC = () => {
   const { service: bookService, loading: serviceLoading, error: serviceError } = useBookService(); // serviceError will be used for error handling
   const { enqueueSnackbar } = useSnackbar(); // Will be used for notifications
 
+  // FIXED: Define the actual UUID for Alice in Wonderland book to use in API calls
+  const ALICE_BOOK_UUID = '550e8400-e29b-41d4-a716-446655440000';
+
   // State for page/section input
   const [pageInput, setPageInput] = useState<string>('');
   const [activePage, setActivePage] = useState<number | null>(null);
@@ -92,8 +95,9 @@ const MainInteractionPage: React.FC = () => {
     setActivePage(pageNum);
     console.log(`Fetching sections for page: ${pageNum}`);
     try {
-      // Use the new readerService method to get section snippets
-      const snippets = await readerService.getSectionSnippetsForPage(bookId, pageNum);
+      // FIXED: Use actual UUID for Alice in Wonderland instead of string identifier
+      // This fixes the "invalid input syntax for type uuid" error
+      const snippets = await readerService.getSectionSnippetsForPage(ALICE_BOOK_UUID, pageNum);
       setSectionSnippets(snippets || []);
       
       if (snippets.length === 0) {
@@ -152,7 +156,8 @@ const MainInteractionPage: React.FC = () => {
         setIsLoadingDefinition(true);
         setDefinitionData(null); // Clear previous
         try {
-           // const result = await bookService.getDefinition(bookId, text, selectedSection.id);
+           // When implementing this in the future, use ALICE_BOOK_UUID instead of bookId
+           // const result = await bookService.getDefinition(ALICE_BOOK_UUID, text, selectedSection.id);
            // --- MOCK DEFINITION ---
            await new Promise(res => setTimeout(res, 300));
            const result = text.length > 5 ? { data: `This is a definition for "${text}". Examples...` } : null;
