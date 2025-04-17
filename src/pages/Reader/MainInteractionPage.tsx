@@ -50,7 +50,7 @@ const MainInteractionPage: React.FC = () => {
   // These hooks are kept for future implementation of navigation and error handling
   const navigate = useNavigate(); // Will be used for navigation between pages
   const { bookId = 'alice-in-wonderland' } = useParams<{ bookId?: string }>(); // Used to identify which book to load
-  const { user, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const { service: bookService, loading: serviceLoading, error: serviceError } = useBookService(); // serviceError will be used for error handling
   const { enqueueSnackbar } = useSnackbar(); // Will be used for notifications
 
@@ -214,7 +214,15 @@ const MainInteractionPage: React.FC = () => {
 
       {/* Main Content Area (Approx 90-95%) */}
       <Box sx={{ flexGrow: 1, p: 3, overflowY: 'auto' }}>
-        <Typography variant="h5" gutterBottom>Sync with your Physical Book</Typography>
+        {/* Welcome Message */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', mb: 3 }}>
+          <Typography variant="h4" color="primary" sx={{ fontWeight: 'bold' }}>
+            Hi {profile?.first_name || 'Reader'},
+          </Typography>
+          <Typography variant="subtitle1" color="text.secondary">
+            Let me help you with your Alice in Wonderland book
+          </Typography>
+        </Box>
 
         {/* Page Input */}
         <Paper elevation={1} sx={{ p: 2, mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
