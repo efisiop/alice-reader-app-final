@@ -338,44 +338,7 @@ const ReaderDashboard: React.FC = () => {
             </List>
           </Paper>
 
-          {/* Future Features */}
-          <Paper sx={{ p: 3, borderRadius: 2 }}>
-            <Typography variant="h6" gutterBottom>
-              Quick Links
-            </Typography>
-            <List>
-              {[
-                {
-                  title: 'My Progress & Stats',
-                  icon: <EqualizerIcon color="primary" />,
-                  link: '/reader/statistics'
-                },
-                {
-                  title: 'My Notes',
-                  icon: <NoteIcon color="primary" />,
-                  onClick: () => alert('Notes feature coming soon!')
-                }
-              ].map((item, index) => (
-                <ListItem
-                  key={index}
-                  component={item.onClick || !item.link ? 'div' : RouterLink}
-                  to={item.onClick ? undefined : item.link}
-                  onClick={item.onClick}
-                  button
-                  sx={{
-                    borderRadius: 1,
-                    mb: 0.5,
-                    '&:hover': { bgcolor: 'action.hover' }
-                  }}
-                >
-                  <ListItemIcon>
-                    {item.icon}
-                  </ListItemIcon>
-                  <ListItemText primary={item.title} />
-                </ListItem>
-              ))}
-            </List>
-          </Paper>
+          {/* Removed Quick Links section */}
         </Grid>
       </Grid>
     </Box>

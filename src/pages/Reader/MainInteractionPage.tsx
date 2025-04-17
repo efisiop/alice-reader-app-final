@@ -14,15 +14,18 @@ import {
   List,
   ListItem,
   ListItemText,
+  ListItemIcon,
   Divider,
   CircularProgress
 } from '@mui/material';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBookService } from '../../hooks/useService';
 import { LoadingIndicator } from '../../components/common/LoadingIndicator';
 import { useSnackbar } from '../../utils/notistackUtils';
 import CloseIcon from '@mui/icons-material/Close';
+import EqualizerIcon from '@mui/icons-material/Equalizer';
+import NoteIcon from '@mui/icons-material/Note';
 
 // Define types for Section data
 interface SectionSnippet {
@@ -324,6 +327,26 @@ const MainInteractionPage: React.FC = () => {
              <Button size="small" variant="outlined" sx={{ mt: 1 }} disabled={!selectedSection}>
               Add Note
            </Button>
+         </Box>
+
+         <Divider sx={{ my: 2 }} />
+         {/* Quick Links */}
+         <Box>
+            <Typography variant="overline">My Reading</Typography>
+            <List dense sx={{ mt: 1 }}>
+              <ListItem button component={RouterLink} to="/reader/statistics" sx={{ borderRadius: 1, '&:hover': { bgcolor: 'action.hover' } }}>
+                <ListItemIcon sx={{ minWidth: '30px' }}>
+                  <EqualizerIcon fontSize="small" color="primary" />
+                </ListItemIcon>
+                <ListItemText primary="My Progress & Stats" primaryTypographyProps={{ variant: 'body2' }} />
+              </ListItem>
+              <ListItem button onClick={() => alert('Notes feature coming soon!')} sx={{ borderRadius: 1, '&:hover': { bgcolor: 'action.hover' } }}>
+                <ListItemIcon sx={{ minWidth: '30px' }}>
+                  <NoteIcon fontSize="small" color="primary" />
+                </ListItemIcon>
+                <ListItemText primary="My Notes" primaryTypographyProps={{ variant: 'body2' }} />
+              </ListItem>
+            </List>
          </Box>
 
       </Paper>
