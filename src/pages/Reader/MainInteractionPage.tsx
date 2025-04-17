@@ -145,37 +145,228 @@ const MainInteractionPage: React.FC = () => {
      }
   };
 
+  /**
+   * Expands a selection to include full words
+   * @param text The full text content
+   * @param startOffset The starting offset of the selection
+   * @param endOffset The ending offset of the selection
+   * @param multiWordMode How to handle multi-word selections: 'first' (first word only), 'last' (last word only), or 'all' (all words)
+   * @returns An object with the expanded start and end offsets
+   */
+  const expandSelectionToWords = (text: string, startOffset: number, endOffset: number, multiWordMode: 'first' | 'last' | 'all' = 'first') => {
+    // Define word boundary pattern (letters, numbers, apostrophes, hyphens)
+    const wordCharPattern = /[\w''\-]/;
+    const whitespacePattern = /\s/;
+
+    // Expand start offset to the beginning of the word
+    let expandedStart = startOffset;
+    while (expandedStart > 0 && wordCharPattern.test(text[expandedStart - 1])) {
+      expandedStart--;
+    }
+
+    // Expand end offset to the end of the word
+    let expandedEnd = endOffset;
+    while (expandedEnd < text.length && wordCharPattern.test(text[expandedEnd])) {
+      expandedEnd++;
+    }
+
+    // Check if the selection spans multiple words
+    const selectedText = text.substring(expandedStart, expandedEnd);
+    const containsWhitespace = /\s/.test(selectedText);
+
+    if (containsWhitespace && multiWordMode !== 'all') {
+      // Handle multi-word selection based on the specified mode
+      if (multiWordMode === 'first') {
+        // Find the end of the first word
+        let firstWordEnd = expandedStart;
+        while (firstWordEnd < expandedEnd && !whitespacePattern.test(text[firstWordEnd])) {
+          firstWordEnd++;
+        }
+        expandedEnd = firstWordEnd;
+      } else if (multiWordMode === 'last') {
+        // Find the start of the last word
+        let lastWordStart = expandedEnd;
+        while (lastWordStart > expandedStart && !whitespacePattern.test(text[lastWordStart - 1])) {
+          lastWordStart--;
+        }
+        while (lastWordStart > expandedStart && whitespacePattern.test(text[lastWordStart - 1])) {
+          lastWordStart--;
+        }
+        expandedStart = lastWordStart;
+      }
+    }
+
+    return { expandedStart, expandedEnd };
+  };
+
+  /**
+   * Cleans a word by removing surrounding punctuation
+   * @param word The word to clean
+   * @returns The cleaned word
+   */
+  const cleanWord = (word: string) => {
+    if (!word) return '';
+
+    // First trim whitespace
+    let cleaned = word.trim();
+
+    // Remove leading and trailing punctuation, but keep internal hyphens and apostrophes
+    cleaned = cleaned.replace(/^[^\w]+|[^\w]+$/g, '');
+
+    // Handle special case where the word might be just punctuation
+    if (cleaned.length === 0 && word.length > 0) {
+      console.log("Word contained only punctuation:", word);
+      return '';
+    }
+
+    return cleaned;
+  };
+
   const handleTextSelection = async () => {
-    // --- Keep your existing working logic here ---
-    // Uses window.getSelection(), calls bookService.getDefinition,
-    // sets isLoadingDefinition, sets definitionData state.
-    // Ensure it reads from the selectedSection?.content if available.
-     const selection = window.getSelection();
-     const text = selection?.toString().trim();
-     if (text && selectedSection) { // Only lookup if section content is displayed
-        console.log("Highlight detected:", text);
+    try {
+      // Get the selection object
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0 || !selectedSection) return;
+
+      // Get the selected text
+      const selectedText = selection.toString().trim();
+      if (!selectedText) return;
+
+      // Skip very long selections (likely paragraphs, not words)
+      if (selectedText.length > 50) {
+        console.log("Selection too long for definition lookup:", selectedText.length, "characters");
+        return;
+      }
+
+      // Skip very short selections (likely accidental clicks)
+      if (selectedText.length < 2) {
+        console.log("Selection too short for definition lookup:", selectedText.length, "characters");
+        return;
+      }
+
+      console.log("Original highlight detected:", selectedText);
+
+      // Get the range of the selection
+      const range = selection.getRangeAt(0);
+
+      // Check if the selection spans multiple nodes
+      const isMultiNodeSelection = range.startContainer !== range.endContainer;
+
+      let fullText: string;
+      let textNode: Node;
+
+      if (isMultiNodeSelection) {
+        // For multi-node selections, we'll use the common ancestor container
+        // and work with its text content
+        textNode = range.commonAncestorContainer;
+
+        // If the common ancestor is not a text node, use its text content
+        // This will include all text within the container
+        fullText = textNode.textContent || '';
+
+        // For multi-node selections, we'll just use the selected text directly
+        // and clean it, rather than trying to expand it
+        console.log("Multi-node selection detected, using selected text directly");
+
+        // Clean the selected text
+        const cleanedText = cleanWord(selectedText);
+
+        // If the cleaned text is empty, return
+        if (!cleanedText) return;
+
+        // Proceed with definition lookup using the cleaned selected text
         setIsLoadingDefinition(true);
         setDefinitionData(null); // Clear previous
-        try {
-           // When implementing this in the future, use ALICE_BOOK_UUID instead of bookId
-           // const result = await bookService.getDefinition(ALICE_BOOK_UUID, text, selectedSection.id);
-           // --- MOCK DEFINITION ---
-           await new Promise(res => setTimeout(res, 300));
-           const result = text.length > 5 ? { data: `This is a definition for "${text}". Examples...` } : null;
-           // --- END MOCK ---
 
-           if (result?.data) {
-              setDefinitionData({ word: text, definition: result.data, examples: [], source: 'database' });
-           } else {
-              setDefinitionData({ word: text, definition: `No definition found for "${text}".`, examples: [], source: 'not_found' });
-           }
+        try {
+          // --- MOCK DEFINITION ---
+          await new Promise(res => setTimeout(res, 300));
+          const result = cleanedText.length > 2 ? { data: `This is a definition for "${cleanedText}". Examples...` } : null;
+          // --- END MOCK ---
+
+          if (result?.data) {
+            setDefinitionData({ word: cleanedText, definition: result.data, examples: [], source: 'database' });
+          } else {
+            setDefinitionData({ word: cleanedText, definition: `No definition found for "${cleanedText}".`, examples: [], source: 'not_found' });
+          }
         } catch (err: any) {
-           console.error("Error fetching definition:", err);
-           setDefinitionData({ word: text, definition: `Error looking up "${text}".`, examples: [], source: 'error' });
+          console.error("Error fetching definition:", err);
+          setDefinitionData({ word: cleanedText, definition: `Error looking up "${cleanedText}".`, examples: [], source: 'error' });
         } finally {
-           setIsLoadingDefinition(false);
+          setIsLoadingDefinition(false);
         }
-     }
+
+        return;
+      }
+
+      // For single node selections, proceed with the normal expansion logic
+      textNode = range.startContainer;
+
+      // Make sure we're working with a text node
+      if (textNode.nodeType !== Node.TEXT_NODE) return;
+
+      // Get the full text content of the node
+      fullText = textNode.textContent || '';
+
+      // Get the start and end offsets of the selection within the text node
+      const startOffset = range.startOffset;
+      const endOffset = range.endOffset;
+
+      // Expand the selection to include full words (use 'first' mode for multi-word selections)
+      const { expandedStart, expandedEnd } = expandSelectionToWords(fullText, startOffset, endOffset, 'first');
+
+      // Extract the expanded text
+      const expandedText = fullText.substring(expandedStart, expandedEnd);
+
+      // Log the expansion process
+      if (expandedText !== selectedText) {
+        console.log(`Selection expanded from "${selectedText}" to "${expandedText}"`);
+
+        // If the expanded text is significantly different from the original selection
+        // (e.g., the user selected just a single character in a long word),
+        // we might want to be more conservative. For now, we'll proceed with the expansion.
+        const expansionRatio = expandedText.length / selectedText.length;
+        if (expansionRatio > 5) {
+          console.log(`Significant expansion detected (${expansionRatio.toFixed(1)}x). Proceeding anyway.`);
+        }
+      }
+
+      // Clean the expanded text (remove surrounding punctuation)
+      const cleanedText = cleanWord(expandedText);
+
+      // If the expanded text is empty after cleaning, return
+      if (!cleanedText) return;
+
+      console.log("Expanded to full word:", cleanedText);
+
+      // Proceed with definition lookup using the expanded text
+      setIsLoadingDefinition(true);
+      setDefinitionData(null); // Clear previous
+
+      try {
+        // When implementing this in the future, use ALICE_BOOK_UUID instead of bookId
+        // const result = await bookService.getDefinition(ALICE_BOOK_UUID, cleanedText, selectedSection.id);
+        // --- MOCK DEFINITION ---
+        await new Promise(res => setTimeout(res, 300));
+        const result = cleanedText.length > 2 ? { data: `This is a definition for "${cleanedText}". Examples...` } : null;
+        // --- END MOCK ---
+
+        if (result?.data) {
+          setDefinitionData({ word: cleanedText, definition: result.data, examples: [], source: 'database' });
+        } else {
+          setDefinitionData({ word: cleanedText, definition: `No definition found for "${cleanedText}".`, examples: [], source: 'not_found' });
+        }
+      } catch (err: any) {
+        console.error("Error fetching definition:", err);
+        setDefinitionData({ word: cleanedText, definition: `Error looking up "${cleanedText}".`, examples: [], source: 'error' });
+      } finally {
+        setIsLoadingDefinition(false);
+      }
+    } catch (error) {
+      // Handle any errors that might occur during the text selection process
+      console.error("Error in text selection handling:", error);
+      // Don't show an error to the user, just silently fail
+    }
   };
 
   const clearDefinition = () => {
