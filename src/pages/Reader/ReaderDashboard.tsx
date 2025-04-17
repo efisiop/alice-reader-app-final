@@ -38,13 +38,7 @@ const ReaderDashboard: React.FC = () => {
   const { service: analyticsService } = useAnalyticsService();
   const { user, profile } = useAuth();
   const [bookData, setBookData] = useState<any>(null);
-  const [readingStats, setReadingStats] = useState<any>({
-    progress: 0,
-    totalTimeRead: 0,
-    lastReadTimestamp: null,
-    currentPage: 1,
-    currentChapter: 'Chapter 1',
-  });
+  // Simplified state - removed detailed reading stats
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -76,26 +70,6 @@ const ReaderDashboard: React.FC = () => {
         const book = await bookService.getBook('alice-in-wonderland');
         console.log('ReaderDashboard: Book data received', book);
         setBookData(book);
-
-        // Get reading progress
-        if (user.id) {
-          console.log('ReaderDashboard: Fetching reading progress for user', user.id);
-          const progress = await bookService.getReadingProgress(user.id, 'alice-in-wonderland');
-          console.log('ReaderDashboard: Reading progress received', progress);
-
-          if (progress) {
-            setReadingStats({
-              progress: progress.percentage_complete || 0,
-              totalTimeRead: progress.total_reading_time || 0,
-              lastReadTimestamp: progress.last_read_at,
-              currentPage: progress.current_page || 1,
-              currentChapter: progress.current_chapter || 'Chapter 1',
-            });
-            console.log('ReaderDashboard: Reading stats updated');
-          } else {
-            console.log('ReaderDashboard: No reading progress found, using defaults');
-          }
-        }
 
         // Track page view
         if (analyticsService) {
@@ -173,12 +147,12 @@ const ReaderDashboard: React.FC = () => {
   return (
     <Box sx={{ p: 3, maxWidth: '1200px', mx: 'auto' }}>
       {/* Header */}
-      <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <Box sx={{ mb: 5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Box>
-          <Typography variant="h4" gutterBottom>
+          <Typography variant="h3" gutterBottom sx={{ fontWeight: 'bold' }}>
             Welcome, {profile?.first_name || 'Reader'}!
           </Typography>
-          <Typography variant="body1" color="text.secondary">
+          <Typography variant="h6" color="text.secondary">
             Your reading companion for Alice in Wonderland
           </Typography>
         </Box>
@@ -197,7 +171,7 @@ const ReaderDashboard: React.FC = () => {
 
       <Grid container spacing={4}>
         {/* Main Content */}
-        <Grid item xs={12} md={8}>
+        <Grid item xs={12} md={9}>
           {/* Main Call to Action Card */}
           <Paper
             elevation={3}
@@ -267,13 +241,21 @@ const ReaderDashboard: React.FC = () => {
                   variant="contained"
                   color="primary"
                   size="large"
-                  startIcon={<BookmarkIcon />}
+                  startIcon={<MenuBookIcon />}
                   sx={{
-                    py: 1.5,
-                    px: 4,
-                    fontSize: '1.1rem',
-                    minWidth: '250px',
-                    boxShadow: 3
+                    py: 2,
+                    px: 5,
+                    fontSize: '1.2rem',
+                    fontWeight: 'bold',
+                    minWidth: '280px',
+                    boxShadow: 4,
+                    mt: 2,
+                    borderRadius: 2,
+                    '&:hover': {
+                      transform: 'translateY(-2px)',
+                      boxShadow: 6
+                    },
+                    transition: 'all 0.2s'
                   }}
                 >
                   Open Reading Companion
@@ -323,68 +305,10 @@ const ReaderDashboard: React.FC = () => {
           </Paper>
         </Grid>
 
-        {/* Sidebar */}
-        <Grid item xs={12} md={4}>
-          {/* Navigation Menu */}
-          <Paper sx={{ p: 3, borderRadius: 2, mb: 4 }}>
-            <Typography variant="h6" gutterBottom>
-              Menu
-            </Typography>
-            <List>
-              {[
-                {
-                  title: 'Open Reading Companion',
-                  icon: <BookmarkIcon color="primary" />,
-                  onClick: () => navigate('/reader/interaction')
-                },
-                {
-                  title: 'My Progress & Stats',
-                  icon: <EqualizerIcon color="primary" />,
-                  link: '/reader/statistics'
-                },
-                {
-                  title: 'My Notes',
-                  icon: <NoteIcon color="primary" />,
-                  onClick: () => alert('Notes feature coming soon!')
-                },
-                {
-                  title: 'Account Settings',
-                  icon: <AccountCircleIcon color="primary" />,
-                  onClick: () => alert('Account settings coming soon!')
-                },
-                {
-                  title: 'Sign Out',
-                  icon: <ExitToAppIcon color="error" />,
-                  onClick: () => {
-                    if (authService) {
-                      authService.signOut().then(() => navigate('/'));
-                    }
-                  }
-                }
-              ].map((item, index) => (
-                <ListItem
-                  key={index}
-                  component={item.onClick || !item.link ? 'div' : RouterLink}
-                  to={item.onClick ? undefined : item.link}
-                  onClick={item.onClick}
-                  button
-                  sx={{
-                    borderRadius: 1,
-                    mb: 0.5,
-                    '&:hover': { bgcolor: 'action.hover' }
-                  }}
-                >
-                  <ListItemIcon>
-                    {item.icon}
-                  </ListItemIcon>
-                  <ListItemText primary={item.title} />
-                </ListItem>
-              ))}
-            </List>
-          </Paper>
-
+        {/* Sidebar - Narrower */}
+        <Grid item xs={12} md={3}>
           {/* Help & Resources */}
-          <Paper sx={{ p: 3, borderRadius: 2 }}>
+          <Paper sx={{ p: 3, borderRadius: 2, mb: 4 }}>
             <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
               <HelpIcon sx={{ mr: 1, color: 'primary.main' }} />
               Help & Resources
@@ -408,6 +332,45 @@ const ReaderDashboard: React.FC = () => {
                     '&:hover': { bgcolor: 'action.hover' }
                   }}
                 >
+                  <ListItemText primary={item.title} />
+                </ListItem>
+              ))}
+            </List>
+          </Paper>
+
+          {/* Future Features */}
+          <Paper sx={{ p: 3, borderRadius: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Quick Links
+            </Typography>
+            <List>
+              {[
+                {
+                  title: 'My Progress & Stats',
+                  icon: <EqualizerIcon color="primary" />,
+                  link: '/reader/statistics'
+                },
+                {
+                  title: 'My Notes',
+                  icon: <NoteIcon color="primary" />,
+                  onClick: () => alert('Notes feature coming soon!')
+                }
+              ].map((item, index) => (
+                <ListItem
+                  key={index}
+                  component={item.onClick || !item.link ? 'div' : RouterLink}
+                  to={item.onClick ? undefined : item.link}
+                  onClick={item.onClick}
+                  button
+                  sx={{
+                    borderRadius: 1,
+                    mb: 0.5,
+                    '&:hover': { bgcolor: 'action.hover' }
+                  }}
+                >
+                  <ListItemIcon>
+                    {item.icon}
+                  </ListItemIcon>
                   <ListItemText primary={item.title} />
                 </ListItem>
               ))}
