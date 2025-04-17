@@ -3,6 +3,7 @@ import { registry, SERVICE_NAMES } from '@services/serviceRegistry';
 import { initManager } from './initManager';
 import { getSupabaseClient } from './supabaseClient';
 import { appLog } from '../components/LogViewer';
+import { logInteraction, InteractionEventType } from './loggingService';
 
 console.log('Loading feedbackService module');
 
@@ -85,7 +86,7 @@ const createFeedbackService = async (): Promise<FeedbackServiceInterface> => {
           return { error };
         }
 
-        // Log the interaction for analytics
+        // Log the interaction for analytics (legacy method)
         try {
           await supabase
             .from("ai_interactions")
@@ -101,6 +102,24 @@ const createFeedbackService = async (): Promise<FeedbackServiceInterface> => {
         } catch (interactionError) {
           // Don't fail the whole operation if just the logging fails
           appLog("FeedbackService", "Warning: Failed to log feedback interaction", "warning", interactionError);
+        }
+
+        // Log to the interactions table
+        try {
+          await logInteraction(
+            userId,
+            InteractionEventType.FEEDBACK_SUBMISSION,
+            {
+              bookId,
+              sectionId: sectionId || undefined,
+              content,
+              feedbackType,
+              isPublic
+            }
+          );
+        } catch (loggingError) {
+          // Don't fail the whole operation if just the logging fails
+          appLog("FeedbackService", "Warning: Failed to log feedback to interactions table", "warning", loggingError);
         }
 
         appLog("FeedbackService", "Feedback submitted successfully", "success", { id: data?.id });

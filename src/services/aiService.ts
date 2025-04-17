@@ -5,6 +5,7 @@ import { getSupabaseClient } from './supabaseClient';
 import { appLog } from '../components/LogViewer';
 import { AIModes } from '../constants/index';
 import { handleServiceError } from '../utils/errorHandling';
+import { logInteraction, InteractionEventType } from './loggingService';
 
 // Define service interface
 export interface AIServiceInterface {
@@ -108,8 +109,25 @@ const createAIService = async (): Promise<AIServiceInterface> => {
           // Add AI response to conversation
           const finalConversation = aiService.addMessageToConversation(updatedConversation, "assistant", aiResponse);
 
-          // Note: We don't need to log the interaction here as it's already logged in the Edge Function
-          // This avoids duplicate logging
+          // Log the AI query to the interactions table
+          // This is in addition to the logging in the Edge Function
+          if (conversation.userId) {
+            await logInteraction(
+              conversation.userId,
+              InteractionEventType.AI_QUERY,
+              {
+                bookId: conversation.bookId,
+                sectionId: conversation.sectionId,
+                content: message,
+                context: context ? context.substring(0, 500) : undefined, // Limit context length
+                response: aiResponse.substring(0, 500), // Limit response length
+                mode
+              }
+            ).catch(err => {
+              // Just log the error but don't fail the AI interaction
+              appLog('AIService', 'Error logging AI query interaction', 'error', err);
+            });
+          }
 
           return {
             response: aiResponse,
@@ -227,6 +245,20 @@ const createAIService = async (): Promise<AIServiceInterface> => {
           appLog("AIService", `Error logging help offer: ${error.message}`, "error");
           return false;
         }
+
+        // Log to the interactions table
+        await logInteraction(
+          userId,
+          InteractionEventType.HELP_REQUEST,
+          {
+            bookId,
+            sectionId,
+            content: reason
+          }
+        ).catch(err => {
+          // Just log the error but don't fail the help offer
+          appLog('AIService', 'Error logging help request interaction', 'error', err);
+        });
 
         return true;
       } catch (error: any) {

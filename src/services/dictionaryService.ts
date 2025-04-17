@@ -6,6 +6,7 @@ import { getDefinition as backendGetDefinition, saveAiInteraction } from './back
 import { BookId, SectionId, ChapterId, UserId } from '../types/idTypes';
 import { registry } from './serviceRegistry';
 import { handleServiceError } from '../utils/errorHandling';
+import { logInteraction, InteractionEventType } from './loggingService';
 
 // Types for dictionary responses
 export interface DictionaryEntry {
@@ -308,7 +309,7 @@ const createDictionaryService = async (): Promise<DictionaryServiceInterface> =>
           userId, bookId, sectionId, term, definitionFound
         });
 
-        // Log as AI interaction for analytics
+        // Log as AI interaction for analytics (legacy method)
         await saveAiInteraction(
           userId.toString(),
           bookId.toString(),
@@ -316,6 +317,21 @@ const createDictionaryService = async (): Promise<DictionaryServiceInterface> =>
           definitionFound ? `Definition found for "${term}"` : `No definition found for "${term}"`,
           sectionId?.toString()
         );
+
+        // Log to the new interactions table
+        await logInteraction(
+          userId.toString(),
+          InteractionEventType.DEFINITION_LOOKUP,
+          {
+            bookId: bookId.toString(),
+            sectionId: sectionId?.toString(),
+            content: term,
+            definitionFound
+          }
+        ).catch(err => {
+          // Just log the error but don't fail the lookup
+          appLog('DictionaryService', 'Error logging definition lookup interaction', 'error', err);
+        });
       } catch (error) {
         appLog('DictionaryService', 'Error logging dictionary lookup', 'error', error);
       }

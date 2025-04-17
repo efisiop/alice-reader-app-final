@@ -7,6 +7,7 @@ import { handleServiceError } from '../utils/errorHandling';
 import { mockBackend } from './mockBackend';
 import { isBackendAvailable } from './backendConfig';
 import { Session, User } from '@supabase/supabase-js';
+import { logInteraction, InteractionEventType } from './loggingService';
 
 /**
  * Auth Service Interface
@@ -48,6 +49,17 @@ export const createAuthService = async (): Promise<AuthServiceInterface> => {
           const client = await getSupabaseClient();
           const result = await client.auth.signInWithPassword({ email, password });
           if (result.error) throw result.error;
+
+          // Log successful login
+          if (result.data?.user) {
+            await logInteraction(result.data.user.id, InteractionEventType.LOGIN, {
+              content: 'User logged in successfully'
+            }).catch(err => {
+              // Just log the error but don't fail the login
+              appLog('AuthService', 'Error logging login interaction', 'error', err);
+            });
+          }
+
           return result;
         } else {
           return mockBackend.auth.signIn(email, password);

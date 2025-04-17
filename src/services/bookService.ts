@@ -3,6 +3,7 @@ import { registry, SERVICE_NAMES } from '@services/serviceRegistry';
 import { initManager } from './initManager';
 import { getSupabaseClient } from './supabaseClient';
 import { appLog } from '../components/LogViewer';
+import { logInteraction, InteractionEventType } from './loggingService';
 
 console.log('Loading bookService module');
 
@@ -225,6 +226,17 @@ export const createBookService = async (): Promise<BookServiceInterface> => {
       try {
         appLog("BookService", `Updating reading progress for user ${userId}, book ${bookId}, page ${pageNumber}, time ${readingTime}s`, "info");
         console.log(`BookService: Updating reading progress for user ${userId}, book ${bookId}, page ${pageNumber}, time ${readingTime}s`);
+
+        // Log page sync interaction
+        await logInteraction(userId, InteractionEventType.PAGE_SYNC, {
+          bookId,
+          pageNumber,
+          content: `User synced to page ${pageNumber}`,
+          readingTime
+        }).catch(err => {
+          // Just log the error but don't fail the update
+          appLog('BookService', 'Error logging page sync interaction', 'error', err);
+        });
 
         // For testing purposes, just return success
         return true;
