@@ -272,7 +272,7 @@ export async function getSectionsForPage(bookId: string, pageNumber: number) {
   if (await useRealBackend()) {
     // Get the Supabase client
     const client = await getSupabaseClient();
-    
+
     const { data, error } = await client
       .rpc('get_sections_for_page', {
         book_id_param: bookId,
@@ -297,7 +297,7 @@ export async function getDefinition(bookId: string, term: string, sectionId?: st
     if (await useRealBackend()) {
       // Get the Supabase client
       const client = await getSupabaseClient();
-      
+
       // Convert IDs to UUIDs if needed
       const bookUuid = getBookUuid(bookId);
 
@@ -348,7 +348,7 @@ export async function verifyBookCode(code: string) {
   if (await useRealBackend()) {
     // Get the Supabase client
     const client = await getSupabaseClient();
-    
+
     const { data, error } = await client
       .from('verification_codes')
       .select('*, books(id, title, author)')
@@ -367,7 +367,7 @@ export async function markCodeAsUsed(code: string, userId: string) {
   if (await useRealBackend()) {
     // Get the Supabase client
     const client = await getSupabaseClient();
-    
+
     const { data, error } = await client
       .from('verification_codes')
       .update({ is_used: true, used_by: userId })
@@ -396,20 +396,20 @@ export async function markCodeAsUsed(code: string, userId: string) {
 export async function verifyBookCodeComprehensive(code: string, userId: string, firstName?: string, lastName?: string) {
   appLog('BackendService', 'Performing comprehensive book verification', 'info', { code, userId, firstName, lastName });
   console.log('verifyBookCodeComprehensive: Starting verification with:', { code, userId, firstName, lastName });
-  
+
   const startTime = Date.now();
-  
+
   if (await useRealBackend()) {
     try {
       // Get the Supabase client
       const client = await getSupabaseClient();
-      
+
       // Call the optimized supabaseVerifyBookCode function directly
       const result = await supabaseVerifyBookCode(code, userId, firstName, lastName);
       const elapsedMs = Date.now() - startTime;
-      
+
       console.log(`verifyBookCodeComprehensive: Verification completed in ${elapsedMs}ms, result:`, result);
-      
+
       // Additional diagnostics
       if (!result.success) {
         appLog('BackendService', 'Verification failed', 'error', result.error);
@@ -417,7 +417,7 @@ export async function verifyBookCodeComprehensive(code: string, userId: string, 
       } else {
         appLog('BackendService', 'Verification successful', 'success');
         console.log('verifyBookCodeComprehensive: Verification successful');
-        
+
         // Double-check the profile was actually updated - no need to await this
         setTimeout(async () => {
           try {
@@ -426,9 +426,9 @@ export async function verifyBookCodeComprehensive(code: string, userId: string, 
               .select('first_name, last_name, book_verified')
               .eq('id', userId)
               .single();
-              
+
             console.log('verifyBookCodeComprehensive: Post-verification profile check:', profile);
-            
+
             if (!profile?.book_verified) {
               console.warn('verifyBookCodeComprehensive: Profile book_verified is still false!');
             }
@@ -437,7 +437,7 @@ export async function verifyBookCodeComprehensive(code: string, userId: string, 
           }
         }, 500);
       }
-      
+
       return result;
     } catch (error) {
       const elapsedMs = Date.now() - startTime;
@@ -448,14 +448,20 @@ export async function verifyBookCodeComprehensive(code: string, userId: string, 
   } else {
     // For mock backend, we still need to perform all steps
     try {
+      // Mock implementation for comprehensive verification
+      appLog('BackendService', 'Using mock implementation for comprehensive verification', 'info');
+      console.log('Mock verifyBookCodeComprehensive: Starting with code:', code, 'userId:', userId);
+
       // Step 1: Check if code exists and is not used
       const { data: verificationData, error: verifyError } = await mockBackend.books.verifyBookCode(code);
 
       if (verifyError || !verificationData) {
+        console.error('Mock verification failed: Invalid code');
         return { success: false, error: verifyError || 'Invalid verification code' };
       }
 
       if (verificationData.is_used) {
+        console.error('Mock verification failed: Code already used');
         return { success: false, error: 'This code has already been used' };
       }
 
@@ -463,6 +469,7 @@ export async function verifyBookCodeComprehensive(code: string, userId: string, 
       const { error: markCodeError } = await mockBackend.books.markCodeAsUsed(code, userId);
 
       if (markCodeError) {
+        console.error('Mock verification failed: Error marking code as used');
         return { success: false, error: markCodeError };
       }
 
@@ -471,14 +478,32 @@ export async function verifyBookCodeComprehensive(code: string, userId: string, 
       if (firstName) updates.first_name = firstName;
       if (lastName) updates.last_name = lastName;
 
-      const { error: updateError } = await mockBackend.profiles.updateUserProfile(userId, updates);
+      console.log('Mock verification: Updating profile with:', updates);
+
+      // Check if profile exists, create if it doesn't
+      const { data: existingProfile } = await mockBackend.profiles.getUserProfile(userId);
+
+      if (!existingProfile) {
+        console.log('Mock verification: Profile does not exist, creating new profile');
+        await mockBackend.profiles.createUserProfile(
+          userId,
+          firstName || 'User',
+          lastName || 'Name',
+          'user@example.com'
+        );
+      }
+
+      const { data: updatedProfile, error: updateError } = await mockBackend.profiles.updateUserProfile(userId, updates);
 
       if (updateError) {
+        console.error('Mock verification failed: Error updating profile', updateError);
         return { success: false, error: updateError };
       }
 
+      console.log('Mock verification successful! Updated profile:', updatedProfile);
       return { success: true, data: verificationData };
     } catch (error) {
+      console.error('Mock verification failed with exception:', error);
       appLog('BackendService', 'Error in mock comprehensive verification', 'error', error);
       return { success: false, error };
     }
@@ -654,7 +679,7 @@ export async function updateReadingStats(userId: string, bookId: string, timeSpe
     try {
       // Get the Supabase client
       const client = await getSupabaseClient();
-      
+
       // Convert string ID to UUID if needed
       const bookUuid = getBookUuid(bookId);
       appLog('BackendService', `Using book UUID: ${bookUuid}`, 'debug');

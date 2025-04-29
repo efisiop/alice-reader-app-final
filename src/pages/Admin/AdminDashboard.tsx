@@ -1,11 +1,11 @@
 // src/pages/Admin/AdminDashboard.tsx
 import React, { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Typography, 
-  Paper, 
-  Grid, 
-  Button, 
+import {
+  Box,
+  Typography,
+  Paper,
+  Grid,
+  Button,
   CircularProgress,
   Card,
   CardContent,
@@ -62,31 +62,31 @@ const AdminDashboard: React.FC = () => {
   const { user, profile } = useAuth();
   const { service: analyticsService } = useAnalyticsService();
   const { service: monitoringService, loading: monitoringLoading } = useMonitoringService();
-  
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [systemStatus, setSystemStatus] = useState<any>(null);
   const [tabValue, setTabValue] = useState(0);
-  
+
   // Track performance
   usePerformance({
     trackPageLoad: true,
     trackRender: true,
     componentName: 'AdminDashboard'
   });
-  
+
   // Load system status
   useEffect(() => {
     if (!monitoringService || !user) return;
-    
+
     const loadSystemStatus = async () => {
       setLoading(true);
       setError(null);
-      
+
       try {
         const startTime = performance.now();
         const data = await monitoringService.getSystemStatus();
-        
+
         // In a real app, we would use the actual data from the service
         // For now, we'll use mock data
         setSystemStatus({
@@ -123,22 +123,22 @@ const AdminDashboard: React.FC = () => {
             helpRequests: [8, 12, 10, 15, 18, 14, 16]
           },
           alerts: [
-            { 
-              id: 'a1', 
-              type: 'warning', 
-              message: 'Dictionary Service experiencing increased latency', 
-              timestamp: '2023-06-15T08:45:00Z' 
+            {
+              id: 'a1',
+              type: 'warning',
+              message: 'Dictionary Service experiencing increased latency',
+              timestamp: '2023-06-15T08:45:00Z'
             },
-            { 
-              id: 'a2', 
-              type: 'info', 
-              message: 'System update scheduled for June 20, 2023', 
-              timestamp: '2023-06-14T10:00:00Z' 
+            {
+              id: 'a2',
+              type: 'info',
+              message: 'System update scheduled for June 20, 2023',
+              timestamp: '2023-06-14T10:00:00Z'
             }
           ],
           ...data // Overwrite with any real data we might have
         });
-        
+
         // Track page view
         if (analyticsService) {
           analyticsService.trackPageView('admin_dashboard', {
@@ -148,7 +148,7 @@ const AdminDashboard: React.FC = () => {
       } catch (error) {
         console.error('Error loading system status:', error);
         setError('Failed to load system status. Please try again.');
-        
+
         // Track error
         if (analyticsService) {
           analyticsService.trackEvent('admin_dashboard_error', {
@@ -159,14 +159,14 @@ const AdminDashboard: React.FC = () => {
         setLoading(false);
       }
     };
-    
+
     loadSystemStatus();
   }, [monitoringService, user, analyticsService]);
-  
+
   // Handle tab change
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
-    
+
     // Track tab change
     if (analyticsService) {
       analyticsService.trackEvent('admin_tab_change', {
@@ -174,14 +174,14 @@ const AdminDashboard: React.FC = () => {
       });
     }
   };
-  
+
   // Format date
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'Never';
     const date = new Date(dateString);
     return date.toLocaleString();
   };
-  
+
   if (loading || monitoringLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -189,15 +189,15 @@ const AdminDashboard: React.FC = () => {
       </Box>
     );
   }
-  
+
   if (error) {
     return (
       <Box sx={{ p: 3, textAlign: 'center' }}>
         <Typography color="error" variant="h6" gutterBottom>
           {error}
         </Typography>
-        <Button 
-          variant="contained" 
+        <Button
+          variant="contained"
           onClick={() => window.location.reload()}
           sx={{ mt: 2 }}
         >
@@ -206,7 +206,7 @@ const AdminDashboard: React.FC = () => {
       </Box>
     );
   }
-  
+
   // Check if user is admin
   if (!profile?.is_admin) {
     return (
@@ -214,9 +214,9 @@ const AdminDashboard: React.FC = () => {
         <Typography variant="h6" gutterBottom>
           You don't have admin access.
         </Typography>
-        <Button 
-          variant="contained" 
-          component={RouterLink} 
+        <Button
+          variant="contained"
+          component={RouterLink}
           to="/reader"
           sx={{ mt: 2 }}
         >
@@ -225,7 +225,7 @@ const AdminDashboard: React.FC = () => {
       </Box>
     );
   }
-  
+
   return (
     <Box sx={{ p: 3, maxWidth: '1200px', mx: 'auto' }}>
       {/* Header */}
@@ -237,13 +237,13 @@ const AdminDashboard: React.FC = () => {
           System monitoring and management
         </Typography>
       </Box>
-      
+
       {/* Alerts */}
       {systemStatus.alerts.length > 0 && (
         <Box sx={{ mb: 4 }}>
           {systemStatus.alerts.map((alert: any) => (
-            <Alert 
-              key={alert.id} 
+            <Alert
+              key={alert.id}
               severity={alert.type as 'error' | 'warning' | 'info' | 'success'}
               sx={{ mb: 2 }}
             >
@@ -257,14 +257,14 @@ const AdminDashboard: React.FC = () => {
           ))}
         </Box>
       )}
-      
+
       {/* Summary Cards */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         {/* Users Card */}
         <Grid item xs={12} sm={6} md={3}>
-          <Paper 
-            elevation={2} 
-            sx={{ 
+          <Paper
+            elevation={2}
+            sx={{
               height: '100%',
               borderRadius: 2
             }}
@@ -298,12 +298,12 @@ const AdminDashboard: React.FC = () => {
             </CardContent>
           </Paper>
         </Grid>
-        
+
         {/* Services Card */}
         <Grid item xs={12} sm={6} md={3}>
-          <Paper 
-            elevation={2} 
-            sx={{ 
+          <Paper
+            elevation={2}
+            sx={{
               height: '100%',
               borderRadius: 2
             }}
@@ -337,12 +337,12 @@ const AdminDashboard: React.FC = () => {
             </CardContent>
           </Paper>
         </Grid>
-        
+
         {/* Database Card */}
         <Grid item xs={12} sm={6} md={3}>
-          <Paper 
-            elevation={2} 
-            sx={{ 
+          <Paper
+            elevation={2}
+            sx={{
               height: '100%',
               borderRadius: 2
             }}
@@ -367,9 +367,9 @@ const AdminDashboard: React.FC = () => {
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                 <Box sx={{ width: '100%', mr: 1 }}>
-                  <LinearProgress 
-                    variant="determinate" 
-                    value={systemStatus.database.storage.percentage} 
+                  <LinearProgress
+                    variant="determinate"
+                    value={systemStatus.database.storage.percentage}
                     sx={{ height: 8, borderRadius: 5 }}
                   />
                 </Box>
@@ -385,12 +385,12 @@ const AdminDashboard: React.FC = () => {
             </CardContent>
           </Paper>
         </Grid>
-        
+
         {/* Activity Card */}
         <Grid item xs={12} sm={6} md={3}>
-          <Paper 
-            elevation={2} 
-            sx={{ 
+          <Paper
+            elevation={2}
+            sx={{
               height: '100%',
               borderRadius: 2
             }}
@@ -437,7 +437,7 @@ const AdminDashboard: React.FC = () => {
           </Paper>
         </Grid>
       </Grid>
-      
+
       {/* Detailed Status */}
       <Paper sx={{ mb: 4, borderRadius: 2, overflow: 'hidden' }}>
         <Tabs
@@ -452,19 +452,19 @@ const AdminDashboard: React.FC = () => {
           <Tab icon={<PeopleIcon />} label="Users" />
           <Tab icon={<BookIcon />} label="Content" />
         </Tabs>
-        
+
         <TabPanel value={tabValue} index={0}>
           <Typography variant="h6" gutterBottom>
             Service Status
           </Typography>
           <List>
             {systemStatus.services.map((service: any, index: number) => (
-              <ListItem 
+              <ListItem
                 key={index}
-                sx={{ 
-                  mb: 2, 
-                  p: 2, 
-                  bgcolor: 'background.paper', 
+                sx={{
+                  mb: 2,
+                  p: 2,
+                  bgcolor: 'background.paper',
                   borderRadius: 2,
                   boxShadow: 1
                 }}
@@ -488,13 +488,13 @@ const AdminDashboard: React.FC = () => {
                     </>
                   }
                 />
-                <Chip 
-                  label={service.status} 
+                <Chip
+                  label={service.status}
                   color={
-                    service.status === 'healthy' 
-                      ? 'success' 
-                      : service.status === 'degraded' 
-                        ? 'warning' 
+                    service.status === 'healthy'
+                      ? 'success'
+                      : service.status === 'degraded'
+                        ? 'warning'
                         : 'error'
                   }
                 />
@@ -502,7 +502,7 @@ const AdminDashboard: React.FC = () => {
             ))}
           </List>
         </TabPanel>
-        
+
         <TabPanel value={tabValue} index={1}>
           <Typography variant="h6" gutterBottom>
             Database Status
@@ -542,7 +542,7 @@ const AdminDashboard: React.FC = () => {
               </Grid>
             </Grid>
           </Paper>
-          
+
           <Typography variant="h6" gutterBottom>
             Storage Usage
           </Typography>
@@ -550,9 +550,9 @@ const AdminDashboard: React.FC = () => {
             <Typography variant="body2" color="text.secondary" gutterBottom>
               {systemStatus.database.storage.used} used of {systemStatus.database.storage.total} total
             </Typography>
-            <LinearProgress 
-              variant="determinate" 
-              value={systemStatus.database.storage.percentage} 
+            <LinearProgress
+              variant="determinate"
+              value={systemStatus.database.storage.percentage}
               sx={{ height: 10, borderRadius: 5, mb: 2 }}
             />
             <Grid container spacing={2}>
@@ -589,7 +589,7 @@ const AdminDashboard: React.FC = () => {
             </Grid>
           </Paper>
         </TabPanel>
-        
+
         <TabPanel value={tabValue} index={2}>
           <Typography variant="h6" gutterBottom>
             User Statistics
@@ -669,8 +669,8 @@ const AdminDashboard: React.FC = () => {
                     </Typography>
                   </Grid>
                   <Grid item xs={12}>
-                    <Button 
-                      variant="outlined" 
+                    <Button
+                      variant="outlined"
                       fullWidth
                       component={RouterLink}
                       to="/admin/users"
@@ -683,7 +683,7 @@ const AdminDashboard: React.FC = () => {
             </Grid>
           </Grid>
         </TabPanel>
-        
+
         <TabPanel value={tabValue} index={3}>
           <Typography variant="h6" gutterBottom>
             Content Management
@@ -703,8 +703,8 @@ const AdminDashboard: React.FC = () => {
                       primary="Alice in Wonderland"
                       secondary="Active • 125 readers"
                     />
-                    <Button 
-                      variant="outlined" 
+                    <Button
+                      variant="outlined"
                       size="small"
                       component={RouterLink}
                       to="/admin/books/alice-in-wonderland"
@@ -713,8 +713,8 @@ const AdminDashboard: React.FC = () => {
                     </Button>
                   </ListItem>
                 </List>
-                <Button 
-                  variant="contained" 
+                <Button
+                  variant="contained"
                   fullWidth
                   component={RouterLink}
                   to="/admin/books/add"
@@ -763,8 +763,8 @@ const AdminDashboard: React.FC = () => {
                     </Typography>
                   </Grid>
                 </Grid>
-                <Button 
-                  variant="outlined" 
+                <Button
+                  variant="outlined"
                   fullWidth
                   component={RouterLink}
                   to="/admin/content"
@@ -776,7 +776,7 @@ const AdminDashboard: React.FC = () => {
           </Grid>
         </TabPanel>
       </Paper>
-      
+
       {/* Quick Actions */}
       <Paper sx={{ p: 3, borderRadius: 2 }}>
         <Typography variant="h6" gutterBottom>
@@ -785,8 +785,8 @@ const AdminDashboard: React.FC = () => {
         <Divider sx={{ mb: 2 }} />
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6} md={3}>
-            <Button 
-              variant="outlined" 
+            <Button
+              variant="outlined"
               fullWidth
               component={RouterLink}
               to="/admin/users"
@@ -796,8 +796,8 @@ const AdminDashboard: React.FC = () => {
             </Button>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <Button 
-              variant="outlined" 
+            <Button
+              variant="outlined"
               fullWidth
               component={RouterLink}
               to="/admin/services"
@@ -807,8 +807,8 @@ const AdminDashboard: React.FC = () => {
             </Button>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <Button 
-              variant="outlined" 
+            <Button
+              variant="outlined"
               fullWidth
               component={RouterLink}
               to="/admin/logs"
@@ -818,14 +818,26 @@ const AdminDashboard: React.FC = () => {
             </Button>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <Button 
-              variant="outlined" 
+            <Button
+              variant="outlined"
               fullWidth
               component={RouterLink}
               to="/admin/settings"
               sx={{ py: 1.5 }}
             >
               System Settings
+            </Button>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Button
+              variant="contained"
+              color="primary"
+              fullWidth
+              component={RouterLink}
+              to="/proxy-settings"
+              sx={{ py: 1.5 }}
+            >
+              Proxy Settings
             </Button>
           </Grid>
         </Grid>
