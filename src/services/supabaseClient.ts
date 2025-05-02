@@ -3,6 +3,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { appLog } from '../components/LogViewer';
 import { Database } from '../types/supabase';
 import { Book, Chapter, Section, BookWithChapters, SectionWithChapter } from '../types/book';
+import { proxyFetch } from '../utils/proxyFetch';
 
 // Configuration
 const MAX_RETRIES = 5;
@@ -54,11 +55,14 @@ export const getSupabaseClient = async (): Promise<SupabaseClient<Database>> => 
 
       const { supabaseUrl, supabaseAnonKey } = getSupabaseCredentials();
 
-      // Create a new client
+      // Create a new client with proxy support
       supabaseClient = createClient<Database>(supabaseUrl, supabaseAnonKey, {
         auth: {
           autoRefreshToken: true,
           persistSession: true
+        },
+        global: {
+          fetch: proxyFetch // Use our proxy-enabled fetch
         }
       });
 
@@ -307,7 +311,7 @@ export async function fastProfileUpdate(
   try {
     console.log('SupabaseClient: Using fast profile update for user:', userId, updates);
     const client = await getSupabaseClient();
-    
+
     const { data, error } = await client
       .rpc('fast_profile_update', {
         user_id: userId,
@@ -316,12 +320,12 @@ export async function fastProfileUpdate(
         email: updates.email || null,
         book_verified: updates.book_verified === undefined ? null : updates.book_verified
       });
-      
+
     if (error) {
       console.error('SupabaseClient: Fast profile update failed:', error);
       throw error;
     }
-    
+
     return { data, error: null };
   } catch (error) {
     console.error('SupabaseClient: Error in fast profile update:', error);
@@ -370,7 +374,7 @@ export async function verifyBookCode(code: string, userId: string, firstName?: s
       .eq('code', code.toUpperCase());
 
     // Update the user's profile to mark them as verified
-    const updates: any = { 
+    const updates: any = {
       book_verified: true,
       // Add first name and last name if provided
       ...(firstName ? { first_name: firstName } : {}),
@@ -384,25 +388,25 @@ export async function verifyBookCode(code: string, userId: string, firstName?: s
 
     // Wait for both operations to complete (parallel)
     const [codeResult, profileResult] = await Promise.all([codePromise, profilePromise]);
-    
+
     // Check for errors in code update
     if (codeResult.error) {
       appLog('SupabaseClient', 'Error updating verification code', 'error', codeResult.error);
       console.log('DEBUG: Error updating verification code:', codeResult.error);
       return { success: false, error: 'Error updating verification code' };
     }
-    
+
     // Check for errors in profile update
     if (profileResult.error) {
       appLog('SupabaseClient', 'Error updating profile', 'error', profileResult.error);
       console.log('DEBUG: Error updating profile:', profileResult.error);
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: `Profile update failed: ${String(profileResult.error)}`,
         verificationStatus: 'code_marked_used_profile_update_failed'
       };
     }
-    
+
     console.log('DEBUG: Profile updated successfully:', profileResult.data);
     appLog('SupabaseClient', 'Book code verified successfully', 'success');
     return { success: true, data };

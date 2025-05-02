@@ -20,7 +20,7 @@ import {
 } from '@mui/material';
 import { useNavigate, useParams, Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { useBookService } from '../../hooks/useService';
+import { useBookService, useDictionaryService } from '../../hooks/useService';
 import { LoadingIndicator } from '../../components/common/LoadingIndicator';
 import { useSnackbar } from '../../utils/notistackUtils';
 import CloseIcon from '@mui/icons-material/Close';
@@ -48,7 +48,8 @@ const MainInteractionPage: React.FC = () => {
   const navigate = useNavigate(); // Will be used for navigation between pages
   const { bookId = 'alice-in-wonderland' } = useParams<{ bookId?: string }>(); // Used to identify which book to load
   const { user, profile, loading: authLoading } = useAuth();
-  const { service: bookService, loading: serviceLoading, error: serviceError } = useBookService(); // serviceError will be used for error handling
+  const { service: bookService, loading: bookServiceLoading, error: bookServiceError } = useBookService();
+  const { service: dictionaryService, loading: dictionaryServiceLoading, error: dictionaryServiceError } = useDictionaryService();
   const { enqueueSnackbar } = useSnackbar(); // Will be used for notifications
 
   // FIXED: Define the actual UUID for Alice in Wonderland book to use in API calls
@@ -62,6 +63,9 @@ const MainInteractionPage: React.FC = () => {
   const [selectedSection, setSelectedSection] = useState<SectionDetail | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
+  // State for tracking the current step in the user flow
+  const [currentStep, setCurrentStep] = useState<'page_input' | 'section_selection' | 'content_interaction'>('page_input');
+
   // State for definition sidebar
   // selectedText will be used to store the highlighted text for future features
   const [selectedText, setSelectedText] = useState<string | null>(null);
@@ -71,15 +75,29 @@ const MainInteractionPage: React.FC = () => {
   // Ref for the text area where section content is displayed for highlighting
   const sectionContentRef = useRef<HTMLDivElement>(null);
 
+  // Ref for the page input field to focus on it when the component loads
+  const pageInputRef = useRef<HTMLInputElement>(null);
+
   // We'll use this to conditionally render content
   const [isReady, setIsReady] = useState<boolean>(false);
 
   // Check if services are ready
   useEffect(() => {
-    if (!authLoading && !serviceLoading && user && bookService) {
+    if (!authLoading && !bookServiceLoading && !dictionaryServiceLoading && user && bookService && dictionaryService) {
       setIsReady(true);
     }
-  }, [authLoading, serviceLoading, user, bookService]);
+  }, [authLoading, bookServiceLoading, dictionaryServiceLoading, user, bookService, dictionaryService]);
+
+  // Focus on the page input field when the component is ready
+  useEffect(() => {
+    if (isReady && pageInputRef.current && currentStep === 'page_input') {
+      // Use a small timeout to ensure the DOM is fully rendered
+      const timer = setTimeout(() => {
+        pageInputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isReady, currentStep]);
 
   // --- Core Functions ---
 
@@ -103,6 +121,9 @@ const MainInteractionPage: React.FC = () => {
 
       if (snippets.length === 0) {
         setFetchError(`No sections found on page ${pageNum}.`);
+      } else {
+        // Update the current step to section selection
+        setCurrentStep('section_selection');
       }
     } catch (err: any) {
       console.error('Error fetching sections:', err);
@@ -116,26 +137,39 @@ const MainInteractionPage: React.FC = () => {
   const handleSectionSelect = async (sectionId: string) => {
      // Find the selected snippet to get basic info
      const snippet = sectionSnippets.find(s => s.id === sectionId);
-     if (!snippet) return;
+     if (!snippet) {
+       console.error(`No snippet found with ID: ${sectionId}`);
+       return;
+     }
+
+     console.log('Selected snippet:', snippet);
 
      setIsLoadingSections(true); // Use same loading state for fetching full content
      setFetchError(null);
      setSelectedSection(null);
      console.log(`Fetching full content for section: ${sectionId}`);
+
      try {
         // Use the readerService to get full section content
         const fullSection = await readerService.getSection(sectionId);
+        console.log('Received full section data:', fullSection);
 
         // Transform to expected format
-        setSelectedSection({
+        const sectionDetail: SectionDetail = {
           id: fullSection.id,
           number: snippet.number, // Keep the number from snippet since it might not be in the full section object
           preview: snippet.preview,
           content: fullSection.content
-        });
+        };
+
+        console.log('Setting selected section with content:', sectionDetail);
+        setSelectedSection(sectionDetail);
 
         setSectionSnippets([]); // Hide snippets once full section is loaded
         clearDefinition(); // Clear any previous definition
+
+        // Update the current step to content interaction
+        setCurrentStep('content_interaction');
      } catch (err: any) {
         console.error('Error fetching section content:', err);
         setFetchError(`Failed to load content for section ${snippet.number}. ${err.message || ''}`);
@@ -279,15 +313,40 @@ const MainInteractionPage: React.FC = () => {
         setDefinitionData(null); // Clear previous
 
         try {
-          // --- MOCK DEFINITION ---
-          await new Promise(res => setTimeout(res, 300));
-          const result = cleanedText.length > 2 ? { data: `This is a definition for "${cleanedText}". Examples...` } : null;
-          // --- END MOCK ---
+          // Use the dictionaryService to get the definition
+          const definitionEntry = await dictionaryService.getDefinition(ALICE_BOOK_UUID, cleanedText);
 
-          if (result?.data) {
-            setDefinitionData({ word: cleanedText, definition: result.data, examples: [], source: 'database' });
+          if (definitionEntry) {
+            setDefinitionData({
+              word: cleanedText,
+              definition: definitionEntry.definition,
+              examples: definitionEntry.examples || [],
+              source: definitionEntry.source || 'database'
+            });
+
+            // Log the successful dictionary lookup if user is logged in
+            if (user) {
+              dictionaryService.logDictionaryLookup(
+                user.id,
+                ALICE_BOOK_UUID,
+                selectedSection?.id,
+                cleanedText,
+                true
+              ).catch(err => console.error("Error logging dictionary lookup:", err));
+            }
           } else {
             setDefinitionData({ word: cleanedText, definition: `No definition found for "${cleanedText}".`, examples: [], source: 'not_found' });
+
+            // Log the failed dictionary lookup if user is logged in
+            if (user) {
+              dictionaryService.logDictionaryLookup(
+                user.id,
+                ALICE_BOOK_UUID,
+                selectedSection?.id,
+                cleanedText,
+                false
+              ).catch(err => console.error("Error logging dictionary lookup:", err));
+            }
           }
         } catch (err: any) {
           console.error("Error fetching definition:", err);
@@ -344,17 +403,40 @@ const MainInteractionPage: React.FC = () => {
       setDefinitionData(null); // Clear previous
 
       try {
-        // When implementing this in the future, use ALICE_BOOK_UUID instead of bookId
-        // const result = await bookService.getDefinition(ALICE_BOOK_UUID, cleanedText, selectedSection.id);
-        // --- MOCK DEFINITION ---
-        await new Promise(res => setTimeout(res, 300));
-        const result = cleanedText.length > 2 ? { data: `This is a definition for "${cleanedText}". Examples...` } : null;
-        // --- END MOCK ---
+        // Use the dictionaryService to get the definition
+        const definitionEntry = await dictionaryService.getDefinition(ALICE_BOOK_UUID, cleanedText);
 
-        if (result?.data) {
-          setDefinitionData({ word: cleanedText, definition: result.data, examples: [], source: 'database' });
+        if (definitionEntry) {
+          setDefinitionData({
+            word: cleanedText,
+            definition: definitionEntry.definition,
+            examples: definitionEntry.examples || [],
+            source: definitionEntry.source || 'database'
+          });
+
+          // Log the successful dictionary lookup if user is logged in
+          if (user) {
+            dictionaryService.logDictionaryLookup(
+              user.id,
+              ALICE_BOOK_UUID,
+              selectedSection?.id,
+              cleanedText,
+              true
+            ).catch(err => console.error("Error logging dictionary lookup:", err));
+          }
         } else {
           setDefinitionData({ word: cleanedText, definition: `No definition found for "${cleanedText}".`, examples: [], source: 'not_found' });
+
+          // Log the failed dictionary lookup if user is logged in
+          if (user) {
+            dictionaryService.logDictionaryLookup(
+              user.id,
+              ALICE_BOOK_UUID,
+              selectedSection?.id,
+              cleanedText,
+              false
+            ).catch(err => console.error("Error logging dictionary lookup:", err));
+          }
         }
       } catch (err: any) {
         console.error("Error fetching definition:", err);
@@ -419,20 +501,50 @@ const MainInteractionPage: React.FC = () => {
         </Box>
 
         {/* Page Input */}
-        <Paper elevation={1} sx={{ p: 2, mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Typography sx={{ whiteSpace: 'nowrap' }}>What page are you on?</Typography>
-          <TextField
-             type="number"
-             size="small"
-             variant="outlined"
-             value={pageInput}
-             onChange={(e) => setPageInput(e.target.value)}
-             sx={{ maxWidth: '150px' }}
-             onKeyDown={(e) => e.key === 'Enter' && handlePageSubmit()}
-          />
-          <Button variant="contained" onClick={handlePageSubmit} disabled={isLoadingSections}>
-             {isLoadingSections ? 'Loading...' : 'Find Sections'}
-          </Button>
+        <Paper
+          elevation={currentStep === 'page_input' ? 3 : 1}
+          sx={{
+            p: 3,
+            mb: 3,
+            display: 'flex',
+            flexDirection: 'column',
+            borderLeft: currentStep === 'page_input' ? '4px solid' : 'none',
+            borderColor: 'primary.main',
+            transition: 'all 0.3s ease'
+          }}
+        >
+          <Typography variant="h6" color="primary" gutterBottom>
+            Step 1: Tell me what page you're reading
+          </Typography>
+
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
+            <Typography sx={{ whiteSpace: 'nowrap' }}>What page are you on?</Typography>
+            <TextField
+              inputRef={pageInputRef}
+              type="number"
+              size="small"
+              variant="outlined"
+              value={pageInput}
+              onChange={(e) => setPageInput(e.target.value)}
+              sx={{ maxWidth: '150px' }}
+              onKeyDown={(e) => e.key === 'Enter' && handlePageSubmit()}
+              placeholder="Enter page #"
+            />
+            <Button
+              variant="contained"
+              onClick={handlePageSubmit}
+              disabled={isLoadingSections}
+              sx={{ minWidth: '120px' }}
+            >
+              {isLoadingSections ? 'Loading...' : 'Find Sections'}
+            </Button>
+          </Box>
+
+          {currentStep === 'page_input' && (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+              Enter the page number from your physical book to find the corresponding sections.
+            </Typography>
+          )}
         </Paper>
 
         {/* Section Selection / Display Area */}
@@ -442,12 +554,46 @@ const MainInteractionPage: React.FC = () => {
 
           {/* Display Section Snippets */}
           {!isLoadingSections && !fetchError && sectionSnippets.length > 0 && !selectedSection && (
-            <Paper elevation={1} sx={{ p: 2 }}>
-              <Typography variant="subtitle1" gutterBottom>Select the section you are reading on page {activePage}:</Typography>
-              <List dense>
+            <Paper
+              elevation={currentStep === 'section_selection' ? 3 : 1}
+              sx={{
+                p: 3,
+                borderLeft: currentStep === 'section_selection' ? '4px solid' : 'none',
+                borderColor: 'primary.main',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              <Typography variant="h6" color="primary" gutterBottom>
+                Step 2: Select the section you're reading
+              </Typography>
+
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                I found {sectionSnippets.length} section{sectionSnippets.length !== 1 ? 's' : ''} on page {activePage}.
+                Click on the section that matches what you're currently reading in your book.
+              </Typography>
+
+              <List>
                 {sectionSnippets.map((snippet) => (
-                  <ListItem key={snippet.id} onClick={() => handleSectionSelect(snippet.id)} sx={{ cursor: 'pointer' }}>
-                     <ListItemText primary={`Section ${snippet.number}`} secondary={snippet.preview} />
+                  <ListItem
+                    key={snippet.id}
+                    onClick={() => handleSectionSelect(snippet.id)}
+                    sx={{
+                      cursor: 'pointer',
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      borderRadius: 1,
+                      mb: 1,
+                      '&:hover': {
+                        backgroundColor: 'action.hover',
+                        borderColor: 'primary.light'
+                      }
+                    }}
+                  >
+                    <ListItemText
+                      primary={`Section ${snippet.number}`}
+                      secondary={snippet.preview}
+                      primaryTypographyProps={{ fontWeight: 'bold' }}
+                    />
                   </ListItem>
                 ))}
               </List>
@@ -457,16 +603,50 @@ const MainInteractionPage: React.FC = () => {
           {/* Display Selected Section Content */}
           {!isLoadingSections && !fetchError && selectedSection && (
              <Paper
-                elevation={1}
-                sx={{ p: 2, mt: 2 }}
+                elevation={currentStep === 'content_interaction' ? 3 : 1}
+                sx={{
+                  p: 3,
+                  mt: 2,
+                  borderLeft: currentStep === 'content_interaction' ? '4px solid' : 'none',
+                  borderColor: 'primary.main',
+                  transition: 'all 0.3s ease'
+                }}
                 ref={sectionContentRef}
                 onMouseUp={handleTextSelection} // Trigger definition lookup
              >
-               <Tooltip title="Highlight text in this area to get definitions or ask AI">
+               <Typography variant="h6" color="primary" gutterBottom>
+                 Step 3: Interact with the text
+               </Typography>
+
+               <Box sx={{
+                 display: 'flex',
+                 alignItems: 'center',
+                 mb: 2,
+                 p: 2,
+                 backgroundColor: 'info.light',
+                 borderRadius: 1,
+                 color: 'info.contrastText'
+               }}>
+                 <Typography variant="body2">
+                   <strong>Tip:</strong> Highlight any word or phrase you'd like to understand better.
+                   I'll show you definitions in the sidebar.
+                 </Typography>
+               </Box>
+
+               <Box
+                 sx={{
+                   p: 2,
+                   border: '1px solid',
+                   borderColor: 'divider',
+                   borderRadius: 1,
+                   backgroundColor: 'background.paper',
+                   position: 'relative'
+                 }}
+               >
                  <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
                     {selectedSection.content}
                  </Typography>
-               </Tooltip>
+               </Box>
              </Paper>
           )}
         </Box>
