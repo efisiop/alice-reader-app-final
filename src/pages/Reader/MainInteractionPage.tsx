@@ -172,6 +172,12 @@ const MainInteractionPage: React.FC = () => {
         console.log(`Section content length: ${fullSection.content.length} characters`);
         console.log(`Section content preview: "${fullSection.content.substring(0, 100)}..."`);
 
+        // Check if content is just the preview (which would indicate a problem)
+        if (fullSection.content.trim() === snippetToUse.preview.trim()) {
+          console.warn('Section content appears to be just the preview text, attempting to retry with direct query');
+          throw new Error('Section content appears incomplete. Please try again.');
+        }
+
         // Transform to expected format
         const sectionDetail: SectionDetail = {
           id: fullSection.id,
@@ -193,7 +199,17 @@ const MainInteractionPage: React.FC = () => {
         setCurrentStep('content_interaction');
      } catch (err: any) {
         console.error('Error fetching section content:', err);
-        setFetchError(`Failed to load content for section ${snippetToUse.number}. ${err.message || ''}`);
+
+        // Provide a more user-friendly error message
+        let errorMessage = `Failed to load content for section ${snippetToUse.number}.`;
+
+        if (err.message.includes('empty response') || err.message.includes('incomplete')) {
+          errorMessage = 'The section content could not be loaded completely. Please try again.';
+        } else if (err.message) {
+          errorMessage += ` ${err.message}`;
+        }
+
+        setFetchError(errorMessage);
 
         // Only clear selected section if this is not a retry
         if (!selectedSection) {
@@ -669,9 +685,37 @@ const MainInteractionPage: React.FC = () => {
                  }}
                >
                  {selectedSection.content ? (
-                   <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-                     {selectedSection.content}
-                   </Typography>
+                   <>
+                     {/* Display section content with proper formatting */}
+                     <Typography
+                       variant="body1"
+                       sx={{
+                         whiteSpace: 'pre-wrap',
+                         lineHeight: 1.8,
+                         '& p': { marginBottom: 2 },
+                         '& .paragraph': { marginBottom: 2 }
+                       }}
+                     >
+                       {/* Split content by paragraphs and render each one */}
+                       {selectedSection.content
+                         .split(/\n\s*\n/)
+                         .map((paragraph, index) => (
+                           <React.Fragment key={index}>
+                             {paragraph.trim()}
+                             {index < selectedSection.content.split(/\n\s*\n/).length - 1 && (
+                               <Box component="span" sx={{ display: 'block', my: 2 }} />
+                             )}
+                           </React.Fragment>
+                         ))}
+                     </Typography>
+
+                     {/* Show content length for debugging */}
+                     {import.meta.env.DEV && (
+                       <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
+                         Content length: {selectedSection.content.length} characters
+                       </Typography>
+                     )}
+                   </>
                  ) : (
                    <Box sx={{ textAlign: 'center', py: 2 }}>
                      <Typography variant="body2" color="error">
