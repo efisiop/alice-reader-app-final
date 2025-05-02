@@ -137,16 +137,24 @@ const MainInteractionPage: React.FC = () => {
   const handleSectionSelect = async (sectionId: string) => {
      // Find the selected snippet to get basic info
      const snippet = sectionSnippets.find(s => s.id === sectionId);
-     if (!snippet) {
+     if (!snippet && !selectedSection) {
        console.error(`No snippet found with ID: ${sectionId}`);
        return;
      }
 
-     console.log('Selected snippet:', snippet);
+     // If we're retrying with an existing selectedSection
+     const snippetToUse = snippet || { id: sectionId, number: selectedSection?.number || 0, preview: selectedSection?.preview || '' };
+
+     console.log('Selected snippet:', snippetToUse);
 
      setIsLoadingSections(true); // Use same loading state for fetching full content
      setFetchError(null);
-     setSelectedSection(null);
+
+     // Only clear selected section if this is not a retry
+     if (!selectedSection) {
+       setSelectedSection(null);
+     }
+
      console.log(`Fetching full content for section: ${sectionId}`);
 
      try {
@@ -154,26 +162,43 @@ const MainInteractionPage: React.FC = () => {
         const fullSection = await readerService.getSection(sectionId);
         console.log('Received full section data:', fullSection);
 
+        // Validate that we received content
+        if (!fullSection || !fullSection.content) {
+          console.error('Section content is empty or undefined:', fullSection);
+          throw new Error('Section content could not be loaded (empty response)');
+        }
+
+        // Log content length for debugging
+        console.log(`Section content length: ${fullSection.content.length} characters`);
+        console.log(`Section content preview: "${fullSection.content.substring(0, 100)}..."`);
+
         // Transform to expected format
         const sectionDetail: SectionDetail = {
           id: fullSection.id,
-          number: snippet.number, // Keep the number from snippet since it might not be in the full section object
-          preview: snippet.preview,
+          number: snippetToUse.number, // Keep the number from snippet since it might not be in the full section object
+          preview: snippetToUse.preview,
           content: fullSection.content
         };
 
         console.log('Setting selected section with content:', sectionDetail);
         setSelectedSection(sectionDetail);
 
-        setSectionSnippets([]); // Hide snippets once full section is loaded
+        if (snippet) {
+          setSectionSnippets([]); // Hide snippets once full section is loaded
+        }
+
         clearDefinition(); // Clear any previous definition
 
         // Update the current step to content interaction
         setCurrentStep('content_interaction');
      } catch (err: any) {
         console.error('Error fetching section content:', err);
-        setFetchError(`Failed to load content for section ${snippet.number}. ${err.message || ''}`);
-        setSelectedSection(null);
+        setFetchError(`Failed to load content for section ${snippetToUse.number}. ${err.message || ''}`);
+
+        // Only clear selected section if this is not a retry
+        if (!selectedSection) {
+          setSelectedSection(null);
+        }
      } finally {
        setIsLoadingSections(false);
      }
@@ -643,9 +668,25 @@ const MainInteractionPage: React.FC = () => {
                    position: 'relative'
                  }}
                >
-                 <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-                    {selectedSection.content}
-                 </Typography>
+                 {selectedSection.content ? (
+                   <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                     {selectedSection.content}
+                   </Typography>
+                 ) : (
+                   <Box sx={{ textAlign: 'center', py: 2 }}>
+                     <Typography variant="body2" color="error">
+                       Section content could not be loaded. Please try selecting the section again.
+                     </Typography>
+                     <Button
+                       variant="outlined"
+                       size="small"
+                       sx={{ mt: 2 }}
+                       onClick={() => handleSectionSelect(selectedSection.id)}
+                     >
+                       Retry Loading Content
+                     </Button>
+                   </Box>
+                 )}
                </Box>
              </Paper>
           )}
