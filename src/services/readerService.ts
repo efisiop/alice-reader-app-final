@@ -26,16 +26,16 @@ class ReaderService {
       .single();
 
     if (error) throw error;
-    
+
     // Transform the data to match the Section interface
-    // The chapter comes back as an array but we need it as a single object
+    // The chapter comes back as an object from the join
     const section: Section = {
       id: data.id,
       title: data.title,
       content: data.content,
-      chapter: data.chapter.length > 0 ? data.chapter[0] : {} as Chapter
+      chapter: data.chapter || {} as Chapter
     };
-    
+
     return section;
   }
 
@@ -48,7 +48,7 @@ class ReaderService {
       });
 
     if (error) throw error;
-    
+
     // Return empty array if no data
     return data || [];
   }
@@ -66,4 +66,4 @@ class ReaderService {
   }
 }
 
-export const readerService = new ReaderService(); 
+export const readerService = new ReaderService();
