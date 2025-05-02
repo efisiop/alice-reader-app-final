@@ -11,40 +11,79 @@ export interface SectionSnippet {
 class ReaderService {
   async getSection(sectionId: string): Promise<Section> {
     console.log('ReaderService: Getting section with ID:', sectionId);
-    const supabase = await getSupabaseClient();
-    const { data, error } = await supabase
-      .from('sections')
-      .select(`
-        id,
-        title,
-        content,
-        chapter:chapter_id (
+
+    try {
+      const supabase = await getSupabaseClient();
+
+      // First attempt: Try to get the section with the chapter join
+      const { data, error } = await supabase
+        .from('sections')
+        .select(`
           id,
           title,
-          number
-        )
-      `)
-      .eq('id', sectionId)
-      .single();
+          content,
+          chapter:chapter_id (
+            id,
+            title,
+            number
+          )
+        `)
+        .eq('id', sectionId)
+        .single();
 
-    if (error) {
-      console.error('ReaderService: Error fetching section:', error);
+      if (error) {
+        console.error('ReaderService: Error fetching section with join:', error);
+        throw error;
+      }
+
+      console.log('ReaderService: Section data received:', data);
+
+      // Validate content
+      if (!data || !data.content || data.content.trim() === '') {
+        console.warn('ReaderService: Section content is empty or missing, trying direct content query');
+
+        // Second attempt: Try to get just the content directly
+        const { data: contentData, error: contentError } = await supabase
+          .from('sections')
+          .select('content')
+          .eq('id', sectionId)
+          .single();
+
+        if (contentError) {
+          console.error('ReaderService: Error fetching section content directly:', contentError);
+          throw contentError;
+        }
+
+        if (!contentData || !contentData.content || contentData.content.trim() === '') {
+          console.error('ReaderService: Section content is still empty after direct query');
+          throw new Error('Section content is empty');
+        }
+
+        console.log('ReaderService: Retrieved content directly, length:', contentData.content.length);
+        console.log('ReaderService: Content preview:', contentData.content.substring(0, 100));
+
+        // Update the content in the original data
+        data.content = contentData.content;
+      }
+
+      // Log content length for debugging
+      console.log('ReaderService: Content length:', data.content.length);
+      console.log('ReaderService: Content preview:', data.content.substring(0, 100));
+
+      // Transform the data to match the Section interface
+      const section: Section = {
+        id: data.id,
+        title: data.title,
+        content: data.content,
+        chapter: data.chapter || {} as Chapter
+      };
+
+      console.log('ReaderService: Transformed section:', section);
+      return section;
+    } catch (error) {
+      console.error('ReaderService: Failed to get section:', error);
       throw error;
     }
-
-    console.log('ReaderService: Section data received:', data);
-
-    // Transform the data to match the Section interface
-    // The chapter comes back as an object from the join
-    const section: Section = {
-      id: data.id,
-      title: data.title,
-      content: data.content,
-      chapter: data.chapter || {} as Chapter
-    };
-
-    console.log('ReaderService: Transformed section:', section);
-    return section;
   }
 
   async getSectionSnippetsForPage(bookId: string, pageNumber: number): Promise<SectionSnippet[]> {
