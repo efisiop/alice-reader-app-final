@@ -312,13 +312,11 @@ const MainInteractionPage: React.FC = () => {
         setDefinitionData(null); // Clear previous
 
         try {
-          // --- MOCK DEFINITION ---
-          await new Promise(res => setTimeout(res, 300));
-          const result = cleanedText.length > 2 ? { data: `This is a definition for "${cleanedText}". Examples...` } : null;
-          // --- END MOCK ---
+          // Use the bookService to get the definition
+          const definition = await bookService.getDefinition(ALICE_BOOK_UUID, cleanedText);
 
-          if (result?.data) {
-            setDefinitionData({ word: cleanedText, definition: result.data, examples: [], source: 'database' });
+          if (definition) {
+            setDefinitionData({ word: cleanedText, definition, examples: [], source: 'database' });
           } else {
             setDefinitionData({ word: cleanedText, definition: `No definition found for "${cleanedText}".`, examples: [], source: 'not_found' });
           }
@@ -377,15 +375,11 @@ const MainInteractionPage: React.FC = () => {
       setDefinitionData(null); // Clear previous
 
       try {
-        // When implementing this in the future, use ALICE_BOOK_UUID instead of bookId
-        // const result = await bookService.getDefinition(ALICE_BOOK_UUID, cleanedText, selectedSection.id);
-        // --- MOCK DEFINITION ---
-        await new Promise(res => setTimeout(res, 300));
-        const result = cleanedText.length > 2 ? { data: `This is a definition for "${cleanedText}". Examples...` } : null;
-        // --- END MOCK ---
+        // Use the bookService to get the definition
+        const definition = await bookService.getDefinition(ALICE_BOOK_UUID, cleanedText);
 
-        if (result?.data) {
-          setDefinitionData({ word: cleanedText, definition: result.data, examples: [], source: 'database' });
+        if (definition) {
+          setDefinitionData({ word: cleanedText, definition, examples: [], source: 'database' });
         } else {
           setDefinitionData({ word: cleanedText, definition: `No definition found for "${cleanedText}".`, examples: [], source: 'not_found' });
         }
