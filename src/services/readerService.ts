@@ -10,6 +10,7 @@ export interface SectionSnippet {
 
 class ReaderService {
   async getSection(sectionId: string): Promise<Section> {
+    console.log('ReaderService: Getting section with ID:', sectionId);
     const supabase = await getSupabaseClient();
     const { data, error } = await supabase
       .from('sections')
@@ -19,27 +20,35 @@ class ReaderService {
         content,
         chapter:chapter_id (
           id,
-          title
+          title,
+          number
         )
       `)
       .eq('id', sectionId)
       .single();
 
-    if (error) throw error;
-    
+    if (error) {
+      console.error('ReaderService: Error fetching section:', error);
+      throw error;
+    }
+
+    console.log('ReaderService: Section data received:', data);
+
     // Transform the data to match the Section interface
-    // The chapter comes back as an array but we need it as a single object
+    // The chapter comes back as an object from the join
     const section: Section = {
       id: data.id,
       title: data.title,
       content: data.content,
-      chapter: data.chapter.length > 0 ? data.chapter[0] : {} as Chapter
+      chapter: data.chapter || {} as Chapter
     };
-    
+
+    console.log('ReaderService: Transformed section:', section);
     return section;
   }
 
   async getSectionSnippetsForPage(bookId: string, pageNumber: number): Promise<SectionSnippet[]> {
+    console.log('ReaderService: Getting section snippets for book:', bookId, 'page:', pageNumber);
     const supabase = await getSupabaseClient();
     const { data, error } = await supabase
       .rpc('get_section_snippets_for_page', {
@@ -47,8 +56,13 @@ class ReaderService {
         page_number_param: pageNumber
       });
 
-    if (error) throw error;
-    
+    if (error) {
+      console.error('ReaderService: Error fetching section snippets:', error);
+      throw error;
+    }
+
+    console.log('ReaderService: Section snippets received:', data);
+
     // Return empty array if no data
     return data || [];
   }
@@ -66,4 +80,4 @@ class ReaderService {
   }
 }
 
-export const readerService = new ReaderService(); 
+export const readerService = new ReaderService();
