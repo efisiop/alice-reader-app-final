@@ -20,7 +20,7 @@ import {
 } from '@mui/material';
 import { useNavigate, useParams, Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { useBookService } from '../../hooks/useService';
+import { useBookService, useDictionaryService } from '../../hooks/useService';
 import { LoadingIndicator } from '../../components/common/LoadingIndicator';
 import { useSnackbar } from '../../utils/notistackUtils';
 import CloseIcon from '@mui/icons-material/Close';
@@ -48,7 +48,8 @@ const MainInteractionPage: React.FC = () => {
   const navigate = useNavigate(); // Will be used for navigation between pages
   const { bookId = 'alice-in-wonderland' } = useParams<{ bookId?: string }>(); // Used to identify which book to load
   const { user, profile, loading: authLoading } = useAuth();
-  const { service: bookService, loading: serviceLoading, error: serviceError } = useBookService(); // serviceError will be used for error handling
+  const { service: bookService, loading: bookServiceLoading, error: bookServiceError } = useBookService();
+  const { service: dictionaryService, loading: dictionaryServiceLoading, error: dictionaryServiceError } = useDictionaryService();
   const { enqueueSnackbar } = useSnackbar(); // Will be used for notifications
 
   // FIXED: Define the actual UUID for Alice in Wonderland book to use in API calls
@@ -82,10 +83,10 @@ const MainInteractionPage: React.FC = () => {
 
   // Check if services are ready
   useEffect(() => {
-    if (!authLoading && !serviceLoading && user && bookService) {
+    if (!authLoading && !bookServiceLoading && !dictionaryServiceLoading && user && bookService && dictionaryService) {
       setIsReady(true);
     }
-  }, [authLoading, serviceLoading, user, bookService]);
+  }, [authLoading, bookServiceLoading, dictionaryServiceLoading, user, bookService, dictionaryService]);
 
   // Focus on the page input field when the component is ready
   useEffect(() => {
@@ -312,13 +313,40 @@ const MainInteractionPage: React.FC = () => {
         setDefinitionData(null); // Clear previous
 
         try {
-          // Use the bookService to get the definition
-          const definition = await bookService.getDefinition(ALICE_BOOK_UUID, cleanedText);
+          // Use the dictionaryService to get the definition
+          const definitionEntry = await dictionaryService.getDefinition(ALICE_BOOK_UUID, cleanedText);
 
-          if (definition) {
-            setDefinitionData({ word: cleanedText, definition, examples: [], source: 'database' });
+          if (definitionEntry) {
+            setDefinitionData({
+              word: cleanedText,
+              definition: definitionEntry.definition,
+              examples: definitionEntry.examples || [],
+              source: definitionEntry.source || 'database'
+            });
+
+            // Log the successful dictionary lookup if user is logged in
+            if (user) {
+              dictionaryService.logDictionaryLookup(
+                user.id,
+                ALICE_BOOK_UUID,
+                selectedSection?.id,
+                cleanedText,
+                true
+              ).catch(err => console.error("Error logging dictionary lookup:", err));
+            }
           } else {
             setDefinitionData({ word: cleanedText, definition: `No definition found for "${cleanedText}".`, examples: [], source: 'not_found' });
+
+            // Log the failed dictionary lookup if user is logged in
+            if (user) {
+              dictionaryService.logDictionaryLookup(
+                user.id,
+                ALICE_BOOK_UUID,
+                selectedSection?.id,
+                cleanedText,
+                false
+              ).catch(err => console.error("Error logging dictionary lookup:", err));
+            }
           }
         } catch (err: any) {
           console.error("Error fetching definition:", err);
@@ -375,13 +403,40 @@ const MainInteractionPage: React.FC = () => {
       setDefinitionData(null); // Clear previous
 
       try {
-        // Use the bookService to get the definition
-        const definition = await bookService.getDefinition(ALICE_BOOK_UUID, cleanedText);
+        // Use the dictionaryService to get the definition
+        const definitionEntry = await dictionaryService.getDefinition(ALICE_BOOK_UUID, cleanedText);
 
-        if (definition) {
-          setDefinitionData({ word: cleanedText, definition, examples: [], source: 'database' });
+        if (definitionEntry) {
+          setDefinitionData({
+            word: cleanedText,
+            definition: definitionEntry.definition,
+            examples: definitionEntry.examples || [],
+            source: definitionEntry.source || 'database'
+          });
+
+          // Log the successful dictionary lookup if user is logged in
+          if (user) {
+            dictionaryService.logDictionaryLookup(
+              user.id,
+              ALICE_BOOK_UUID,
+              selectedSection?.id,
+              cleanedText,
+              true
+            ).catch(err => console.error("Error logging dictionary lookup:", err));
+          }
         } else {
           setDefinitionData({ word: cleanedText, definition: `No definition found for "${cleanedText}".`, examples: [], source: 'not_found' });
+
+          // Log the failed dictionary lookup if user is logged in
+          if (user) {
+            dictionaryService.logDictionaryLookup(
+              user.id,
+              ALICE_BOOK_UUID,
+              selectedSection?.id,
+              cleanedText,
+              false
+            ).catch(err => console.error("Error logging dictionary lookup:", err));
+          }
         }
       } catch (err: any) {
         console.error("Error fetching definition:", err);
