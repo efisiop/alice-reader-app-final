@@ -10,12 +10,20 @@ export interface SectionSnippet {
 
 class ReaderService {
   async getSection(sectionId: string): Promise<Section> {
-    console.log(`readerService: Fetching section with ID: ${sectionId}`);
+    console.log(`[DEBUG-SERVICE] Fetching section with ID: ${sectionId}`);
+
+    if (!sectionId) {
+      console.error('[DEBUG-SERVICE] CRITICAL: sectionId is null or empty');
+      throw new Error('Section ID is required');
+    }
 
     try {
+      console.log('[DEBUG-SERVICE] Getting Supabase client');
       const supabase = await getSupabaseClient();
+      console.log('[DEBUG-SERVICE] Supabase client obtained');
 
       // First attempt - using standard query
+      console.log('[DEBUG-SERVICE] Executing standard query for section:', sectionId);
       const { data, error } = await supabase
         .from('sections')
         .select(`
@@ -30,6 +38,9 @@ class ReaderService {
         .eq('id', sectionId)
         .single();
 
+      console.log('[DEBUG-SERVICE] Standard query completed. Error:', error ? 'YES' : 'NO');
+      console.log('[DEBUG-SERVICE] Standard query data received:', data ? 'YES' : 'NO');
+
       if (error) {
         console.error(`readerService: Error fetching section ${sectionId}:`, error);
         throw error;
@@ -40,24 +51,33 @@ class ReaderService {
         throw new Error(`Section ${sectionId} not found`);
       }
 
-      console.log(`readerService: Raw section data:`, data);
+      console.log(`[DEBUG-SERVICE] Raw section data:`, data);
+      console.log(`[DEBUG-SERVICE] Content type:`, typeof data.content);
+      console.log(`[DEBUG-SERVICE] Content length:`, data.content ? data.content.length : 0);
+      console.log(`[DEBUG-SERVICE] Content preview:`, data.content ? data.content.substring(0, 100) : 'NO CONTENT');
 
       // Transform the data to match the Section interface
       // Handle different possible structures of the chapter data
       let chapterData: Chapter;
 
       if (data.chapter) {
+        console.log(`[DEBUG-SERVICE] Chapter data exists:`, data.chapter);
         if (Array.isArray(data.chapter)) {
           // If chapter is an array, use the first item
+          console.log(`[DEBUG-SERVICE] Chapter is an array of length:`, data.chapter.length);
           chapterData = data.chapter.length > 0 ? data.chapter[0] : { id: '', title: '' };
         } else {
           // If chapter is already an object, use it directly
+          console.log(`[DEBUG-SERVICE] Chapter is an object`);
           chapterData = data.chapter;
         }
       } else {
         // If no chapter data, use empty object
+        console.log(`[DEBUG-SERVICE] No chapter data found`);
         chapterData = { id: '', title: '' };
       }
+
+      console.log(`[DEBUG-SERVICE] Processed chapter data:`, chapterData);
 
       const section: Section = {
         id: data.id,
@@ -65,6 +85,8 @@ class ReaderService {
         content: data.content || '',
         chapter: chapterData
       };
+
+      console.log(`[DEBUG-SERVICE] Created section object with content length:`, section.content.length);
 
       console.log(`readerService: Processed section data:`, section);
       return section;
