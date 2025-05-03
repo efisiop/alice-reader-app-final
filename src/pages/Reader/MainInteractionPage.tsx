@@ -157,13 +157,33 @@ const MainInteractionPage: React.FC = () => {
 
      const attemptFetch = async (): Promise<SectionDetail | null> => {
        try {
+         console.log(`Attempt ${retryCount + 1}/${maxRetries + 1} to fetch section ${sectionId}`);
+
          // Use the readerService to get full section content
          const fullSection = await readerService.getSection(sectionId);
          console.log('Received full section data:', fullSection);
 
-         if (!fullSection || !fullSection.content) {
-           console.error('Section data is incomplete:', fullSection);
-           throw new Error('Received incomplete section data from server');
+         // Add detailed logging of the response
+         console.log('Section ID:', fullSection?.id);
+         console.log('Section Title:', fullSection?.title);
+         console.log('Section Content Type:', typeof fullSection?.content);
+         console.log('Section Content Length:', fullSection?.content?.length || 0);
+         console.log('Section Content Preview:', fullSection?.content?.substring(0, 100) || 'No content');
+         console.log('Section Chapter:', fullSection?.chapter);
+
+         if (!fullSection) {
+           console.error('Section data is null or undefined');
+           throw new Error('No section data received from server');
+         }
+
+         if (!fullSection.content) {
+           console.error('Section content is missing:', fullSection);
+           throw new Error('Received section data without content');
+         }
+
+         if (fullSection.content.length === 0) {
+           console.error('Section content is empty:', fullSection);
+           throw new Error('Received empty section content from server');
          }
 
          // Transform to expected format
@@ -174,9 +194,14 @@ const MainInteractionPage: React.FC = () => {
            content: fullSection.content
          };
 
+         console.log('Created section detail object:', sectionDetail);
+         console.log('Content length in detail object:', sectionDetail.content.length);
+
          return sectionDetail;
        } catch (err: any) {
          console.error(`Error fetching section content (attempt ${retryCount + 1}/${maxRetries + 1}):`, err);
+         console.error('Error details:', err.message);
+         console.error('Error stack:', err.stack);
 
          if (retryCount < maxRetries) {
            retryCount++;
@@ -690,9 +715,26 @@ const MainInteractionPage: React.FC = () => {
                    position: 'relative'
                  }}
                >
-                 <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-                    {selectedSection.content}
-                 </Typography>
+                 {/* Debug info */}
+                 <Box sx={{ mb: 2, p: 1, bgcolor: 'info.light', borderRadius: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                   <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
+                     Content Length: {selectedSection.content ? selectedSection.content.length : 0} characters
+                   </Typography>
+                   <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
+                     Content Preview: {selectedSection.content ? (selectedSection.content.substring(0, 50) + '...') : 'No content'}
+                   </Typography>
+                 </Box>
+
+                 {/* Actual content */}
+                 {selectedSection.content ? (
+                   <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                     {selectedSection.content}
+                   </Typography>
+                 ) : (
+                   <Typography variant="body1" color="error">
+                     No content available for this section. Please try selecting a different section or refreshing the page.
+                   </Typography>
+                 )}
                </Box>
              </Paper>
           )}
