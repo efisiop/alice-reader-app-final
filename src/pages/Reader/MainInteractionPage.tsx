@@ -750,59 +750,27 @@ const MainInteractionPage: React.FC = () => {
                    borderColor: 'divider',
                    borderRadius: 1,
                    backgroundColor: 'background.paper',
-                   position: 'relative'
+                   position: 'relative',
+                   minHeight: '200px'
                  }}
                >
-                 {/* Debug info */}
-                 <Box sx={{ mb: 2, p: 1, bgcolor: 'info.light', borderRadius: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
-                   <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
-                     Content Length: {selectedSection.content ? selectedSection.content.length : 0} characters
+                 {/* Clean content display */}
+                 {selectedSection.content ? (
+                   <Typography
+                     variant="body1"
+                     sx={{
+                       whiteSpace: 'pre-wrap',
+                       lineHeight: 1.8,
+                       fontSize: '1.05rem'
+                     }}
+                   >
+                     {selectedSection.content}
                    </Typography>
-                   <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
-                     Content Preview: {selectedSection.content ? (selectedSection.content.substring(0, 50) + '...') : 'No content'}
+                 ) : (
+                   <Typography variant="body1" color="error">
+                     No content available for this section. Please try selecting a different section or refreshing the page.
                    </Typography>
-                 </Box>
-
-                 {/* Actual content - with forced display */}
-                 <Box sx={{
-                   border: '2px solid #f00',
-                   p: 2,
-                   mt: 2,
-                   bgcolor: '#fff',
-                   minHeight: '200px',
-                   overflow: 'auto',
-                   maxHeight: '500px'
-                 }}>
-                   <Typography variant="h6" color="error" gutterBottom>
-                     FORCED CONTENT DISPLAY:
-                   </Typography>
-
-                   {selectedSection.content ? (
-                     <>
-                       <pre style={{
-                         whiteSpace: 'pre-wrap',
-                         fontFamily: 'inherit',
-                         margin: 0,
-                         padding: '10px',
-                         backgroundColor: '#f5f5f5',
-                         border: '1px solid #ddd',
-                         borderRadius: '4px'
-                       }}>
-                         {selectedSection.content}
-                       </pre>
-
-                       <Box sx={{ mt: 2, p: 2, bgcolor: '#e8f4f8', borderRadius: 1 }}>
-                         <Typography variant="body2">
-                           <strong>Raw content (first 200 chars):</strong> {JSON.stringify(selectedSection.content).substring(0, 200)}...
-                         </Typography>
-                       </Box>
-                     </>
-                   ) : (
-                     <Typography variant="body1" color="error">
-                       No content available for this section. Please try selecting a different section or refreshing the page.
-                     </Typography>
-                   )}
-                 </Box>
+                 )}
                </Box>
              </Paper>
           )}
