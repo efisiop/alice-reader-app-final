@@ -139,6 +139,7 @@ const MainInteractionPage: React.FC = () => {
      const snippet = sectionSnippets.find(s => s.id === sectionId);
      if (!snippet) {
        console.error(`No snippet found with ID: ${sectionId}`);
+       setFetchError(`Error: Could not find section information. Please try again.`);
        return;
      }
 
@@ -149,31 +150,77 @@ const MainInteractionPage: React.FC = () => {
      setSelectedSection(null);
      console.log(`Fetching full content for section: ${sectionId}`);
 
+     // Track retry attempts
+     let retryCount = 0;
+     const maxRetries = 2;
+     const retryDelay = 1000; // 1 second
+
+     const attemptFetch = async (): Promise<SectionDetail | null> => {
+       try {
+         // Use the readerService to get full section content
+         const fullSection = await readerService.getSection(sectionId);
+         console.log('Received full section data:', fullSection);
+
+         if (!fullSection || !fullSection.content) {
+           console.error('Section data is incomplete:', fullSection);
+           throw new Error('Received incomplete section data from server');
+         }
+
+         // Transform to expected format
+         const sectionDetail: SectionDetail = {
+           id: fullSection.id,
+           number: snippet.number, // Keep the number from snippet since it might not be in the full section object
+           preview: snippet.preview,
+           content: fullSection.content
+         };
+
+         return sectionDetail;
+       } catch (err: any) {
+         console.error(`Error fetching section content (attempt ${retryCount + 1}/${maxRetries + 1}):`, err);
+
+         if (retryCount < maxRetries) {
+           retryCount++;
+           console.log(`Retrying in ${retryDelay}ms...`);
+           await new Promise(resolve => setTimeout(resolve, retryDelay));
+           return attemptFetch(); // Recursive retry
+         }
+
+         throw err; // Re-throw if all retries failed
+       }
+     };
+
      try {
-        // Use the readerService to get full section content
-        const fullSection = await readerService.getSection(sectionId);
-        console.log('Received full section data:', fullSection);
+       const sectionDetail = await attemptFetch();
 
-        // Transform to expected format
-        const sectionDetail: SectionDetail = {
-          id: fullSection.id,
-          number: snippet.number, // Keep the number from snippet since it might not be in the full section object
-          preview: snippet.preview,
-          content: fullSection.content
-        };
+       if (sectionDetail) {
+         console.log('Setting selected section with content:', sectionDetail);
+         setSelectedSection(sectionDetail);
 
-        console.log('Setting selected section with content:', sectionDetail);
-        setSelectedSection(sectionDetail);
+         setSectionSnippets([]); // Hide snippets once full section is loaded
+         clearDefinition(); // Clear any previous definition
 
-        setSectionSnippets([]); // Hide snippets once full section is loaded
-        clearDefinition(); // Clear any previous definition
+         // Update the current step to content interaction
+         setCurrentStep('content_interaction');
 
-        // Update the current step to content interaction
-        setCurrentStep('content_interaction');
+         // Log success to console for debugging
+         console.log('Section content loaded successfully:', sectionDetail.content.substring(0, 100) + '...');
+       }
      } catch (err: any) {
-        console.error('Error fetching section content:', err);
-        setFetchError(`Failed to load content for section ${snippet.number}. ${err.message || ''}`);
-        setSelectedSection(null);
+       console.error('All attempts to fetch section content failed:', err);
+       setFetchError(`Failed to load content for section ${snippet.number}. ${err.message || 'Please check your network connection and try again.'}`);
+       setSelectedSection(null);
+
+       // Show a more detailed error in the console for debugging
+       console.error('Error details:', err);
+
+       // Attempt to log the error to the server if analytics service is available
+       if (window.logError) {
+         window.logError('section_content_fetch_failed', {
+           sectionId,
+           error: err.message,
+           stack: err.stack
+         });
+       }
      } finally {
        setIsLoadingSections(false);
      }

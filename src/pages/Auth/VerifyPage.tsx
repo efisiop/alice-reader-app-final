@@ -29,7 +29,7 @@ import { useAuth } from '../../contexts/AuthContext';
 const VerifyPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isVerified, setIsVerified, verifyBook } = useAuth();
+  const { user, profile, isVerified, setIsVerified, verifyBook } = useAuth();
   const { service: analyticsService } = useAnalyticsService();
 
   // Form state
@@ -105,10 +105,20 @@ const VerifyPage: React.FC = () => {
   // Monitor isVerified changes and redirect if needed
   useEffect(() => {
     if (isVerified && user) {
-      console.log('VerifyPage: isVerified changed to true, redirecting to reader interaction page');
-      navigate('/reader/interaction', { replace: true });
+      // Check if this is the user's first login by examining the profile
+      // If it's a first-time user, redirect to dashboard, otherwise to interaction page
+      const isFirstTimeUser = location.state?.fromRegistration ||
+                             (profile && (!profile.first_name || !profile.last_name));
+
+      if (isFirstTimeUser) {
+        console.log('VerifyPage: First-time user detected, redirecting to reader dashboard for welcome experience');
+        navigate('/reader', { replace: true });
+      } else {
+        console.log('VerifyPage: Returning user detected, redirecting to reader interaction page');
+        navigate('/reader/interaction', { replace: true });
+      }
     }
-  }, [isVerified, user, navigate]);
+  }, [isVerified, user, navigate, profile, location.state]);
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -172,10 +182,16 @@ const VerifyPage: React.FC = () => {
       setActiveStep(1);
 
       // Short delay to show the success message before redirecting
-      console.log('VerifyPage: Setting up redirect to reader interaction page');
+      // For first-time users, redirect to dashboard, otherwise to interaction page
+      const isFirstTimeUser = location.state?.fromRegistration ||
+                             (profile && (!profile.first_name || !profile.last_name));
+
+      const redirectPath = isFirstTimeUser ? '/reader' : '/reader/interaction';
+
+      console.log(`VerifyPage: Setting up redirect to ${isFirstTimeUser ? 'reader dashboard' : 'reader interaction page'}`);
       setTimeout(() => {
-        console.log('VerifyPage: Executing redirect to reader interaction page');
-        navigate('/reader/interaction', { replace: true });
+        console.log(`VerifyPage: Executing redirect to ${redirectPath}`);
+        navigate(redirectPath, { replace: true });
       }, 1000);
 
     } catch (err: any) {
