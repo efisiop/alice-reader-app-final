@@ -793,43 +793,22 @@ const MainInteractionPage: React.FC = () => {
                    minHeight: '200px'
                  }}
                >
-                 {/* Clean content display */}
-                 {console.log('[DEBUG] About to render content. Content exists:', !!selectedSection.content)}
-                 {console.log('[DEBUG] Content value:', selectedSection.content)}
-
-                 {/* Simple content display for debugging */}
-                 <Box sx={{ border: '1px dashed blue', p: 2, mb: 2 }}>
-                   <Typography variant="subtitle2" color="primary" gutterBottom>
-                     DEBUG DISPLAY - SIMPLE CONTENT:
-                   </Typography>
-                   <pre style={{
-                     whiteSpace: 'pre-wrap',
-                     fontFamily: 'inherit',
-                     border: '1px solid #ccc',
-                     padding: '10px',
-                     backgroundColor: '#f9f9f9'
-                   }}>
-                     {selectedSection.content || 'NO CONTENT AVAILABLE'}
-                   </pre>
-                 </Box>
-
-                 {/* Regular content display */}
-                 {selectedSection.content ? (
+                 {/* ULTRA SIMPLE CONTENT DISPLAY */}
+                 <Box sx={{ p: 3, border: '1px solid #2196f3', borderRadius: 2, bgcolor: '#fff' }}>
                    <Typography
                      variant="body1"
+                     component="div"
                      sx={{
-                       whiteSpace: 'pre-wrap',
+                       fontSize: '1.1rem',
                        lineHeight: 1.8,
-                       fontSize: '1.05rem'
+                       fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+                       color: '#333',
+                       whiteSpace: 'pre-wrap'
                      }}
                    >
-                     {selectedSection.content}
+                     {selectedSection.content || 'No content available'}
                    </Typography>
-                 ) : (
-                   <Typography variant="body1" color="error">
-                     No content available for this section. Please try selecting a different section or refreshing the page.
-                   </Typography>
-                 )}
+                 </Box>
                </Box>
              </Paper>
           )}
