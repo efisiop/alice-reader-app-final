@@ -727,31 +727,32 @@ const MainInteractionPage: React.FC = () => {
                 {sectionSnippets.map((snippet) => {
                   console.log('[DEBUG] Rendering snippet element with ID:', snippet.id);
                   return (
-                  <ListItem
-                    key={snippet.id}
-                    onClick={() => {
-                      console.log('[DEBUG] Snippet clicked with ID:', snippet.id);
-                      handleSectionSelect(snippet.id);
-                    }}
-                    sx={{
-                      cursor: 'pointer',
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      borderRadius: 1,
-                      mb: 1,
-                      '&:hover': {
-                        backgroundColor: 'action.hover',
-                        borderColor: 'primary.light'
-                      }
-                    }}
-                  >
+                    <ListItem
+                      key={snippet.id}
+                      onClick={() => {
+                        console.log('[DEBUG] Snippet clicked with ID:', snippet.id);
+                        handleSectionSelect(snippet.id);
+                      }}
+                      sx={{
+                        cursor: 'pointer',
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 1,
+                        mb: 1,
+                        '&:hover': {
+                          backgroundColor: 'action.hover',
+                          borderColor: 'primary.light'
+                        }
+                      }}
+                    >
                     <ListItemText
                       primary={`Section ${snippet.number}`}
                       secondary={snippet.preview}
                       primaryTypographyProps={{ fontWeight: 'bold' }}
                     />
-                  </ListItem>
-                ))}
+                    </ListItem>
+                  );
+                })}
               </List>
             </Paper>
           )}
