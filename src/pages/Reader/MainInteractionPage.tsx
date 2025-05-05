@@ -135,6 +135,7 @@ const MainInteractionPage: React.FC = () => {
   };
 
   const handleSectionSelect = async (sectionId: string) => {
+     alert('handleSectionSelect function triggered with ID: ' + sectionId);
      console.log('[DEBUG] handleSectionSelect triggered. Received sectionId:', sectionId);
      console.log('[DEBUG] Current sectionSnippets array length:', sectionSnippets.length);
      console.log('[DEBUG] Current sectionSnippets array:', sectionSnippets);
@@ -731,6 +732,7 @@ const MainInteractionPage: React.FC = () => {
                       key={snippet.id}
                       onClick={() => {
                         console.log('[DEBUG] Snippet clicked with ID:', snippet.id);
+                        alert('Snippet clicked with ID: ' + snippet.id);
                         handleSectionSelect(snippet.id);
                       }}
                       sx={{
