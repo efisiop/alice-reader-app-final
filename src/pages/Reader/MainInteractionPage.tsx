@@ -136,12 +136,23 @@ const MainInteractionPage: React.FC = () => {
 
   const handleSectionSelect = async (sectionId: string) => {
      console.log('[DEBUG] handleSectionSelect triggered. Received sectionId:', sectionId);
+     console.log('[DEBUG] Current sectionSnippets array length:', sectionSnippets.length);
+     console.log('[DEBUG] Current sectionSnippets array:', sectionSnippets);
+
+     // Verify the function is being called with the correct parameter
+     if (typeof sectionId !== 'string') {
+       console.error('[DEBUG] CRITICAL: sectionId is not a string:', sectionId);
+       setFetchError(`Error: Invalid section ID type. Please try again.`);
+       return;
+     }
 
      if (!sectionId) {
-       console.error('[DEBUG] CRITICAL: sectionId is missing or invalid!');
+       console.error('[DEBUG] CRITICAL: sectionId is missing or empty!');
        setFetchError(`Error: Invalid section ID. Please try again.`);
        return;
      }
+
+     console.log('[DEBUG] Attempting to extract snippet for sectionId:', sectionId);
 
      // Find the selected snippet to get basic info
      const snippet = sectionSnippets.find(s => s.id === sectionId);
@@ -158,7 +169,10 @@ const MainInteractionPage: React.FC = () => {
      setIsLoadingSections(true); // Use same loading state for fetching full content
      setFetchError(null);
      setSelectedSection(null);
-     console.log(`Fetching full content for section: ${sectionId}`);
+     console.log(`[DEBUG] Fetching full content for section: ${sectionId}`);
+     console.log(`[DEBUG] About to call readerService.getSection with ID: ${sectionId}`);
+     console.log(`[DEBUG] readerService object available:`, !!readerService);
+     console.log(`[DEBUG] readerService.getSection function available:`, typeof readerService.getSection === 'function');
 
      // Track retry attempts
      let retryCount = 0;
@@ -710,10 +724,15 @@ const MainInteractionPage: React.FC = () => {
               </Typography>
 
               <List>
-                {sectionSnippets.map((snippet) => (
+                {sectionSnippets.map((snippet) => {
+                  console.log('[DEBUG] Rendering snippet element with ID:', snippet.id);
+                  return (
                   <ListItem
                     key={snippet.id}
-                    onClick={() => handleSectionSelect(snippet.id)}
+                    onClick={() => {
+                      console.log('[DEBUG] Snippet clicked with ID:', snippet.id);
+                      handleSectionSelect(snippet.id);
+                    }}
                     sx={{
                       cursor: 'pointer',
                       border: '1px solid',
