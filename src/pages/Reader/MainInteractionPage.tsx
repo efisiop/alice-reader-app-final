@@ -185,8 +185,19 @@ const MainInteractionPage: React.FC = () => {
          console.log(`[DEBUG] Attempt ${retryCount + 1}/${maxRetries + 1} to fetch section ${sectionId}`);
          console.log(`[DEBUG] Calling readerService.getSection with ID: ${sectionId}`);
 
+         // Add an alert before the service call
+         alert(`About to call readerService.getSection with ID: ${sectionId}`);
+
          // Use the readerService to get full section content
-         const fullSection = await readerService.getSection(sectionId);
+         let fullSection;
+         try {
+           fullSection = await readerService.getSection(sectionId);
+           alert('Service call completed successfully');
+         } catch (serviceError) {
+           alert(`Service call failed with error: ${serviceError.message}`);
+           throw serviceError;
+         }
+
          console.log('[DEBUG] Service call returned. Data:', fullSection);
 
          if (!fullSection) {
@@ -227,6 +238,9 @@ const MainInteractionPage: React.FC = () => {
 
          console.log('Created section detail object:', sectionDetail);
          console.log('Content length in detail object:', sectionDetail.content.length);
+
+         // Add an alert to show the content
+         alert(`Section content received (${sectionDetail.content.length} chars): ${sectionDetail.content.substring(0, 50)}...`);
 
          return sectionDetail;
        } catch (err: any) {
@@ -276,6 +290,14 @@ const MainInteractionPage: React.FC = () => {
          // Update state with the section content
          setSelectedSection(guaranteedSection);
          console.log('[DEBUG] State update called with guaranteedSection');
+
+         // Add an alert to confirm state update
+         alert(`State updated with section content (${guaranteedSection.content.length} chars)`);
+
+         // Add a timeout to check if the state was actually updated
+         setTimeout(() => {
+           alert(`After state update, selectedSection is: ${selectedSection ? 'Present' : 'NULL'}`);
+         }, 100);
 
          setSectionSnippets([]); // Hide snippets once full section is loaded
          clearDefinition(); // Clear any previous definition
