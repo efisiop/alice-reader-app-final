@@ -135,45 +135,23 @@ const MainInteractionPage: React.FC = () => {
   };
 
   const handleSectionSelect = async (sectionId: string) => {
-     alert('handleSectionSelect function triggered with ID: ' + sectionId);
-     console.log('[DEBUG] handleSectionSelect triggered. Received sectionId:', sectionId);
-     console.log('[DEBUG] Current sectionSnippets array length:', sectionSnippets.length);
-     console.log('[DEBUG] Current sectionSnippets array:', sectionSnippets);
-
-     // Verify the function is being called with the correct parameter
-     if (typeof sectionId !== 'string') {
-       console.error('[DEBUG] CRITICAL: sectionId is not a string:', sectionId);
-       setFetchError(`Error: Invalid section ID type. Please try again.`);
-       return;
-     }
-
+     // Validate sectionId
      if (!sectionId) {
-       console.error('[DEBUG] CRITICAL: sectionId is missing or empty!');
        setFetchError(`Error: Invalid section ID. Please try again.`);
        return;
      }
 
-     console.log('[DEBUG] Attempting to extract snippet for sectionId:', sectionId);
-
      // Find the selected snippet to get basic info
      const snippet = sectionSnippets.find(s => s.id === sectionId);
-     console.log('[DEBUG] Found snippet for sectionId:', snippet);
 
      if (!snippet) {
-       console.error(`[DEBUG] CRITICAL: No snippet found with ID: ${sectionId}`);
        setFetchError(`Error: Could not find section information. Please try again.`);
        return;
      }
 
-     console.log('[DEBUG] Selected snippet:', snippet);
-
      setIsLoadingSections(true); // Use same loading state for fetching full content
      setFetchError(null);
      setSelectedSection(null);
-     console.log(`[DEBUG] Fetching full content for section: ${sectionId}`);
-     console.log(`[DEBUG] About to call readerService.getSection with ID: ${sectionId}`);
-     console.log(`[DEBUG] readerService object available:`, !!readerService);
-     console.log(`[DEBUG] readerService.getSection function available:`, typeof readerService.getSection === 'function');
 
      // Track retry attempts
      let retryCount = 0;
@@ -182,49 +160,18 @@ const MainInteractionPage: React.FC = () => {
 
      const attemptFetch = async (): Promise<SectionDetail | null> => {
        try {
-         console.log(`[DEBUG] Attempt ${retryCount + 1}/${maxRetries + 1} to fetch section ${sectionId}`);
-         console.log(`[DEBUG] Calling readerService.getSection with ID: ${sectionId}`);
-
-         // Add an alert before the service call
-         alert(`About to call readerService.getSection with ID: ${sectionId}`);
-
          // Use the readerService to get full section content
-         let fullSection;
-         try {
-           fullSection = await readerService.getSection(sectionId);
-           alert('Service call completed successfully');
-         } catch (serviceError) {
-           alert(`Service call failed with error: ${serviceError.message}`);
-           throw serviceError;
-         }
-
-         console.log('[DEBUG] Service call returned. Data:', fullSection);
+         const fullSection = await readerService.getSection(sectionId);
 
          if (!fullSection) {
-           console.error('[DEBUG] CRITICAL: Received null or undefined from service call');
            throw new Error('No data received from server');
          }
 
-         // Add detailed logging of the response
-         console.log('[DEBUG] Section ID:', fullSection?.id);
-         console.log('[DEBUG] Section Title:', fullSection?.title);
-         console.log('[DEBUG] Section Content Type:', typeof fullSection?.content);
-         console.log('[DEBUG] Section Content Length:', fullSection?.content?.length || 0);
-         console.log('[DEBUG] Section Content Preview:', fullSection?.content?.substring(0, 100) || 'No content');
-         console.log('[DEBUG] Section Chapter:', fullSection?.chapter);
-
-         if (!fullSection) {
-           console.error('Section data is null or undefined');
-           throw new Error('No section data received from server');
-         }
-
          if (!fullSection.content) {
-           console.error('Section content is missing:', fullSection);
            throw new Error('Received section data without content');
          }
 
          if (fullSection.content.length === 0) {
-           console.error('Section content is empty:', fullSection);
            throw new Error('Received empty section content from server');
          }
 
@@ -236,21 +183,10 @@ const MainInteractionPage: React.FC = () => {
            content: fullSection.content
          };
 
-         console.log('Created section detail object:', sectionDetail);
-         console.log('Content length in detail object:', sectionDetail.content.length);
-
-         // Add an alert to show the content
-         alert(`Section content received (${sectionDetail.content.length} chars): ${sectionDetail.content.substring(0, 50)}...`);
-
          return sectionDetail;
        } catch (err: any) {
-         console.error(`Error fetching section content (attempt ${retryCount + 1}/${maxRetries + 1}):`, err);
-         console.error('Error details:', err.message);
-         console.error('Error stack:', err.stack);
-
          if (retryCount < maxRetries) {
            retryCount++;
-           console.log(`Retrying in ${retryDelay}ms...`);
            await new Promise(resolve => setTimeout(resolve, retryDelay));
            return attemptFetch(); // Recursive retry
          }
@@ -263,8 +199,6 @@ const MainInteractionPage: React.FC = () => {
        const sectionDetail = await attemptFetch();
 
        if (sectionDetail) {
-         console.log('Setting selected section with content:', sectionDetail);
-
          // Create a guaranteed working section with content
          const guaranteedSection: SectionDetail = {
            id: sectionDetail.id || sectionId,
@@ -277,43 +211,17 @@ const MainInteractionPage: React.FC = () => {
            Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.`
          };
 
-         console.log('[DEBUG] Using guaranteed section with content:', guaranteedSection);
-         console.log('[DEBUG] Content to be set in state:', guaranteedSection.content?.substring(0, 100) + '...');
-
-         // Explicitly check content before setting state
-         if (!guaranteedSection.content) {
-           console.error('[DEBUG] CRITICAL: guaranteedSection.content is still empty or null before setState!');
-         } else {
-           console.log('[DEBUG] Content length before setState:', guaranteedSection.content.length);
-         }
-
          // Update state with the section content
-         console.log('[DEBUG] About to update state with section content:', guaranteedSection);
          setSelectedSection(guaranteedSection);
-         console.log('[DEBUG] State update called with guaranteedSection');
-
-         // Add an alert to confirm state update was triggered
-         alert(`State update triggered with section content (${guaranteedSection.content.length} chars)`);
-
-         // Note: We can't check selectedSection immediately after calling setSelectedSection
-         // because React state updates are asynchronous. The state won't be updated until
-         // the component re-renders.
 
          setSectionSnippets([]); // Hide snippets once full section is loaded
          clearDefinition(); // Clear any previous definition
 
          // Update the current step to content interaction
          setCurrentStep('content_interaction');
-
-         // Log success to console for debugging
-         console.log('Section content loaded successfully:', guaranteedSection.content.substring(0, 100) + '...');
        }
      } catch (err: any) {
-       console.error('All attempts to fetch section content failed:', err);
-
-       // Instead of showing an error, create an emergency fallback section
-       console.log('Creating emergency fallback section with content');
-
+       // Create an emergency fallback section
        const emergencySection: SectionDetail = {
          id: sectionId,
          number: snippet.number,
@@ -329,18 +237,14 @@ const MainInteractionPage: React.FC = () => {
          Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.`
        };
 
-       console.log('Using emergency fallback section:', emergencySection);
        setSelectedSection(emergencySection);
        setSectionSnippets([]); // Hide snippets
        setCurrentStep('content_interaction');
 
-       // Still show the error message to the user
+       // Show the error message to the user
        setFetchError(`Warning: Using fallback content for section ${snippet.number}. ${err.message || 'Please check your network connection and try again.'}`);
 
-       // Show a more detailed error in the console for debugging
-       console.error('Error details:', err);
-
-       // Attempt to log the error to the server if analytics service is available
+       // Log the error to the server if analytics service is available
        if (window.logError) {
          window.logError('section_content_fetch_failed', {
            sectionId,
@@ -649,15 +553,7 @@ const MainInteractionPage: React.FC = () => {
      return () => document.removeEventListener('keydown', handleKeyDown);
    }, []);
 
-   // Monitor selectedSection state changes
-   useEffect(() => {
-     if (selectedSection) {
-       console.log('[DEBUG] selectedSection state updated:', selectedSection);
-       console.log('[DEBUG] Content in state:', selectedSection.content ?
-         `${selectedSection.content.substring(0, 100)}... (${selectedSection.content.length} chars)` :
-         'NULL OR EMPTY');
-     }
-   }, [selectedSection]);
+
 
 
   // --- Render Logic ---
@@ -757,16 +653,10 @@ const MainInteractionPage: React.FC = () => {
               </Typography>
 
               <List>
-                {sectionSnippets.map((snippet) => {
-                  console.log('[DEBUG] Rendering snippet element with ID:', snippet.id);
-                  return (
+                {sectionSnippets.map((snippet) => (
                     <ListItem
                       key={snippet.id}
-                      onClick={() => {
-                        console.log('[DEBUG] Snippet clicked with ID:', snippet.id);
-                        alert('Snippet clicked with ID: ' + snippet.id);
-                        handleSectionSelect(snippet.id);
-                      }}
+                      onClick={() => handleSectionSelect(snippet.id)}
                       sx={{
                         cursor: 'pointer',
                         border: '1px solid',
@@ -785,21 +675,12 @@ const MainInteractionPage: React.FC = () => {
                       primaryTypographyProps={{ fontWeight: 'bold' }}
                     />
                     </ListItem>
-                  );
-                })}
+                ))}
               </List>
             </Paper>
           )}
 
           {/* Display Selected Section Content */}
-          {console.log('[DEBUG] Rendering section content area. Current state:', {
-            isLoadingSections,
-            fetchError: fetchError ? 'Error exists' : 'No error',
-            selectedSection: selectedSection ? 'Has value' : 'Null',
-            currentStep,
-            contentLength: selectedSection?.content?.length || 0
-          })}
-
           {!isLoadingSections && !fetchError && selectedSection && (
              <Paper
                 elevation={currentStep === 'content_interaction' ? 3 : 1}
@@ -813,10 +694,6 @@ const MainInteractionPage: React.FC = () => {
                 ref={sectionContentRef}
                 onMouseUp={handleTextSelection} // Trigger definition lookup
              >
-               {console.log('[DEBUG] Rendering Step 3 content. selectedSection.content:',
-                 selectedSection.content ?
-                 `${selectedSection.content.substring(0, 100)}... (${selectedSection.content.length} chars)` :
-                 'NULL OR EMPTY')}
                <Typography variant="h6" color="primary" gutterBottom>
                  Step 3: Interact with the text
                </Typography>
@@ -847,35 +724,14 @@ const MainInteractionPage: React.FC = () => {
                    minHeight: '200px'
                  }}
                >
-                 {/* ULTRA SIMPLE CONTENT DISPLAY */}
-                 <Box sx={{ p: 3, border: '1px solid #2196f3', borderRadius: 2, bgcolor: '#fff' }}>
-                   {/* Debug info */}
-                   <Box sx={{ mb: 2, p: 1, bgcolor: 'info.light', borderRadius: 1 }}>
-                     <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
-                       Content Length: {selectedSection.content ? selectedSection.content.length : 0} characters
-                     </Typography>
-                     <br />
-                     <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
-                       Content Preview: {selectedSection.content ? selectedSection.content.substring(0, 50) + '...' : 'No content'}
-                     </Typography>
-                   </Box>
-
-                   {/* Direct content display */}
-                   <pre style={{
-                     whiteSpace: 'pre-wrap',
-                     fontFamily: 'inherit',
-                     margin: 0,
-                     padding: '10px',
-                     backgroundColor: '#f5f5f5',
-                     border: '1px solid #ddd',
-                     borderRadius: '4px',
-                     fontSize: '1rem',
-                     lineHeight: '1.6'
-                   }}>
-                     {selectedSection.content || 'NO CONTENT AVAILABLE'}
-                   </pre>
-
-                   {/* Regular Typography display */}
+                 {/* Section Content Display */}
+                 <Box sx={{
+                   p: 3,
+                   border: '1px solid',
+                   borderColor: 'divider',
+                   borderRadius: 2,
+                   bgcolor: 'background.paper'
+                 }}>
                    <Typography
                      variant="body1"
                      component="div"
@@ -883,12 +739,8 @@ const MainInteractionPage: React.FC = () => {
                        fontSize: '1.1rem',
                        lineHeight: 1.8,
                        fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-                       color: '#333',
-                       whiteSpace: 'pre-wrap',
-                       mt: 2,
-                       p: 2,
-                       border: '1px dashed #ccc',
-                       borderRadius: 1
+                       color: 'text.primary',
+                       whiteSpace: 'pre-wrap'
                      }}
                    >
                      {selectedSection.content || 'No content available'}
