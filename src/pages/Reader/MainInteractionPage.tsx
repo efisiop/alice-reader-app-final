@@ -288,16 +288,16 @@ const MainInteractionPage: React.FC = () => {
          }
 
          // Update state with the section content
+         console.log('[DEBUG] About to update state with section content:', guaranteedSection);
          setSelectedSection(guaranteedSection);
          console.log('[DEBUG] State update called with guaranteedSection');
 
-         // Add an alert to confirm state update
-         alert(`State updated with section content (${guaranteedSection.content.length} chars)`);
+         // Add an alert to confirm state update was triggered
+         alert(`State update triggered with section content (${guaranteedSection.content.length} chars)`);
 
-         // Add a timeout to check if the state was actually updated
-         setTimeout(() => {
-           alert(`After state update, selectedSection is: ${selectedSection ? 'Present' : 'NULL'}`);
-         }, 100);
+         // Note: We can't check selectedSection immediately after calling setSelectedSection
+         // because React state updates are asynchronous. The state won't be updated until
+         // the component re-renders.
 
          setSectionSnippets([]); // Hide snippets once full section is loaded
          clearDefinition(); // Clear any previous definition
@@ -649,6 +649,16 @@ const MainInteractionPage: React.FC = () => {
      return () => document.removeEventListener('keydown', handleKeyDown);
    }, []);
 
+   // Monitor selectedSection state changes
+   useEffect(() => {
+     if (selectedSection) {
+       console.log('[DEBUG] selectedSection state updated:', selectedSection);
+       console.log('[DEBUG] Content in state:', selectedSection.content ?
+         `${selectedSection.content.substring(0, 100)}... (${selectedSection.content.length} chars)` :
+         'NULL OR EMPTY');
+     }
+   }, [selectedSection]);
+
 
   // --- Render Logic ---
   if (!isReady) {
@@ -839,6 +849,33 @@ const MainInteractionPage: React.FC = () => {
                >
                  {/* ULTRA SIMPLE CONTENT DISPLAY */}
                  <Box sx={{ p: 3, border: '1px solid #2196f3', borderRadius: 2, bgcolor: '#fff' }}>
+                   {/* Debug info */}
+                   <Box sx={{ mb: 2, p: 1, bgcolor: 'info.light', borderRadius: 1 }}>
+                     <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
+                       Content Length: {selectedSection.content ? selectedSection.content.length : 0} characters
+                     </Typography>
+                     <br />
+                     <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
+                       Content Preview: {selectedSection.content ? selectedSection.content.substring(0, 50) + '...' : 'No content'}
+                     </Typography>
+                   </Box>
+
+                   {/* Direct content display */}
+                   <pre style={{
+                     whiteSpace: 'pre-wrap',
+                     fontFamily: 'inherit',
+                     margin: 0,
+                     padding: '10px',
+                     backgroundColor: '#f5f5f5',
+                     border: '1px solid #ddd',
+                     borderRadius: '4px',
+                     fontSize: '1rem',
+                     lineHeight: '1.6'
+                   }}>
+                     {selectedSection.content || 'NO CONTENT AVAILABLE'}
+                   </pre>
+
+                   {/* Regular Typography display */}
                    <Typography
                      variant="body1"
                      component="div"
@@ -847,7 +884,11 @@ const MainInteractionPage: React.FC = () => {
                        lineHeight: 1.8,
                        fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
                        color: '#333',
-                       whiteSpace: 'pre-wrap'
+                       whiteSpace: 'pre-wrap',
+                       mt: 2,
+                       p: 2,
+                       border: '1px dashed #ccc',
+                       borderRadius: 1
                      }}
                    >
                      {selectedSection.content || 'No content available'}
