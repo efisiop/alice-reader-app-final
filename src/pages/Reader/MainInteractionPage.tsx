@@ -532,15 +532,8 @@ const MainInteractionPage: React.FC = () => {
       {/* Main Content Area (Approx 90-95%) */}
       <Box sx={{ flexGrow: 1, p: 3, overflowY: 'auto' }}>
         {/* Welcome Message */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', mb: 3 }}>
-          <Typography variant="h4" color="primary" sx={{ fontWeight: 'bold' }}>
-            Hi {profile?.first_name || 'Reader'},
-          </Typography>
-          <Typography variant="subtitle1" color="text.secondary">
-            Let me help you with your Alice in Wonderland book
-          </Typography>
-        </Box>
-
+        {/* Removed redundant greeting and help text */}
+        
         {/* Page Input */}
         <Paper
           elevation={currentStep === 'page_input' ? 3 : 1}
@@ -554,9 +547,7 @@ const MainInteractionPage: React.FC = () => {
             transition: 'all 0.3s ease'
           }}
         >
-          <Typography variant="h6" color="primary" gutterBottom>
-            Step 1: Tell me what page you're reading
-          </Typography>
+          {/* Removed 'Step 1: Tell me what page you're reading' */}
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
             <Typography sx={{ whiteSpace: 'nowrap' }}>What page are you on?</Typography>
@@ -655,25 +646,6 @@ const MainInteractionPage: React.FC = () => {
                 ref={sectionContentRef}
                 onMouseUp={handleTextSelection} // Trigger definition lookup
              >
-               <Typography variant="h6" color="primary" gutterBottom>
-                 Step 3: Interact with the text
-               </Typography>
-
-               <Box sx={{
-                 display: 'flex',
-                 alignItems: 'center',
-                 mb: 2,
-                 p: 2,
-                 backgroundColor: 'info.light',
-                 borderRadius: 1,
-                 color: 'info.contrastText'
-               }}>
-                 <Typography variant="body2">
-                   <strong>Tip:</strong> Highlight any word or phrase you'd like to understand better.
-                   I'll show you definitions in the sidebar.
-                 </Typography>
-               </Box>
-
                <Box
                  sx={{
                    p: 2,
