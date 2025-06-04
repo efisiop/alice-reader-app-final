@@ -52,7 +52,7 @@ const EnhancedAppHeader: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isConsultant, logout } = useAuth();
+  const { user, isConsultant, signOut } = useAuth();
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [userMenuAnchorEl, setUserMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [visible, setVisible] = useState(false);
@@ -124,7 +124,7 @@ const EnhancedAppHeader: React.FC = () => {
   // Handle logout
   const handleLogout = () => {
     handleUserMenuClose();
-    logout();
+    signOut();
     navigate('/login');
   };
   
@@ -172,7 +172,7 @@ const EnhancedAppHeader: React.FC = () => {
               display: 'flex',
               alignItems: 'center',
             }}
-            onClick={() => navigate(isConsultant ? '/consultant' : '/reader')}
+            onClick={() => navigate(isConsultant() ? '/consultant' : '/reader')}
           >
             <MenuBookIcon sx={{ mr: 1 }} />
             {getTitle()}
@@ -180,7 +180,7 @@ const EnhancedAppHeader: React.FC = () => {
           
           {/* Desktop navigation */}
           <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center' }}>
-            {isConsultant ? (
+            {isConsultant() ? (
               <>
                 <Button
                   color="inherit"
@@ -231,9 +231,9 @@ const EnhancedAppHeader: React.FC = () => {
                   onClick={handleUserMenuOpen}
                   size="small"
                   sx={{ ml: 2 }}
-                  aria-controls={Boolean(userMenuAnchorEl) ? 'account-menu' : undefined}
+                  aria-controls={userMenuAnchorEl !== null ? 'account-menu' : undefined}
                   aria-haspopup="true"
-                  aria-expanded={Boolean(userMenuAnchorEl) ? 'true' : undefined}
+                  aria-expanded={userMenuAnchorEl !== null ? 'true' : undefined}
                 >
                   <Avatar
                     sx={{
@@ -256,7 +256,7 @@ const EnhancedAppHeader: React.FC = () => {
           {/* Mobile menu */}
           <Menu
             anchorEl={menuAnchorEl}
-            open={Boolean(menuAnchorEl)}
+            open={menuAnchorEl !== null}
             onClose={handleMenuClose}
             TransitionComponent={Fade}
             PaperProps={{
@@ -268,7 +268,7 @@ const EnhancedAppHeader: React.FC = () => {
               },
             }}
           >
-            {isConsultant ? (
+            {isConsultant() ? (
               <MenuItem onClick={() => handleNavigate('/consultant')}>
                 <ListItemIcon>
                   <DashboardIcon fontSize="small" />
@@ -309,7 +309,7 @@ const EnhancedAppHeader: React.FC = () => {
           {/* User menu */}
           <Menu
             anchorEl={userMenuAnchorEl}
-            open={Boolean(userMenuAnchorEl)}
+            open={userMenuAnchorEl !== null}
             onClose={handleUserMenuClose}
             TransitionComponent={Fade}
             PaperProps={{
@@ -326,6 +326,25 @@ const EnhancedAppHeader: React.FC = () => {
                 <AccountCircleIcon fontSize="small" />
               </ListItemIcon>
               <ListItemText primary={user?.email} />
+            </MenuItem>
+            <Divider />
+            <MenuItem onClick={() => handleNavigate('/reader/profile')}>
+              <ListItemIcon>
+                <AccountCircleIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Profile</ListItemText>
+            </MenuItem>
+            <MenuItem onClick={() => handleNavigate('/reader/settings')}>
+              <ListItemIcon>
+                <SettingsIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Settings</ListItemText>
+            </MenuItem>
+            <MenuItem onClick={() => handleNavigate('/reader/help')}>
+              <ListItemIcon>
+                <HelpOutlineIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Help & Support</ListItemText>
             </MenuItem>
             <Divider />
             <MenuItem onClick={handleLogout}>
