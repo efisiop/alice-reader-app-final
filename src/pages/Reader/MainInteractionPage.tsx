@@ -527,7 +527,7 @@ const MainInteractionPage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ display: 'flex', height: 'calc(100vh - 64px)' }}> {/* Adjust height based on Header */}
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)' }}> {/* Change to column for vertical layout */}
 
       {/* Main Content Area (Approx 90-95%) */}
       <Box sx={{ flexGrow: 1, p: 3, overflowY: 'auto' }}>
@@ -641,7 +641,8 @@ const MainInteractionPage: React.FC = () => {
                   mt: 2,
                   borderLeft: currentStep === 'content_interaction' ? '4px solid' : 'none',
                   borderColor: 'primary.main',
-                  transition: 'all 0.3s ease'
+                  transition: 'all 0.3s ease',
+                  position: 'relative' // Needed for absolute positioning of location info
                 }}
                 ref={sectionContentRef}
                 onMouseUp={handleTextSelection} // Trigger definition lookup
@@ -653,7 +654,8 @@ const MainInteractionPage: React.FC = () => {
                    borderColor: 'divider',
                    borderRadius: 1,
                    backgroundColor: 'background.paper',
-                   position: 'relative'
+                   position: 'relative',
+                   minHeight: '120px'
                  }}
                >
                  {selectedSection.content ? (
@@ -687,6 +689,13 @@ const MainInteractionPage: React.FC = () => {
                          Content length: {selectedSection.content.length} characters
                        </Typography>
                      )}
+
+                     {/* Location info at bottom left */}
+                     <Box sx={{ position: 'absolute', left: 16, bottom: 8 }}>
+                       <Typography variant="caption" color="text.secondary">
+                         {activePage ? `Page ${activePage}` : ''}{selectedSection ? `, Section ${selectedSection.number}` : ''}
+                       </Typography>
+                     </Box>
                    </>
                  ) : (
                    <Box sx={{ textAlign: 'center', py: 2 }}>
@@ -709,32 +718,23 @@ const MainInteractionPage: React.FC = () => {
         </Box>
       </Box>
 
-      {/* Sidebar (Approx 5-10%) */}
+      {/* Sidebar moved below main content */}
       <Paper elevation={3} sx={{
-          width: '250px', // Fixed width might be easier than percentage initially
-          // OR use flex basis: flexBasis: '10%', flexShrink: 0,
-          borderLeft: '1px solid',
+          width: '100%',
+          mt: 3,
+          borderLeft: 'none',
+          borderTop: '1px solid',
           borderColor: 'divider',
           p: 2,
           display: 'flex',
-          flexDirection: 'column',
-          overflowY: 'auto'
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: 4,
+          overflowX: 'auto'
       }}>
-        <Typography variant="h6" gutterBottom>Companion</Typography>
-
-        {/* Current Location Display */}
-        <Box mb={2}>
-          <Typography variant="overline">Location</Typography>
-          <Typography variant="body2">
-             {activePage ? `Page ${activePage}` : 'Sync Page Above'}
-             {selectedSection ? `, Section ${selectedSection.number}` : ''}
-          </Typography>
-        </Box>
-        <Divider sx={{ mb: 2 }} />
-
-        {/* Definition Area */}
-        <Box mb={2} flexGrow={1}> {/* Allow this area to grow */}
-          <Typography variant="overline">Definition</Typography>
+        {/* Only keep the definition and AI Assistant boxes */}
+        <Box sx={{ minWidth: 220, flex: 2 }}>
+          {/* Removed 'DEFINITION' label */}
           {isLoadingDefinition && <CircularProgress size={20} />}
           {definitionData && (
              <Box>
@@ -745,18 +745,12 @@ const MainInteractionPage: React.FC = () => {
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>Source: {definitionData.source}</Typography>
              </Box>
           )}
-          {!isLoadingDefinition && !definitionData && (
-            <Typography variant="caption" color="text.secondary">
-              Highlight text in the section content area to look up definitions.
-            </Typography>
-          )}
+          <Divider sx={{ my: 2 }} />
         </Box>
-        <Divider sx={{ mb: 2 }} />
-
-        {/* AI Assistant Area */}
-        <Box>
-           <Typography variant="overline">AI Assistant</Typography>
-           <Button
+        <Box sx={{ minWidth: 220, flex: 1 }}>
+          {/* AI Assistant Area */}
+          <Typography variant="overline">AI Assistant</Typography>
+          <Button
               size="small"
               variant="contained"
               color="primary"
@@ -781,56 +775,8 @@ const MainInteractionPage: React.FC = () => {
              </Typography>
            )}
            {/* AI Chat interface will go here */}
+          <Divider sx={{ my: 2 }} />
         </Box>
-         <Divider sx={{ my: 2 }} />
-         {/* Notes Area (Placeholder) */}
-         <Box>
-            <Typography variant="overline">Notes</Typography>
-             <Button size="small" variant="outlined" sx={{ mt: 1 }} disabled={!selectedSection}>
-              Add Note
-           </Button>
-         </Box>
-
-         <Divider sx={{ my: 2 }} />
-         {/* Quick Links */}
-         <Box>
-            <Typography variant="overline">My Reading</Typography>
-            <List dense sx={{ mt: 1 }}>
-              <ListItem button component={RouterLink} to="/reader/statistics" sx={{ borderRadius: 1, '&:hover': { bgcolor: 'action.hover' } }}>
-                <ListItemIcon sx={{ minWidth: '30px' }}>
-                  <EqualizerIcon fontSize="small" color="primary" />
-                </ListItemIcon>
-                <ListItemText primary="My Progress & Stats" primaryTypographyProps={{ variant: 'body2' }} />
-              </ListItem>
-              <ListItem button onClick={() => alert('Notes feature coming soon!')} sx={{ borderRadius: 1, '&:hover': { bgcolor: 'action.hover' } }}>
-                <ListItemIcon sx={{ minWidth: '30px' }}>
-                  <NoteIcon fontSize="small" color="primary" />
-                </ListItemIcon>
-                <ListItemText primary="My Notes" primaryTypographyProps={{ variant: 'body2' }} />
-              </ListItem>
-            </List>
-         </Box>
-
-         <Divider sx={{ my: 2 }} />
-         {/* Help & Tutorials */}
-         <Box>
-            <Typography variant="overline">Help & Tutorials</Typography>
-            <List dense sx={{ mt: 1 }}>
-              <ListItem button component={RouterLink} to="/reader" sx={{ borderRadius: 1, '&:hover': { bgcolor: 'action.hover' } }}>
-                <ListItemIcon sx={{ minWidth: '30px' }}>
-                  <MenuBookIcon fontSize="small" color="primary" />
-                </ListItemIcon>
-                <ListItemText primary="Welcome Page" primaryTypographyProps={{ variant: 'body2' }} />
-              </ListItem>
-              <ListItem button onClick={() => alert('Tutorials coming soon!')} sx={{ borderRadius: 1, '&:hover': { bgcolor: 'action.hover' } }}>
-                <ListItemIcon sx={{ minWidth: '30px' }}>
-                  <HelpIcon fontSize="small" color="primary" />
-                </ListItemIcon>
-                <ListItemText primary="Tutorials" primaryTypographyProps={{ variant: 'body2' }} />
-              </ListItem>
-            </List>
-         </Box>
-
       </Paper>
     </Box>
   );
