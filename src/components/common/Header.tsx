@@ -92,6 +92,20 @@ const Header: React.FC = () => {
 
       <Divider />
 
+      <MenuItem onClick={() => handleNavigate('/reader')}>
+        Welcome page
+      </MenuItem>
+      <MenuItem onClick={() => handleNavigate('/reader/tutorials')}>
+        Tutorials
+      </MenuItem>
+      <MenuItem onClick={() => handleNavigate('/reader/statistics')}>
+        My progress and stats
+      </MenuItem>
+      <MenuItem onClick={() => handleNavigate('/reader/notes')}>
+        My Notes
+      </MenuItem>
+
+      <Divider />
 
       <MenuItem onClick={handleSignOut}>
         <LogoutIcon sx={{ mr: 1 }} fontSize="small" />
@@ -117,7 +131,20 @@ const Header: React.FC = () => {
     >
       {user ? (
         <>
+          <MenuItem onClick={() => handleNavigate('/reader')}>
+            Welcome page
+          </MenuItem>
+          <MenuItem onClick={() => handleNavigate('/reader/tutorials')}>
+            Tutorials
+          </MenuItem>
+          <MenuItem onClick={() => handleNavigate('/reader/statistics')}>
+            My progress and stats
+          </MenuItem>
+          <MenuItem onClick={() => handleNavigate('/reader/notes')}>
+            My Notes
+          </MenuItem>
 
+          <Divider />
 
           <MenuItem onClick={handleSignOut}>
             <LogoutIcon sx={{ mr: 1 }} fontSize="small" />
