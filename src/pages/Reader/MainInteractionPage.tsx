@@ -16,7 +16,9 @@ import {
   ListItemText,
   ListItemIcon,
   Divider,
-  CircularProgress
+  CircularProgress,
+  Card,
+  CardContent
 } from '@mui/material';
 import { useNavigate, useParams, Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -29,6 +31,10 @@ import NoteIcon from '@mui/icons-material/Note';
 import HelpIcon from '@mui/icons-material/Help';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import QuestionAnswerIcon from '@mui/icons-material/QuestionAnswer';
+import InfoIcon from '@mui/icons-material/Info';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import SupportAgentIcon from '@mui/icons-material/SupportAgent';
+import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
 import { readerService, SectionSnippet } from '../../services/readerService';
 
 // Define types for Section data
@@ -199,36 +205,15 @@ const MainInteractionPage: React.FC = () => {
         setCurrentStep('content_interaction');
      } catch (err: any) {
         console.error('Error fetching section content:', err);
-
-        // Provide a more user-friendly error message
-        let errorMessage = `Failed to load content for section ${snippetToUse.number}.`;
-
-        if (err.message.includes('empty response') || err.message.includes('incomplete')) {
-          errorMessage = 'The section content could not be loaded completely. Please try again.';
-        } else if (err.message) {
-          errorMessage += ` ${err.message}`;
-        }
-
-        setFetchError(errorMessage);
-
-        // Only clear selected section if this is not a retry
-        if (!selectedSection) {
-          setSelectedSection(null);
-        }
+        setFetchError(`Failed to load section content. ${err.message || ''}`);
      } finally {
-       setIsLoadingSections(false);
+        setIsLoadingSections(false);
      }
   };
 
-  /**
-   * Expands a selection to include full words
-   * @param text The full text content
-   * @param startOffset The starting offset of the selection
-   * @param endOffset The ending offset of the selection
-   * @param multiWordMode How to handle multi-word selections: 'first' (first word only), 'last' (last word only), or 'all' (all words)
-   * @returns An object with the expanded start and end offsets
-   */
-  const expandSelectionToWords = (text: string, startOffset: number, endOffset: number, multiWordMode: 'first' | 'last' | 'all' = 'first') => {
+  // --- Text Selection and Definition Functions ---
+
+  const expandSelectionToWords = (text: string, startOffset: number, endOffset: number, multiWordMode: 'first' | 'last' | 'all' = 'all') => {
     // Define word boundary pattern (letters, numbers, apostrophes, hyphens)
     const wordCharPattern = /[\w''\-]/;
     const whitespacePattern = /\s/;
@@ -245,57 +230,97 @@ const MainInteractionPage: React.FC = () => {
       expandedEnd++;
     }
 
-    // Check if the selection spans multiple words
-    const selectedText = text.substring(expandedStart, expandedEnd);
-    const containsWhitespace = /\s/.test(selectedText);
+    // For phrasal definitions, try to expand to include nearby words that might form a phrase
+    // Look for common phrasal patterns (up to 4 words)
+    let phraseStart = expandedStart;
+    let phraseEnd = expandedEnd;
 
-    if (containsWhitespace && multiWordMode !== 'all') {
-      // Handle multi-word selection based on the specified mode
-      if (multiWordMode === 'first') {
-        // Find the end of the first word
-        let firstWordEnd = expandedStart;
-        while (firstWordEnd < expandedEnd && !whitespacePattern.test(text[firstWordEnd])) {
-          firstWordEnd++;
-        }
-        expandedEnd = firstWordEnd;
-      } else if (multiWordMode === 'last') {
-        // Find the start of the last word
-        let lastWordStart = expandedEnd;
-        while (lastWordStart > expandedStart && !whitespacePattern.test(text[lastWordStart - 1])) {
-          lastWordStart--;
-        }
-        while (lastWordStart > expandedStart && whitespacePattern.test(text[lastWordStart - 1])) {
-          lastWordStart--;
-        }
-        expandedStart = lastWordStart;
+    // Look backwards for potential phrase components
+    let tempStart = expandedStart;
+    let wordsBeforeCount = 0;
+    while (tempStart > 0 && wordsBeforeCount < 3) {
+      // Skip whitespace
+      while (tempStart > 0 && whitespacePattern.test(text[tempStart - 1])) {
+        tempStart--;
+      }
+      if (tempStart === 0) break;
+      
+      // Find word boundary
+      let wordStart = tempStart;
+      while (wordStart > 0 && wordCharPattern.test(text[wordStart - 1])) {
+        wordStart--;
+      }
+      
+      const wordBefore = text.substring(wordStart, tempStart);
+      if (wordBefore && wordBefore.length > 1) {
+        phraseStart = wordStart;
+        wordsBeforeCount++;
+        tempStart = wordStart;
+      } else {
+        break;
       }
     }
 
-    return { expandedStart, expandedEnd };
+    // Look forwards for potential phrase components
+    let tempEnd = expandedEnd;
+    let wordsAfterCount = 0;
+    while (tempEnd < text.length && wordsAfterCount < 3) {
+      // Skip whitespace
+      while (tempEnd < text.length && whitespacePattern.test(text[tempEnd])) {
+        tempEnd++;
+      }
+      if (tempEnd >= text.length) break;
+      
+      // Find word boundary
+      let wordEnd = tempEnd;
+      while (wordEnd < text.length && wordCharPattern.test(text[wordEnd])) {
+        wordEnd++;
+      }
+      
+      const wordAfter = text.substring(tempEnd, wordEnd);
+      if (wordAfter && wordAfter.length > 1) {
+        phraseEnd = wordEnd;
+        wordsAfterCount++;
+        tempEnd = wordEnd;
+      } else {
+        break;
+      }
+    }
+
+    // Return both single word and potential phrase
+    const singleWord = text.substring(expandedStart, expandedEnd);
+    const potentialPhrase = text.substring(phraseStart, phraseEnd);
+
+    return {
+      singleWord: singleWord.trim(),
+      phrase: potentialPhrase.trim(),
+      expandedStart,
+      expandedEnd,
+      phraseStart,
+      phraseEnd
+    };
   };
 
-  /**
-   * Cleans a word by removing surrounding punctuation
-   * @param word The word to clean
-   * @returns The cleaned word
-   */
+  // Clean word for dictionary lookup (remove punctuation, etc.)
   const cleanWord = (word: string) => {
     if (!word) return '';
-
+    
     // First trim whitespace
     let cleaned = word.trim();
-
+    
     // Remove leading and trailing punctuation, but keep internal hyphens and apostrophes
     cleaned = cleaned.replace(/^[^\w]+|[^\w]+$/g, '');
-
+    
     // Handle special case where the word might be just punctuation
     if (cleaned.length === 0 && word.length > 0) {
       console.log("Word contained only punctuation:", word);
       return '';
     }
-
-    return cleaned;
+    
+    return cleaned.toLowerCase();
   };
+
+  // --- Key Event Handlers ---
 
   const handleTextSelection = async () => {
     try {
@@ -308,18 +333,18 @@ const MainInteractionPage: React.FC = () => {
       if (!selectedText) return;
 
       // Skip very long selections (likely paragraphs, not words)
-      if (selectedText.length > 50) {
+      if (selectedText.length > 100) {
         console.log("Selection too long for definition lookup:", selectedText.length, "characters");
         return;
       }
 
       // Skip very short selections (likely accidental clicks)
-      if (selectedText.length < 2) {
+      if (selectedText.length < 1) {
         console.log("Selection too short for definition lookup:", selectedText.length, "characters");
         return;
       }
 
-      console.log("Original highlight detected:", selectedText);
+      console.log("Text selection detected:", selectedText);
 
       // Get the range of the selection
       const range = selection.getRangeAt(0);
@@ -329,77 +354,24 @@ const MainInteractionPage: React.FC = () => {
 
       let fullText: string;
       let textNode: Node;
+      let startOffset: number;
+      let endOffset: number;
 
       if (isMultiNodeSelection) {
-        // For multi-node selections, we'll use the common ancestor container
-        // and work with its text content
-        textNode = range.commonAncestorContainer;
-
-        // If the common ancestor is not a text node, use its text content
-        // This will include all text within the container
-        fullText = textNode.textContent || '';
-
-        // For multi-node selections, we'll just use the selected text directly
-        // and clean it, rather than trying to expand it
+        // For multi-node selections, we'll use the selected text directly
+        // and try to clean it for definition lookup
         console.log("Multi-node selection detected, using selected text directly");
 
-        // Clean the selected text
+        // Try to clean the selected text for definition lookup
         const cleanedText = cleanWord(selectedText);
-
-        // If the cleaned text is empty, return
+        
         if (!cleanedText) return;
 
-        // Proceed with definition lookup using the cleaned selected text
-        setIsLoadingDefinition(true);
-        setDefinitionData(null); // Clear previous
-
-        try {
-          // Use the dictionaryService to get the definition
-          const definitionEntry = await dictionaryService.getDefinition(ALICE_BOOK_UUID, cleanedText);
-
-          if (definitionEntry) {
-            setDefinitionData({
-              word: cleanedText,
-              definition: definitionEntry.definition,
-              examples: definitionEntry.examples || [],
-              source: definitionEntry.source || 'database'
-            });
-
-            // Log the successful dictionary lookup if user is logged in
-            if (user) {
-              dictionaryService.logDictionaryLookup(
-                user.id,
-                ALICE_BOOK_UUID,
-                selectedSection?.id,
-                cleanedText,
-                true
-              ).catch(err => console.error("Error logging dictionary lookup:", err));
-            }
-          } else {
-            setDefinitionData({ word: cleanedText, definition: `No definition found for "${cleanedText}".`, examples: [], source: 'not_found' });
-
-            // Log the failed dictionary lookup if user is logged in
-            if (user) {
-              dictionaryService.logDictionaryLookup(
-                user.id,
-                ALICE_BOOK_UUID,
-                selectedSection?.id,
-                cleanedText,
-                false
-              ).catch(err => console.error("Error logging dictionary lookup:", err));
-            }
-          }
-        } catch (err: any) {
-          console.error("Error fetching definition:", err);
-          setDefinitionData({ word: cleanedText, definition: `Error looking up "${cleanedText}".`, examples: [], source: 'error' });
-        } finally {
-          setIsLoadingDefinition(false);
-        }
-
+        await lookupDefinition(cleanedText, selectedText);
         return;
       }
 
-      // For single node selections, proceed with the normal expansion logic
+      // For single node selections, proceed with the expansion logic
       textNode = range.startContainer;
 
       // Make sure we're working with a text node
@@ -409,82 +381,53 @@ const MainInteractionPage: React.FC = () => {
       fullText = textNode.textContent || '';
 
       // Get the start and end offsets of the selection within the text node
-      const startOffset = range.startOffset;
-      const endOffset = range.endOffset;
+      startOffset = range.startOffset;
+      endOffset = range.endOffset;
 
-      // Expand the selection to include full words (use 'first' mode for multi-word selections)
-      const { expandedStart, expandedEnd } = expandSelectionToWords(fullText, startOffset, endOffset, 'first');
+      console.log(`Selection range: [${startOffset}, ${endOffset}] in text of length ${fullText.length}`);
 
-      // Extract the expanded text
-      const expandedText = fullText.substring(expandedStart, expandedEnd);
+      // Expand the selection to include full words and potential phrases
+      const expansion = expandSelectionToWords(fullText, startOffset, endOffset);
 
-      // Log the expansion process
-      if (expandedText !== selectedText) {
-        console.log(`Selection expanded from "${selectedText}" to "${expandedText}"`);
+      console.log('Expansion results:', {
+        original: selectedText,
+        singleWord: expansion.singleWord,
+        phrase: expansion.phrase
+      });
 
-        // If the expanded text is significantly different from the original selection
-        // (e.g., the user selected just a single character in a long word),
-        // we might want to be more conservative. For now, we'll proceed with the expansion.
-        const expansionRatio = expandedText.length / selectedText.length;
-        if (expansionRatio > 5) {
-          console.log(`Significant expansion detected (${expansionRatio.toFixed(1)}x). Proceeding anyway.`);
-        }
+      // Determine what to look up
+      let termToLookup = '';
+      let originalTerm = '';
+
+      // If the original selection was just part of a word, use the full word
+      if (selectedText.length < expansion.singleWord.length && 
+          expansion.singleWord.toLowerCase().includes(selectedText.toLowerCase())) {
+        termToLookup = cleanWord(expansion.singleWord);
+        originalTerm = expansion.singleWord;
+        console.log(`Expanded partial selection "${selectedText}" to full word "${expansion.singleWord}"`);
+      }
+      // If we have a potential phrase that's significantly different from the single word, try the phrase first
+      else if (expansion.phrase !== expansion.singleWord && 
+               expansion.phrase.split(/\s+/).length <= 4 && 
+               expansion.phrase.split(/\s+/).length >= 2) {
+        termToLookup = cleanWord(expansion.phrase);
+        originalTerm = expansion.phrase;
+        console.log(`Trying phrasal lookup for: "${expansion.phrase}"`);
+      }
+      // Otherwise, use the single word
+      else {
+        termToLookup = cleanWord(expansion.singleWord);
+        originalTerm = expansion.singleWord;
+        console.log(`Using single word lookup for: "${expansion.singleWord}"`);
       }
 
-      // Clean the expanded text (remove surrounding punctuation)
-      const cleanedText = cleanWord(expandedText);
-
-      // If the expanded text is empty after cleaning, return
-      if (!cleanedText) return;
-
-      console.log("Expanded to full word:", cleanedText);
-
-      // Proceed with definition lookup using the expanded text
-      setIsLoadingDefinition(true);
-      setDefinitionData(null); // Clear previous
-
-      try {
-        // Use the dictionaryService to get the definition
-        const definitionEntry = await dictionaryService.getDefinition(ALICE_BOOK_UUID, cleanedText);
-
-        if (definitionEntry) {
-          setDefinitionData({
-            word: cleanedText,
-            definition: definitionEntry.definition,
-            examples: definitionEntry.examples || [],
-            source: definitionEntry.source || 'database'
-          });
-
-          // Log the successful dictionary lookup if user is logged in
-          if (user) {
-            dictionaryService.logDictionaryLookup(
-              user.id,
-              ALICE_BOOK_UUID,
-              selectedSection?.id,
-              cleanedText,
-              true
-            ).catch(err => console.error("Error logging dictionary lookup:", err));
-          }
-        } else {
-          setDefinitionData({ word: cleanedText, definition: `No definition found for "${cleanedText}".`, examples: [], source: 'not_found' });
-
-          // Log the failed dictionary lookup if user is logged in
-          if (user) {
-            dictionaryService.logDictionaryLookup(
-              user.id,
-              ALICE_BOOK_UUID,
-              selectedSection?.id,
-              cleanedText,
-              false
-            ).catch(err => console.error("Error logging dictionary lookup:", err));
-          }
-        }
-      } catch (err: any) {
-        console.error("Error fetching definition:", err);
-        setDefinitionData({ word: cleanedText, definition: `Error looking up "${cleanedText}".`, examples: [], source: 'error' });
-      } finally {
-        setIsLoadingDefinition(false);
+      if (!termToLookup) {
+        console.log("No valid term to lookup after cleaning");
+        return;
       }
+
+      await lookupDefinition(termToLookup, originalTerm, expansion);
+
     } catch (error) {
       // Handle any errors that might occur during the text selection process
       console.error("Error in text selection handling:", error);
@@ -492,30 +435,133 @@ const MainInteractionPage: React.FC = () => {
     }
   };
 
+  // Separate function to handle the actual definition lookup
+  const lookupDefinition = async (termToLookup: string, originalTerm: string, expansion?: any) => {
+    // Show loading state
+    setIsLoadingDefinition(true);
+    setDefinitionData(null);
+
+    try {
+      console.log('Looking up definition for:', termToLookup);
+
+      if (!dictionaryService) {
+        throw new Error('Dictionary service not available');
+      }
+
+             // Try to get definition from dictionary service
+       let definition = await dictionaryService.getDefinition(ALICE_BOOK_UUID, termToLookup);
+       console.log('Definition result for', termToLookup, ':', definition);
+
+       // If no definition found for phrase and we have expansion info, try the single word
+       if ((!definition || !definition.definition) && expansion && expansion.phrase !== expansion.singleWord) {
+         console.log('No phrasal definition found, trying single word:', expansion.singleWord);
+         const singleWordCleaned = cleanWord(expansion.singleWord);
+         if (singleWordCleaned && singleWordCleaned !== termToLookup) {
+           definition = await dictionaryService.getDefinition(ALICE_BOOK_UUID, singleWordCleaned);
+           console.log('Single word definition result for', singleWordCleaned, ':', definition);
+           if (definition && definition.definition) {
+             termToLookup = singleWordCleaned;
+             originalTerm = expansion.singleWord;
+           }
+         }
+       }
+
+      if (definition && definition.definition) {
+        const definitionData: DefinitionData = {
+          word: originalTerm,
+          definition: definition.definition,
+          examples: definition.examples || [],
+          source: definition.source as any || 'database'
+        };
+
+        setDefinitionData(definitionData);
+        console.log('Definition set:', definitionData);
+
+        // Log the successful dictionary lookup if user is logged in
+        if (user && selectedSection) {
+          dictionaryService.logDictionaryLookup(
+            user.id,
+            ALICE_BOOK_UUID,
+            selectedSection.id,
+            termToLookup,
+            true
+          ).catch(err => console.error("Error logging dictionary lookup:", err));
+        }
+      } else {
+        // No definition found
+        const noDefData: DefinitionData = {
+          word: originalTerm,
+          definition: 'Definition not found.',
+          source: 'not_found'
+        };
+        setDefinitionData(noDefData);
+        console.log('No definition found for:', termToLookup);
+
+        // Log the failed dictionary lookup if user is logged in
+        if (user && selectedSection) {
+          dictionaryService.logDictionaryLookup(
+            user.id,
+            ALICE_BOOK_UUID,
+            selectedSection.id,
+            termToLookup,
+            false
+          ).catch(err => console.error("Error logging dictionary lookup:", err));
+        }
+      }
+    } catch (error) {
+      console.error('Error getting definition:', error);
+      const errorDefData: DefinitionData = {
+        word: originalTerm,
+        definition: 'Error loading definition.',
+        source: 'error'
+      };
+      setDefinitionData(errorDefData);
+    } finally {
+      setIsLoadingDefinition(false);
+    }
+  };
+
   const clearDefinition = () => {
-     setSelectedText(null);
-     setDefinitionData(null);
-     setIsLoadingDefinition(false);
+    setDefinitionData(null);
+    setSelectedText(null);
   };
 
-  // Handle AI Assistant button click
   const handleAskAI = () => {
-    console.log('AI Assistant Clicked - Section Context:', selectedSection);
-    // Future implementation will open the AI chat interface
-    enqueueSnackbar('AI Assistant feature coming soon!', { variant: 'info' });
+    // This will be implemented when AI assistant functionality is added
+    console.log('AI assistant button clicked');
+    alert('AI Assistant feature coming soon!');
   };
 
-   // Add Escape key listener (keep existing logic)
-   useEffect(() => {
+  // Handle navigation actions
+  const handleStatistics = () => {
+    navigate('/reader/statistics');
+  };
+
+  const handleNotes = () => {
+    // Notes functionality to be implemented
+    console.log('Notes button clicked');
+    alert('Notes feature coming soon!');
+  };
+
+  const handleInfoCenter = () => {
+    // Info center functionality to be implemented
+    console.log('Info Center button clicked');
+    alert('Info Center feature coming soon!');
+  };
+
+  // --- Event Listeners ---
+
      const handleKeyDown = (event: KeyboardEvent) => {
-       if (event.key === 'Escape') {
-         clearDefinition();
+       // Future: Add keyboard shortcuts here
+       if (event.ctrlKey || event.metaKey) {
+         // Handle Ctrl/Cmd + key combinations
        }
      };
-     document.addEventListener('keydown', handleKeyDown);
-     return () => document.removeEventListener('keydown', handleKeyDown);
-   }, []);
 
+     useEffect(() => {
+       document.addEventListener('keydown', handleKeyDown);
+       return () => document.removeEventListener('keydown', handleKeyDown);
+     }, []);
 
   // --- Render Logic ---
   if (!isReady) {
@@ -527,12 +573,10 @@ const MainInteractionPage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)' }}> {/* Change to column for vertical layout */}
-
-      {/* Main Content Area (Approx 90-95%) */}
-      <Box sx={{ flexGrow: 1, p: 3, overflowY: 'auto' }}>
-        {/* Welcome Message */}
-        {/* Removed redundant greeting and help text */}
+    <Box sx={{ display: 'flex', height: 'calc(100vh - 64px)' }}>
+      
+      {/* Main Content Area (3/4 of page) */}
+      <Box sx={{ flex: 3, p: 3, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         
         {/* Page Input */}
         <Paper
@@ -547,10 +591,8 @@ const MainInteractionPage: React.FC = () => {
             transition: 'all 0.3s ease'
           }}
         >
-          {/* Removed 'Step 1: Tell me what page you're reading' */}
-
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
-            <Typography sx={{ whiteSpace: 'nowrap' }}>What page are you on?</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography>Page number:</Typography>
             <TextField
               inputRef={pageInputRef}
               type="number"
@@ -558,9 +600,9 @@ const MainInteractionPage: React.FC = () => {
               variant="outlined"
               value={pageInput}
               onChange={(e) => setPageInput(e.target.value)}
-              sx={{ maxWidth: '150px' }}
+              sx={{ maxWidth: '120px' }}
               onKeyDown={(e) => e.key === 'Enter' && handlePageSubmit()}
-              placeholder="Enter page #"
+              placeholder="7"
             />
             <Button
               variant="contained"
@@ -571,16 +613,10 @@ const MainInteractionPage: React.FC = () => {
               {isLoadingSections ? 'Loading...' : 'Find Sections'}
             </Button>
           </Box>
-
-          {currentStep === 'page_input' && (
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-              Enter the page number from your physical book to find the corresponding sections.
-            </Typography>
-          )}
         </Paper>
 
-        {/* Section Selection / Display Area */}
-        <Box sx={{ minHeight: '300px' /* Adjust */ }}>
+        {/* Section Selection / Display Area - This takes up most of the 3/4 space */}
+        <Box sx={{ flex: 1, minHeight: '400px' }}>
           {isLoadingSections && <LoadingIndicator message="Loading sections..." />}
           {fetchError && <LoadingIndicator message={fetchError} />}
 
@@ -592,16 +628,12 @@ const MainInteractionPage: React.FC = () => {
                 p: 3,
                 borderLeft: currentStep === 'section_selection' ? '4px solid' : 'none',
                 borderColor: 'primary.main',
-                transition: 'all 0.3s ease'
+                transition: 'all 0.3s ease',
+                height: '100%'
               }}
             >
-              <Typography variant="h6" color="primary" gutterBottom>
-                Step 2: Select the section you're reading
-              </Typography>
-
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                I found {sectionSnippets.length} section{sectionSnippets.length !== 1 ? 's' : ''} on page {activePage}.
-                Click on the section that matches what you're currently reading in your book.
+                Select which section you are reading:
               </Typography>
 
               <List>
@@ -638,11 +670,12 @@ const MainInteractionPage: React.FC = () => {
                 elevation={currentStep === 'content_interaction' ? 3 : 1}
                 sx={{
                   p: 3,
-                  mt: 2,
                   borderLeft: currentStep === 'content_interaction' ? '4px solid' : 'none',
                   borderColor: 'primary.main',
                   transition: 'all 0.3s ease',
-                  position: 'relative' // Needed for absolute positioning of location info
+                  position: 'relative',
+                  height: '100%',
+                  overflow: 'auto'
                 }}
                 ref={sectionContentRef}
                 onMouseUp={handleTextSelection} // Trigger definition lookup
@@ -655,7 +688,8 @@ const MainInteractionPage: React.FC = () => {
                    borderRadius: 1,
                    backgroundColor: 'background.paper',
                    position: 'relative',
-                   minHeight: '120px'
+                   minHeight: '200px',
+                   height: '100%'
                  }}
                >
                  {selectedSection.content ? (
@@ -716,68 +750,164 @@ const MainInteractionPage: React.FC = () => {
              </Paper>
           )}
         </Box>
+
+                 {/* Definition Area at Bottom with Nice Background */}
+         {definitionData && (
+           <Paper 
+             elevation={3} 
+             sx={{
+               mt: 4,
+               p: 3,
+               background: 'linear-gradient(135deg, #f8f9ff 0%, #e8f0fe 50%, #f0f4ff 100%)',
+               borderRadius: 3,
+               border: '1px solid',
+               borderColor: 'primary.light',
+               boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+             }}
+           >
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="h6" color="primary" sx={{ fontWeight: 'bold', mb: 1 }}>
+                  {definitionData.word}
+                </Typography>
+                <Typography variant="body1" sx={{ mb: 1 }}>
+                  {definitionData.definition}
+                </Typography>
+                {definitionData.examples && definitionData.examples.length > 0 && (
+                  <Box sx={{ mt: 1 }}>
+                    {definitionData.examples.map((example, index) => (
+                      <Typography key={index} variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
+                        "{example}"
+                      </Typography>
+                    ))}
+                  </Box>
+                )}
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                  Source: {definitionData.source}
+                </Typography>
+              </Box>
+              <IconButton size="small" onClick={clearDefinition} sx={{ ml: 2 }}>
+                <CloseIcon fontSize="small"/>
+              </IconButton>
+            </Box>
+          </Paper>
+        )}
       </Box>
 
-      {/* Sidebar moved below main content */}
-      <Paper elevation={3} sx={{
-          width: '100%',
-          mt: 3,
-          borderLeft: 'none',
-          borderTop: '1px solid',
-          borderColor: 'divider',
-          p: 2,
-          display: 'flex',
-          flexDirection: 'row',
-          flexWrap: 'wrap',
-          gap: 4,
-          overflowX: 'auto'
+      {/* Navigation Sidebar (1/4 of page) */}
+      <Box sx={{ 
+        flex: 1, 
+        p: 2, 
+        borderLeft: '1px solid', 
+        borderColor: 'divider',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2
       }}>
-        {/* Only keep the definition and AI Assistant boxes */}
-        <Box sx={{ minWidth: 220, flex: 2 }}>
-          {/* Removed 'DEFINITION' label */}
-          {isLoadingDefinition && <CircularProgress size={20} />}
-          {definitionData && (
-             <Box>
-                <IconButton size="small" onClick={clearDefinition} sx={{ float: 'right' }}><CloseIcon fontSize="small"/></IconButton>
-                <Typography variant="body1" fontWeight="bold">{definitionData.word}</Typography>
-                <Typography variant="body2" sx={{ mt: 1 }}>{definitionData.definition}</Typography>
-                {/* Add examples later */}
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>Source: {definitionData.source}</Typography>
+        
+                 {/* AI Assistance Button */}
+         <Card 
+           sx={{ 
+             cursor: 'pointer',
+             transition: 'all 0.2s',
+             '&:hover': { 
+               transform: 'translateY(-2px)', 
+               boxShadow: 4 
+             }
+           }}
+           onClick={handleAskAI}
+         >
+           <CardContent sx={{ textAlign: 'center', py: 2 }}>
+             <Box sx={{ 
+               width: 60, 
+               height: 60, 
+               mx: 'auto', 
+               mb: 1, 
+               display: 'flex', 
+               alignItems: 'center', 
+               justifyContent: 'center',
+               backgroundColor: '#f5f5f5',
+               borderRadius: '50%'
+             }}>
+               <AutoAwesomeIcon sx={{ fontSize: 30, color: '#333' }} />
              </Box>
-          )}
-          <Divider sx={{ my: 2 }} />
-        </Box>
-        <Box sx={{ minWidth: 220, flex: 1 }}>
-          {/* AI Assistant Area */}
-          <Typography variant="overline">AI Assistant</Typography>
-          <Button
-              size="small"
-              variant="contained"
-              color="primary"
-              startIcon={<QuestionAnswerIcon />}
-              sx={{
-                mt: 1,
-                width: '100%',
-                display: 'flex',
-                justifyContent: 'flex-start',
-                textTransform: 'none',
-                boxShadow: 2,
-                '&:hover': { boxShadow: 3 }
-              }}
-              disabled={!selectedSection}
-              onClick={handleAskAI}
-           >
-              Ask AI about this section
-           </Button>
-           {!selectedSection && (
-             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-               Select a section to enable AI assistance.
+             <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+               AI assistance
              </Typography>
-           )}
-           {/* AI Chat interface will go here */}
-          <Divider sx={{ my: 2 }} />
-        </Box>
-      </Paper>
+           </CardContent>
+         </Card>
+
+         {/* Our Consultant Button */}
+         <Card 
+           sx={{ 
+             cursor: 'pointer',
+             transition: 'all 0.2s',
+             '&:hover': { 
+               transform: 'translateY(-2px)', 
+               boxShadow: 4 
+             }
+           }}
+           onClick={handleNotes}
+         >
+           <CardContent sx={{ textAlign: 'center', py: 2 }}>
+             <Box sx={{ 
+               width: 60, 
+               height: 60, 
+               mx: 'auto', 
+               mb: 1, 
+               display: 'flex', 
+               alignItems: 'center', 
+               justifyContent: 'center',
+               backgroundColor: '#f5f5f5',
+               borderRadius: '50%'
+             }}>
+               <SupportAgentIcon sx={{ fontSize: 30, color: '#666' }} />
+             </Box>
+             <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+               Our Consultants
+             </Typography>
+           </CardContent>
+         </Card>
+
+         {/* Info Center Button */}
+         <Card 
+           sx={{ 
+             cursor: 'pointer',
+             transition: 'all 0.2s',
+             '&:hover': { 
+               transform: 'translateY(-2px)', 
+               boxShadow: 4 
+             }
+           }}
+           onClick={handleInfoCenter}
+         >
+           <CardContent sx={{ textAlign: 'center', py: 2 }}>
+             <Box sx={{ 
+               width: 60, 
+               height: 60, 
+               mx: 'auto', 
+               mb: 1, 
+               display: 'flex', 
+               alignItems: 'center', 
+               justifyContent: 'center',
+               backgroundColor: '#2196f3',
+               borderRadius: '50%'
+             }}>
+               <LibraryBooksIcon sx={{ fontSize: 30, color: 'white' }} />
+             </Box>
+             <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+               INFO CENTER
+             </Typography>
+           </CardContent>
+         </Card>
+
+        {/* Loading indicator for definition */}
+        {isLoadingDefinition && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+            <CircularProgress size={20} />
+          </Box>
+        )}
+      </Box>
     </Box>
   );
 };
