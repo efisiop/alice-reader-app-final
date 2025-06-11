@@ -1,5 +1,6 @@
 import { getSupabaseClient } from './supabaseClient';
 import { Section, Chapter } from '../types/section';
+import { fixAliceText } from '../utils/textUtils';
 
 // Interface for section snippets
 export interface SectionSnippet {
@@ -66,6 +67,16 @@ class ReaderService {
         data.content = contentData.content;
       }
 
+      // Clean the text content to fix encoding issues
+      const originalContent = data.content;
+      const cleanedContent = fixAliceText(data.content);
+      
+      if (originalContent !== cleanedContent) {
+        console.log('ReaderService: Text cleaning applied. Original length:', originalContent.length, 'Cleaned length:', cleanedContent.length);
+      }
+      
+      data.content = cleanedContent;
+
       // Log content length for debugging
       console.log('ReaderService: Content length:', data.content.length);
       console.log('ReaderService: Content preview:', data.content.substring(0, 100));
@@ -75,7 +86,7 @@ class ReaderService {
         id: data.id,
         title: data.title,
         content: data.content,
-        chapter: data.chapter || {} as Chapter
+        chapter: (data.chapter as any) || { id: '', title: '', number: 0 }
       };
 
       console.log('ReaderService: Transformed section:', section);
@@ -102,8 +113,14 @@ class ReaderService {
 
     console.log('ReaderService: Section snippets received:', data);
 
+    // Clean preview text in snippets
+    const cleanedData = data?.map((snippet: any) => ({
+      ...snippet,
+      preview: fixAliceText(snippet.preview || '')
+    })) || [];
+
     // Return empty array if no data
-    return data || [];
+    return cleanedData;
   }
 
   async requestHelp(sectionId: string): Promise<void> {

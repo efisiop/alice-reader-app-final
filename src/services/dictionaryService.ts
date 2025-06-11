@@ -63,6 +63,28 @@ const localDictionary: Record<string, DictionaryEntry> = {
     relatedTerms: ['cat', 'grin', 'vanish', 'appear'],
     pronunciation: "/ˈtʃɛʃər/",
     source: 'local'
+  },
+  'rabbit-hole': {
+    term: 'rabbit-hole',
+    definition: 'The entrance to an underground tunnel that leads Alice into Wonderland. Metaphorically, it represents a journey into the unknown or an absorbing topic or activity.',
+    examples: [
+      'Alice followed the White Rabbit down the rabbit-hole.',
+      'She fell down a very deep rabbit-hole and wondered what would happen next.'
+    ],
+    relatedTerms: ['tunnel', 'entrance', 'Wonderland', 'adventure'],
+    pronunciation: "/ˈræbɪt hoʊl/",
+    source: 'local'
+  },
+  'White Rabbit': {
+    term: 'White Rabbit',
+    definition: 'A hurried, anxious creature with a pocket watch who leads Alice into Wonderland. Represents the constraints of time and adult responsibilities.',
+    examples: [
+      '"Oh my ears and whiskers, how late it\'s getting!" exclaimed the White Rabbit as he hurried past Alice.',
+      'The White Rabbit pulled a watch out of his waistcoat pocket.'
+    ],
+    relatedTerms: ['pocket watch', 'hurried', 'anxious', 'time'],
+    pronunciation: "/waɪt ˈræbɪt/",
+    source: 'local'
   }
 };
 

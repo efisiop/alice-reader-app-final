@@ -25,6 +25,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useBookService, useDictionaryService } from '../../hooks/useService';
 import { LoadingIndicator } from '../../components/common/LoadingIndicator';
 import { useSnackbar } from '../../utils/notistackUtils';
+import { fixAliceText, validateText } from '../../utils/textUtils';
 import CloseIcon from '@mui/icons-material/Close';
 import EqualizerIcon from '@mui/icons-material/Equalizer';
 import NoteIcon from '@mui/icons-material/Note';
@@ -696,7 +697,10 @@ const MainInteractionPage: React.FC = () => {
                    <>
                      {/* Display section content with proper formatting */}
                      <Typography
+                       ref={sectionContentRef}
                        variant="body1"
+                       component="div"
+                       onMouseUp={handleTextSelection}
                        sx={{
                          whiteSpace: 'pre-wrap',
                          lineHeight: 1.8,
@@ -704,13 +708,13 @@ const MainInteractionPage: React.FC = () => {
                          '& .paragraph': { marginBottom: 2 }
                        }}
                      >
-                       {/* Split content by paragraphs and render each one */}
-                       {selectedSection.content
+                       {/* Split content by paragraphs and render each one with text cleaning */}
+                       {fixAliceText(selectedSection.content)
                          .split(/\n\s*\n/)
                          .map((paragraph, index) => (
                            <React.Fragment key={index}>
                              {paragraph.trim()}
-                             {index < selectedSection.content.split(/\n\s*\n/).length - 1 && (
+                             {index < fixAliceText(selectedSection.content).split(/\n\s*\n/).length - 1 && (
                                <Box component="span" sx={{ display: 'block', my: 2 }} />
                              )}
                            </React.Fragment>
@@ -721,6 +725,14 @@ const MainInteractionPage: React.FC = () => {
                      {import.meta.env.DEV && (
                        <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
                          Content length: {selectedSection.content.length} characters
+                         {(() => {
+                           const validation = validateText(selectedSection.content);
+                           return !validation.isValid ? (
+                             <span style={{ color: 'red', display: 'block' }}>
+                               Text issues: {validation.issues.join(', ')}
+                             </span>
+                           ) : null;
+                         })()}
                        </Typography>
                      )}
 
@@ -829,7 +841,9 @@ const MainInteractionPage: React.FC = () => {
                backgroundColor: '#f5f5f5',
                borderRadius: '50%'
              }}>
-               <AutoAwesomeIcon sx={{ fontSize: 30, color: '#333' }} />
+               <AutoAwesomeIcon 
+                 sx={{ width: 30, height: 30, color: '#333' }}
+               />
              </Box>
              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
                AI assistance
@@ -861,7 +875,9 @@ const MainInteractionPage: React.FC = () => {
                backgroundColor: '#f5f5f5',
                borderRadius: '50%'
              }}>
-               <SupportAgentIcon sx={{ fontSize: 30, color: '#666' }} />
+               <SupportAgentIcon 
+                 sx={{ width: 30, height: 30, color: '#666' }}
+               />
              </Box>
              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
                Our Consultants
@@ -890,10 +906,12 @@ const MainInteractionPage: React.FC = () => {
                display: 'flex', 
                alignItems: 'center', 
                justifyContent: 'center',
-               backgroundColor: '#2196f3',
+               backgroundColor: '#e3f2fd',
                borderRadius: '50%'
              }}>
-               <LibraryBooksIcon sx={{ fontSize: 30, color: 'white' }} />
+               <LibraryBooksIcon 
+                 sx={{ width: 30, height: 30, color: '#1976d2' }}
+               />
              </Box>
              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
                INFO CENTER
