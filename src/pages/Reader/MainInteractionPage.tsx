@@ -616,6 +616,48 @@ const MainInteractionPage: React.FC = () => {
           </Box>
         </Paper>
 
+        {/* Definition Area at Top with Nice Background */}
+        {definitionData && (
+          <Paper 
+            elevation={3} 
+            sx={{
+              mb: 4,
+              p: 3,
+              background: 'linear-gradient(135deg, #f8f9ff 0%, #e8f0fe 50%, #f0f4ff 100%)',
+              borderRadius: 3,
+              border: '1px solid',
+              borderColor: 'primary.light',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+            }}
+          >
+           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+             <Box sx={{ flex: 1 }}>
+               <Typography variant="h6" color="primary" sx={{ fontWeight: 'bold', mb: 1 }}>
+                 {definitionData.word}
+               </Typography>
+               <Typography variant="body1" sx={{ mb: 1 }}>
+                 {definitionData.definition}
+               </Typography>
+               {definitionData.examples && definitionData.examples.length > 0 && (
+                 <Box sx={{ mt: 1 }}>
+                   {definitionData.examples.map((example, index) => (
+                     <Typography key={index} variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
+                       "{example}"
+                     </Typography>
+                   ))}
+                 </Box>
+               )}
+               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                 Source: {definitionData.source}
+               </Typography>
+             </Box>
+             <IconButton size="small" onClick={clearDefinition} sx={{ ml: 2 }}>
+               <CloseIcon fontSize="small"/>
+             </IconButton>
+           </Box>
+         </Paper>
+       )}
+
         {/* Section Selection / Display Area - This takes up most of the 3/4 space */}
         <Box sx={{ flex: 1, minHeight: '400px' }}>
           {isLoadingSections && <LoadingIndicator message="Loading sections..." />}
@@ -762,48 +804,6 @@ const MainInteractionPage: React.FC = () => {
              </Paper>
           )}
         </Box>
-
-                 {/* Definition Area at Bottom with Nice Background */}
-         {definitionData && (
-           <Paper 
-             elevation={3} 
-             sx={{
-               mt: 4,
-               p: 3,
-               background: 'linear-gradient(135deg, #f8f9ff 0%, #e8f0fe 50%, #f0f4ff 100%)',
-               borderRadius: 3,
-               border: '1px solid',
-               borderColor: 'primary.light',
-               boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-             }}
-           >
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <Box sx={{ flex: 1 }}>
-                <Typography variant="h6" color="primary" sx={{ fontWeight: 'bold', mb: 1 }}>
-                  {definitionData.word}
-                </Typography>
-                <Typography variant="body1" sx={{ mb: 1 }}>
-                  {definitionData.definition}
-                </Typography>
-                {definitionData.examples && definitionData.examples.length > 0 && (
-                  <Box sx={{ mt: 1 }}>
-                    {definitionData.examples.map((example, index) => (
-                      <Typography key={index} variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
-                        "{example}"
-                      </Typography>
-                    ))}
-                  </Box>
-                )}
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-                  Source: {definitionData.source}
-                </Typography>
-              </Box>
-              <IconButton size="small" onClick={clearDefinition} sx={{ ml: 2 }}>
-                <CloseIcon fontSize="small"/>
-              </IconButton>
-            </Box>
-          </Paper>
-        )}
       </Box>
 
       {/* Navigation Sidebar (1/4 of page) */}
