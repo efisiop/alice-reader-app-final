@@ -1,5 +1,5 @@
 // src/components/UI/EnhancedAppHeader.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useContext } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -18,9 +18,10 @@ import {
   useTheme,
   useScrollTrigger,
   Slide,
-  Fade
+  Fade,
+  useMediaQuery
 } from '@mui/material';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, Link as RouterLink, useLocation } from 'react-router-dom';
 import MenuIcon from '@mui/icons-material/Menu';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -29,9 +30,12 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import HomeIcon from '@mui/icons-material/Home';
+import AssessmentIcon from '@mui/icons-material/Assessment';
 import ConnectionStatus from './ConnectionStatus';
-import { useAuth } from '../../contexts/AuthContext';
+import { AuthContext } from '../../contexts/AuthContext';
 import { TRANSITIONS } from '../../theme/theme';
+import { appLog } from '../LogViewer';
 
 // Hide on scroll
 interface HideOnScrollProps {
@@ -50,15 +54,16 @@ const HideOnScroll: React.FC<HideOnScrollProps> = ({ children }) => {
 
 const EnhancedAppHeader: React.FC = () => {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isConsultant, logout } = useAuth();
-  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+  const auth = useContext(AuthContext);
+  const [mobileMenuAnchorEl, setMobileMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [userMenuAnchorEl, setUserMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [visible, setVisible] = useState(false);
   
   // Show header with animation on mount
-  useEffect(() => {
+  React.useEffect(() => {
     const timer = setTimeout(() => {
       setVisible(true);
     }, 100);
@@ -66,42 +71,14 @@ const EnhancedAppHeader: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
   
-  // Determine if we should show the header
-  const shouldShowHeader = () => {
-    // Don't show on login/register pages
-    if (['/login', '/register', '/verify'].includes(location.pathname)) {
-      return false;
-    }
-    
-    return true;
+  // Handle mobile menu open
+  const handleMobileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setMobileMenuAnchorEl(event.currentTarget);
   };
   
-  if (!shouldShowHeader()) {
-    return null;
-  }
-  
-  // Get the title based on the current route
-  const getTitle = () => {
-    const path = location.pathname;
-    
-    if (path.startsWith('/reader/read')) return 'Alice Reader';
-    if (path.startsWith('/reader/stats')) return 'Reading Statistics';
-    if (path.startsWith('/reader')) return 'Reader Dashboard';
-    if (path.startsWith('/consultant')) return 'Consultant Dashboard';
-    if (path.startsWith('/status')) return 'System Status';
-    if (path.startsWith('/test')) return 'Test Page';
-    
-    return 'Alice Reader';
-  };
-  
-  // Handle menu open
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setMenuAnchorEl(event.currentTarget);
-  };
-  
-  // Handle menu close
-  const handleMenuClose = () => {
-    setMenuAnchorEl(null);
+  // Handle mobile menu close
+  const handleMobileMenuClose = () => {
+    setMobileMenuAnchorEl(null);
   };
   
   // Handle user menu open
@@ -116,25 +93,35 @@ const EnhancedAppHeader: React.FC = () => {
   
   // Handle navigation
   const handleNavigate = (path: string) => {
-    handleMenuClose();
+    handleMobileMenuClose();
     handleUserMenuClose();
     navigate(path);
   };
   
   // Handle logout
-  const handleLogout = () => {
-    handleUserMenuClose();
-    logout();
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      if (auth?.signOut) {
+        await auth.signOut();
+        navigate('/login');
+      }
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   };
   
   // Get user initials
   const getUserInitials = () => {
-    if (!user) return '?';
+    if (!auth?.user) return '?';
     
-    const email = user.email || '';
+    const email = auth.user.email || '';
     return email.substring(0, 2).toUpperCase();
   };
+  
+  // Don't show header on login/register pages
+  if (['/login', '/register', '/verify'].includes(location.pathname)) {
+    return null;
+  }
   
   return (
     <HideOnScroll>
@@ -149,80 +136,94 @@ const EnhancedAppHeader: React.FC = () => {
         }}
       >
         <Toolbar>
-          {/* Mobile menu button */}
-          <IconButton
-            edge="start"
-            color="primary"
-            aria-label="menu"
-            sx={{ mr: 2, display: { xs: 'flex', md: 'none' } }}
-            onClick={handleMenuOpen}
-          >
-            <MenuIcon />
-          </IconButton>
-          
           {/* Logo/Title */}
           <Typography
             variant="h6"
-            component="div"
+            component={RouterLink}
+            to="/"
             sx={{
               flexGrow: 1,
-              color: theme.palette.primary.main,
-              fontWeight: 'bold',
-              cursor: 'pointer',
+              textDecoration: 'none',
+              color: 'inherit',
               display: 'flex',
               alignItems: 'center',
+              gap: 1,
+              fontFamily: '"Alice", serif',
             }}
-            onClick={() => navigate(isConsultant ? '/consultant' : '/reader')}
           >
             <MenuBookIcon sx={{ mr: 1 }} />
-            {getTitle()}
+            Alice Reader
           </Typography>
           
           {/* Desktop navigation */}
-          <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center' }}>
-            {isConsultant ? (
-              <>
-                <Button
-                  color="inherit"
-                  startIcon={<DashboardIcon />}
-                  onClick={() => handleNavigate('/consultant')}
-                  sx={{ mr: 1 }}
-                >
-                  Dashboard
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  color="inherit"
-                  startIcon={<DashboardIcon />}
-                  onClick={() => handleNavigate('/reader')}
-                  sx={{ mr: 1 }}
-                >
-                  Dashboard
-                </Button>
-                <Button
-                  color="inherit"
-                  startIcon={<MenuBookIcon />}
-                  onClick={() => handleNavigate('/reader/read')}
-                  sx={{ mr: 1 }}
-                >
-                  Read
-                </Button>
-                <Button
-                  color="inherit"
-                  startIcon={<BarChartIcon />}
-                  onClick={() => handleNavigate('/reader/stats')}
-                  sx={{ mr: 1 }}
-                >
-                  Statistics
-                </Button>
-              </>
-            )}
-          </Box>
+          {!isMobile && (
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              {auth?.user ? (
+                <>
+                  <Button
+                    color="inherit"
+                    component={RouterLink}
+                    to="/reader"
+                  >
+                    Dashboard
+                  </Button>
+                  <Button
+                    color="inherit"
+                    component={RouterLink}
+                    to="/reader/stats"
+                  >
+                    My Stats
+                  </Button>
+                  <Button
+                    color="inherit"
+                    component={RouterLink}
+                    to="/settings"
+                  >
+                    Settings
+                  </Button>
+                  <IconButton
+                    color="inherit"
+                    onClick={handleUserMenuOpen}
+                    size="large"
+                  >
+                    <AccountCircleIcon />
+                  </IconButton>
+                </>
+              ) : (
+                <>
+                  <Button
+                    color="inherit"
+                    component={RouterLink}
+                    to="/login"
+                  >
+                    Login
+                  </Button>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    component={RouterLink}
+                    to="/register"
+                  >
+                    Sign Up
+                  </Button>
+                </>
+              )}
+            </Box>
+          )}
+          
+          {/* Mobile menu button */}
+          {isMobile && (
+            <IconButton
+              color="inherit"
+              onClick={handleMobileMenuOpen}
+              size="large"
+            >
+              <MenuIcon />
+            </IconButton>
+          )}
           
           {/* User section */}
-          {user && (
+          {auth?.user && (
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <ConnectionStatus />
               
@@ -255,9 +256,9 @@ const EnhancedAppHeader: React.FC = () => {
           
           {/* Mobile menu */}
           <Menu
-            anchorEl={menuAnchorEl}
-            open={Boolean(menuAnchorEl)}
-            onClose={handleMenuClose}
+            anchorEl={mobileMenuAnchorEl}
+            open={Boolean(mobileMenuAnchorEl)}
+            onClose={handleMobileMenuClose}
             TransitionComponent={Fade}
             PaperProps={{
               elevation: 3,
@@ -268,42 +269,44 @@ const EnhancedAppHeader: React.FC = () => {
               },
             }}
           >
-            {isConsultant ? (
-              <MenuItem onClick={() => handleNavigate('/consultant')}>
-                <ListItemIcon>
-                  <DashboardIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText>Dashboard</ListItemText>
-              </MenuItem>
-            ) : (
+            {auth?.user ? (
               <>
                 <MenuItem onClick={() => handleNavigate('/reader')}>
                   <ListItemIcon>
                     <DashboardIcon fontSize="small" />
                   </ListItemIcon>
-                  <ListItemText>Dashboard</ListItemText>
-                </MenuItem>
-                <MenuItem onClick={() => handleNavigate('/reader/read')}>
-                  <ListItemIcon>
-                    <MenuBookIcon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText>Read</ListItemText>
+                  <ListItemText primary="Dashboard" />
                 </MenuItem>
                 <MenuItem onClick={() => handleNavigate('/reader/stats')}>
                   <ListItemIcon>
-                    <BarChartIcon fontSize="small" />
+                    <AssessmentIcon fontSize="small" />
                   </ListItemIcon>
-                  <ListItemText>Statistics</ListItemText>
+                  <ListItemText primary="My Stats" />
+                </MenuItem>
+                <MenuItem onClick={() => handleNavigate('/settings')}>
+                  <ListItemIcon>
+                    <SettingsIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText primary="Settings" />
+                </MenuItem>
+                <Divider />
+                <MenuItem onClick={handleLogout}>
+                  <ListItemIcon>
+                    <LogoutIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText>Logout</ListItemText>
+                </MenuItem>
+              </>
+            ) : (
+              <>
+                <MenuItem onClick={() => handleNavigate('/login')}>
+                  <ListItemText primary="Login" />
+                </MenuItem>
+                <MenuItem onClick={() => handleNavigate('/register')}>
+                  <ListItemText primary="Sign Up" />
                 </MenuItem>
               </>
             )}
-            <Divider />
-            <MenuItem onClick={() => handleNavigate('/status')}>
-              <ListItemIcon>
-                <HelpOutlineIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>System Status</ListItemText>
-            </MenuItem>
           </Menu>
           
           {/* User menu */}
@@ -325,7 +328,44 @@ const EnhancedAppHeader: React.FC = () => {
               <ListItemIcon>
                 <AccountCircleIcon fontSize="small" />
               </ListItemIcon>
-              <ListItemText primary={user?.email} />
+              <ListItemText primary={auth?.user?.email} />
+            </MenuItem>
+            <Divider />
+            <MenuItem onClick={() => handleNavigate('/')}>
+              <ListItemIcon>
+                <HomeIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText 
+                primary="Welcome Page" 
+                secondary="Start your reading journey"
+              />
+            </MenuItem>
+            <MenuItem onClick={() => handleNavigate('/reader')}>
+              <ListItemIcon>
+                <DashboardIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText 
+                primary="Dashboard" 
+                secondary="View your reading overview"
+              />
+            </MenuItem>
+            <MenuItem onClick={() => handleNavigate('/reader/stats')}>
+              <ListItemIcon>
+                <AssessmentIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText 
+                primary="My Reading Stats" 
+                secondary="View progress and notes"
+              />
+            </MenuItem>
+            <MenuItem onClick={() => handleNavigate('/settings')}>
+              <ListItemIcon>
+                <SettingsIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText 
+                primary="Settings" 
+                secondary="Customize your experience"
+              />
             </MenuItem>
             <Divider />
             <MenuItem onClick={handleLogout}>

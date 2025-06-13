@@ -60,11 +60,11 @@ const LandingPage: React.FC = () => {
       pt: 8,
       pb: 6
     }}>
-      <Container maxWidth="lg">
+      <Container maxWidth="md">
         {/* Hero Section */}
         <Box sx={{
           textAlign: 'center',
-          mb: 8,
+          mb: 6,
           animation: 'fadeIn 1.2s ease-in-out',
           '@keyframes fadeIn': {
             '0%': { opacity: 0, transform: 'translateY(20px)' },
@@ -73,7 +73,7 @@ const LandingPage: React.FC = () => {
         }}>
           <Typography
             component="h1"
-            variant="h2"
+            variant="h3"
             color="primary.main"
             gutterBottom
             sx={{
@@ -86,13 +86,12 @@ const LandingPage: React.FC = () => {
           </Typography>
 
           <Typography
-            variant="h5"
+            variant="h6"
             color="text.secondary"
             paragraph
-            sx={{ maxWidth: 600, mx: 'auto', mb: 4 }}
+            sx={{ maxWidth: 500, mx: 'auto', mb: 4 }}
           >
             Your AI-powered reading companion for exploring the wonders of literature.
-            Discover deeper meaning, expand your vocabulary, and enhance your reading experience.
           </Typography>
 
           <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
@@ -141,8 +140,8 @@ const LandingPage: React.FC = () => {
         <Paper
           elevation={3}
           sx={{
-            p: 4,
-            mb: 8,
+            p: 3,
+            mb: 6,
             borderRadius: 2,
             background: 'rgba(255, 255, 255, 0.9)',
             boxShadow: '0 8px 32px rgba(31, 38, 135, 0.15)',
@@ -150,7 +149,7 @@ const LandingPage: React.FC = () => {
             border: '1px solid rgba(255, 255, 255, 0.18)'
           }}
         >
-          <Grid container spacing={4} alignItems="center">
+          <Grid container spacing={3} alignItems="center">
             <Grid item xs={12} md={4}>
               <Box
                 component="img"
@@ -158,7 +157,7 @@ const LandingPage: React.FC = () => {
                 alt="Alice in Wonderland"
                 sx={{
                   width: '100%',
-                  maxWidth: 300,
+                  maxWidth: 250,
                   height: 'auto',
                   borderRadius: 2,
                   boxShadow: '0 10px 20px rgba(0,0,0,0.2)',
@@ -170,7 +169,7 @@ const LandingPage: React.FC = () => {
             </Grid>
 
             <Grid item xs={12} md={8}>
-              <Typography variant="h4" component="h2" gutterBottom color="primary.dark">
+              <Typography variant="h5" component="h2" gutterBottom color="primary.dark">
                 Alice in Wonderland
               </Typography>
 
@@ -180,11 +179,10 @@ const LandingPage: React.FC = () => {
 
               <Typography variant="body1" paragraph sx={{ mt: 2 }}>
                 Begin your journey down the rabbit hole with Alice! This interactive reading experience
-                brings the classic tale to life with AI-powered assistance, vocabulary building tools,
-                and personalized reading insights.
+                brings the classic tale to life with AI-powered assistance and vocabulary building tools.
               </Typography>
 
-              <Box sx={{ mt: 3 }}>
+              <Box sx={{ mt: 2 }}>
                 <Button
                   component={RouterLink}
                   to="/register"
@@ -201,16 +199,16 @@ const LandingPage: React.FC = () => {
 
         {/* Features */}
         <Typography
-          variant="h4"
+          variant="h5"
           component="h2"
           align="center"
           gutterBottom
-          sx={{ mb: 4 }}
+          sx={{ mb: 3 }}
         >
           Key Features
         </Typography>
 
-        <Grid container spacing={4}>
+        <Grid container spacing={3}>
           {/* Feature 1 */}
           <Grid item xs={12} md={4}>
             <Card
@@ -224,14 +222,14 @@ const LandingPage: React.FC = () => {
                 }
               }}
             >
-              <CardContent sx={{ flexGrow: 1, textAlign: 'center', p: 3 }}>
-                <Box sx={{ mb: 2 }}>
-                  <BookIcon color="primary" sx={{ fontSize: 60 }} />
+              <CardContent sx={{ flexGrow: 1, textAlign: 'center', p: 2 }}>
+                <Box sx={{ mb: 1 }}>
+                  <BookIcon color="primary" sx={{ fontSize: 40 }} />
                 </Box>
-                <Typography variant="h5" component="h3" gutterBottom>
+                <Typography variant="h6" component="h3" gutterBottom>
                   Interactive Dictionary
                 </Typography>
-                <Typography>
+                <Typography variant="body2">
                   Instantly look up any word by simply highlighting it. Build your vocabulary
                   and deepen your understanding of the text.
                 </Typography>
@@ -252,16 +250,16 @@ const LandingPage: React.FC = () => {
                 }
               }}
             >
-              <CardContent sx={{ flexGrow: 1, textAlign: 'center', p: 3 }}>
-                <Box sx={{ mb: 2 }}>
-                  <SmartToyIcon color="secondary" sx={{ fontSize: 60 }} />
+              <CardContent sx={{ flexGrow: 1, textAlign: 'center', p: 2 }}>
+                <Box sx={{ mb: 1 }}>
+                  <SmartToyIcon color="secondary" sx={{ fontSize: 40 }} />
                 </Box>
-                <Typography variant="h5" component="h3" gutterBottom>
+                <Typography variant="h6" component="h3" gutterBottom>
                   AI Reading Assistant
                 </Typography>
-                <Typography>
+                <Typography variant="body2">
                   Ask questions about the text, get explanations, and explore themes with
-                  our intelligent AI assistant that understands the context of what you're reading.
+                  our intelligent AI assistant.
                 </Typography>
               </CardContent>
             </Card>
@@ -280,35 +278,34 @@ const LandingPage: React.FC = () => {
                 }
               }}
             >
-              <CardContent sx={{ flexGrow: 1, textAlign: 'center', p: 3 }}>
-                <Box sx={{ mb: 2 }}>
-                  <PersonIcon color="info" sx={{ fontSize: 60 }} />
+              <CardContent sx={{ flexGrow: 1, textAlign: 'center', p: 2 }}>
+                <Box sx={{ mb: 1 }}>
+                  <PersonIcon color="info" sx={{ fontSize: 40 }} />
                 </Box>
-                <Typography variant="h5" component="h3" gutterBottom>
+                <Typography variant="h6" component="h3" gutterBottom>
                   Reading Consultant
                 </Typography>
-                <Typography>
+                <Typography variant="body2">
                   Get personalized guidance from reading consultants who can help you
-                  navigate difficult passages and provide insights tailored to your needs.
+                  navigate difficult passages.
                 </Typography>
               </CardContent>
             </Card>
           </Grid>
         </Grid>
 
-
         {/* Call to Action */}
         <Box
           sx={{
             textAlign: 'center',
-            mt: 8,
-            p: 4,
+            mt: 6,
+            p: 3,
             borderRadius: 2,
             background: theme.palette.primary.main,
             color: 'white'
           }}
         >
-          <Typography variant="h5" component="p" gutterBottom>
+          <Typography variant="h6" component="p" gutterBottom>
             Ready to transform your reading experience?
           </Typography>
 
@@ -325,7 +322,7 @@ const LandingPage: React.FC = () => {
         </Box>
 
         {/* Footer */}
-        <Box sx={{ mt: 8, pt: 3, borderTop: `1px solid ${theme.palette.divider}` }}>
+        <Box sx={{ mt: 6, pt: 3, borderTop: `1px solid ${theme.palette.divider}` }}>
           <Typography variant="body2" color="text.secondary" align="center">
             © {new Date().getFullYear()} Alice Reader. All rights reserved.
           </Typography>
