@@ -18,7 +18,12 @@ import {
   Divider,
   CircularProgress,
   Card,
-  CardContent
+  CardContent,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Fade
 } from '@mui/material';
 import { useNavigate, useParams, Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -35,8 +40,11 @@ import QuestionAnswerIcon from '@mui/icons-material/QuestionAnswer';
 import InfoIcon from '@mui/icons-material/Info';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
-import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
+import { Book as BookIcon, Menu as MenuIcon, LibraryBooks as DictionaryIcon, SmartToy as SmartToyIcon } from '@mui/icons-material';
 import { readerService, SectionSnippet } from '../../services/readerService';
+import { registry } from '../../services/serviceRegistry';
+import { ALICE_BOOK_ID } from '../../data/fallbackBookData';
+import { DictionaryServiceInterface } from '../../services/dictionaryService';
 
 // Define types for Section data
 interface SectionDetail extends SectionSnippet {
@@ -75,7 +83,7 @@ const MainInteractionPage: React.FC = () => {
 
   // State for definition sidebar
   // selectedText will be used to store the highlighted text for future features
-  const [selectedText, setSelectedText] = useState<string | null>(null);
+  const [selectedText, setSelectedText] = useState<string>('');
   const [definitionData, setDefinitionData] = useState<DefinitionData | null>(null);
   const [isLoadingDefinition, setIsLoadingDefinition] = useState<boolean>(false);
 
@@ -87,6 +95,70 @@ const MainInteractionPage: React.FC = () => {
 
   // We'll use this to conditionally render content
   const [isReady, setIsReady] = useState<boolean>(false);
+
+  // State for AI assistant
+  const [showAIAssistant, setShowAIAssistant] = useState(false);
+  const [aiDialogOpen, setAiDialogOpen] = useState(false);
+  const [aiResponse, setAiResponse] = useState<string>('');
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [aiAssistantPosition, setAiAssistantPosition] = useState({ x: 0, y: 0 });
+
+  // Dictionary state
+  const [dictionaryLoading, setDictionaryLoading] = useState(false);
+  const [dictionaryError, setDictionaryError] = useState<string | null>(null);
+  const [dictionaryDefinition, setDictionaryDefinition] = useState<string | null>(null);
+  const [dictionaryDialogOpen, setDictionaryDialogOpen] = useState(false);
+
+  // Add state for origin
+  const [wordOrigin, setWordOrigin] = useState<string | null>(null);
+
+  // Add these state variables at the top with other states
+  const [AIAnalysis, setAIAnalysis] = useState<string | null>(null);
+  const [AIAnalysisLoading, setAIAnalysisLoading] = useState(false);
+  const [AIAnalysisError, setAIAnalysisError] = useState<string | null>(null);
+  const [AIAnalysisDialogOpen, setAIAnalysisDialogOpen] = useState(false);
+
+  // Add this new function after the existing handleAIAssistantClick
+  const handleGenerateExample = async () => {
+    try {
+      const response = await fetch('/api/ai/generate-example', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          word: selectedText,
+          definition: dictionaryDefinition,
+          context: 'Alice in Wonderland'
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate example');
+      }
+
+      const data = await response.json();
+      return data.example;
+    } catch (error) {
+      console.error('Error generating example:', error);
+      return null;
+    }
+  };
+
+  // Modify the dictionary dialog content
+  const [example, setExample] = useState<string | null>(null);
+  const [isGeneratingExample, setIsGeneratingExample] = useState(false);
+
+  // Add this effect to generate example when dictionary definition is loaded
+  useEffect(() => {
+    if (dictionaryDefinition && !example) {
+      setIsGeneratingExample(true);
+      handleGenerateExample().then((generatedExample) => {
+        setExample(generatedExample);
+        setIsGeneratingExample(false);
+      });
+    }
+  }, [dictionaryDefinition]);
 
   // Check if services are ready
   useEffect(() => {
@@ -323,117 +395,127 @@ const MainInteractionPage: React.FC = () => {
 
   // --- Key Event Handlers ---
 
-  const handleTextSelection = async () => {
+  const handleTextSelection = () => {
+    const selection = window.getSelection();
+    if (!selection || !selection.toString().trim()) return;
+
+    const selectedText = selection.toString().trim();
+    const range = selection.getRangeAt(0);
+    const text = range.startContainer.textContent || '';
+    const startOffset = range.startOffset;
+    const endOffset = range.endOffset;
+
+    // Find the nearest punctuation marks
+    const punctuationMarks = ['.', '!', '?', ';', ':', ','];
+    let startPos = startOffset;
+    let endPos = endOffset;
+
+    // Look for punctuation before the selection
+    for (let i = startOffset; i >= 0; i--) {
+      if (punctuationMarks.includes(text[i])) {
+        startPos = i + 1;
+        break;
+      }
+    }
+
+    // Look for punctuation after the selection
+    for (let i = endOffset; i < text.length; i++) {
+      if (punctuationMarks.includes(text[i])) {
+        endPos = i;
+        break;
+      }
+    }
+
+    // Create a new range with the adjusted positions
+    const newRange = document.createRange();
+    newRange.setStart(range.startContainer, startPos);
+    newRange.setEnd(range.endContainer, endPos);
+
+    // Update the selection
+    selection.removeAllRanges();
+    selection.addRange(newRange);
+
+    // Get the new selected text
+    const newSelectedText = selection.toString().trim();
+    setSelectedText(newSelectedText);
+    fetchDictionaryDefinition(newSelectedText);
+    setDictionaryDialogOpen(true);
+  };
+
+  // Update the fetchDictionaryDefinition function
+  const fetchDictionaryDefinition = async (word: string) => {
+    setDictionaryLoading(true);
+    setDictionaryError(null);
+    setDictionaryDefinition(null);
+    setWordOrigin(null);
+    setExample(null);
+
     try {
-      // Get the selection object
-      const selection = window.getSelection();
-      if (!selection || selection.rangeCount === 0 || !selectedSection) return;
-
-      // Get the selected text
-      const selectedText = selection.toString().trim();
-      if (!selectedText) return;
-
-      // Skip very long selections (likely paragraphs, not words)
-      if (selectedText.length > 100) {
-        console.log("Selection too long for definition lookup:", selectedText.length, "characters");
-        return;
+      // First try the free dictionary API
+      const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+      if (!response.ok) {
+        throw new Error('Word not found');
+      }
+      const data = await response.json();
+      
+      // Get the first definition and origin
+      const firstEntry = data[0];
+      const firstMeaning = firstEntry.meanings[0];
+      const firstDefinition = firstMeaning.definitions[0].definition;
+      
+      // Try to get origin from etymology
+      let origin = 'Origin not available';
+      if (firstEntry.etymologies && firstEntry.etymologies.length > 0) {
+        origin = firstEntry.etymologies[0];
+      } else if (firstEntry.origin) {
+        origin = firstEntry.origin;
       }
 
-      // Skip very short selections (likely accidental clicks)
-      if (selectedText.length < 1) {
-        console.log("Selection too short for definition lookup:", selectedText.length, "characters");
-        return;
-      }
+      setDictionaryDefinition(firstDefinition);
+      setWordOrigin(origin);
+    } catch (error) {
+      console.error('Error fetching definition:', error);
+      setDictionaryError('Failed to fetch definition. Please try again.');
+    } finally {
+      setDictionaryLoading(false);
+    }
+  };
 
-      console.log("Text selection detected:", selectedText);
-
-      // Get the range of the selection
-      const range = selection.getRangeAt(0);
-
-      // Check if the selection spans multiple nodes
-      const isMultiNodeSelection = range.startContainer !== range.endContainer;
-
-      let fullText: string;
-      let textNode: Node;
-      let startOffset: number;
-      let endOffset: number;
-
-      if (isMultiNodeSelection) {
-        // For multi-node selections, we'll use the selected text directly
-        // and try to clean it for definition lookup
-        console.log("Multi-node selection detected, using selected text directly");
-
-        // Try to clean the selected text for definition lookup
-        const cleanedText = cleanWord(selectedText);
-        
-        if (!cleanedText) return;
-
-        await lookupDefinition(cleanedText, selectedText);
-        return;
-      }
-
-      // For single node selections, proceed with the expansion logic
-      textNode = range.startContainer;
-
-      // Make sure we're working with a text node
-      if (textNode.nodeType !== Node.TEXT_NODE) return;
-
-      // Get the full text content of the node
-      fullText = textNode.textContent || '';
-
-      // Get the start and end offsets of the selection within the text node
-      startOffset = range.startOffset;
-      endOffset = range.endOffset;
-
-      console.log(`Selection range: [${startOffset}, ${endOffset}] in text of length ${fullText.length}`);
-
-      // Expand the selection to include full words and potential phrases
-      const expansion = expandSelectionToWords(fullText, startOffset, endOffset);
-
-      console.log('Expansion results:', {
-        original: selectedText,
-        singleWord: expansion.singleWord,
-        phrase: expansion.phrase
+  // Update the handleAIAssistantClick function to ensure it's making the request
+  const handleAIAssistantClick = async () => {
+    try {
+      setAIAnalysisLoading(true);
+      const response = await fetch('/api/ai/generate-example', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          word: selectedText,
+          definition: dictionaryDefinition,
+          context: 'Alice in Wonderland',
+          type: 'detailed'
+        }),
       });
 
-      // Determine what to look up
-      let termToLookup = '';
-      let originalTerm = '';
-
-      // If the original selection was just part of a word, use the full word
-      if (selectedText.length < expansion.singleWord.length && 
-          expansion.singleWord.toLowerCase().includes(selectedText.toLowerCase())) {
-        termToLookup = cleanWord(expansion.singleWord);
-        originalTerm = expansion.singleWord;
-        console.log(`Expanded partial selection "${selectedText}" to full word "${expansion.singleWord}"`);
-      }
-      // If we have a potential phrase that's significantly different from the single word, try the phrase first
-      else if (expansion.phrase !== expansion.singleWord && 
-               expansion.phrase.split(/\s+/).length <= 4 && 
-               expansion.phrase.split(/\s+/).length >= 2) {
-        termToLookup = cleanWord(expansion.phrase);
-        originalTerm = expansion.phrase;
-        console.log(`Trying phrasal lookup for: "${expansion.phrase}"`);
-      }
-      // Otherwise, use the single word
-      else {
-        termToLookup = cleanWord(expansion.singleWord);
-        originalTerm = expansion.singleWord;
-        console.log(`Using single word lookup for: "${expansion.singleWord}"`);
+      if (!response.ok) {
+        throw new Error('Failed to get AI analysis');
       }
 
-      if (!termToLookup) {
-        console.log("No valid term to lookup after cleaning");
-        return;
-      }
-
-      await lookupDefinition(termToLookup, originalTerm, expansion);
-
+      const data = await response.json();
+      setAIAnalysis(data.example);
+      setAIAnalysisDialogOpen(true);
     } catch (error) {
-      // Handle any errors that might occur during the text selection process
-      console.error("Error in text selection handling:", error);
-      // Don't show an error to the user, just silently fail
+      console.error('Error getting AI analysis:', error);
+      setAIAnalysisError('Failed to get AI analysis. Please try again.');
+    } finally {
+      setAIAnalysisLoading(false);
     }
+  };
+
+  const handleCloseAIDialog = () => {
+    setAiDialogOpen(false);
+    setAiResponse('');
   };
 
   // Separate function to handle the actual definition lookup
@@ -524,13 +606,7 @@ const MainInteractionPage: React.FC = () => {
 
   const clearDefinition = () => {
     setDefinitionData(null);
-    setSelectedText(null);
-  };
-
-  const handleAskAI = () => {
-    // This will be implemented when AI assistant functionality is added
-    console.log('AI assistant button clicked');
-    alert('AI Assistant feature coming soon!');
+    setSelectedText('');
   };
 
   // Handle navigation actions
@@ -544,10 +620,111 @@ const MainInteractionPage: React.FC = () => {
     alert('Notes feature coming soon!');
   };
 
+  const handleConsultantHelp = () => {
+    // TODO: Implement navigation to consultant help form
+    console.log('Navigate to consultant help form');
+  };
+
   const handleInfoCenter = () => {
-    // Info center functionality to be implemented
-    console.log('Info Center button clicked');
-    alert('Info Center feature coming soon!');
+    // TODO: Implement navigation to info center
+    console.log('Navigate to info center');
+  };
+
+  const handleConsultantClick = () => {
+    // This will be implemented when consultant functionality is added
+    console.log('Consultant button clicked');
+    alert('Consultant feature coming soon!');
+  };
+
+  const handleDictionaryClick = async () => {
+    try {
+      const selection = window.getSelection();
+      if (!selection || !selection.toString().trim()) return;
+
+      const selectedText = selection.toString().trim();
+      if (!selectedText) return;
+
+      // Check if it's a single word or multiple words
+      const wordCount = selectedText.split(/\s+/).length;
+      if (wordCount === 1) {
+        // Single word: show dictionary definition dialog
+        setDictionaryLoading(true);
+        setDictionaryError(null);
+        setDictionaryDefinition(null);
+        setDictionaryDialogOpen(true);
+
+        // Get the current section ID
+        const currentSectionId = selectedSection?.id;
+
+        // Get the definition using the dictionary service
+        const dictionaryService = await registry.getService<DictionaryServiceInterface>('dictionaryService');
+        const result = await dictionaryService.getDefinition(
+          ALICE_BOOK_ID,
+          selectedText,
+          currentSectionId
+        );
+
+        if (result.definition) {
+          setDictionaryDefinition(result.definition);
+          // Log the successful lookup
+          await dictionaryService.logDictionaryLookup(
+            user?.id || 'anonymous',
+            ALICE_BOOK_ID,
+            currentSectionId,
+            selectedText,
+            true
+          );
+        } else {
+          setDictionaryError("No definition found for this term.");
+          // Log the failed lookup
+          await dictionaryService.logDictionaryLookup(
+            user?.id || 'anonymous',
+            ALICE_BOOK_ID,
+            currentSectionId,
+            selectedText,
+            false
+          );
+        }
+        setDictionaryLoading(false);
+      } else {
+        // Multiple words: show AI assistant dialog
+        setAIAnalysisLoading(true);
+        setAIAnalysisDialogOpen(true);
+        setDictionaryDialogOpen(false);
+        setAIAnalysisError(null);
+        setAIAnalysis(null);
+        try {
+          const response = await fetch('/api/ai/generate-example', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              word: selectedText,
+              context: 'Alice in Wonderland',
+              type: 'detailed'
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to get AI analysis');
+          }
+
+          const data = await response.json();
+          setAIAnalysis(data.example);
+        } catch (error) {
+          setAIAnalysisError('Failed to get AI analysis. Please try again.');
+        } finally {
+          setAIAnalysisLoading(false);
+        }
+      }
+    } catch (error) {
+      console.error("Error in dictionary or AI lookup:", error);
+      setDictionaryError("Failed to look up definition. Please try again.");
+      setAIAnalysisError("Failed to get AI analysis. Please try again.");
+      setDictionaryLoading(false);
+      setAIAnalysisLoading(false);
+    }
   };
 
   // --- Event Listeners ---
@@ -575,10 +752,13 @@ const MainInteractionPage: React.FC = () => {
 
   return (
     <Box sx={{ display: 'flex', height: 'calc(100vh - 64px)' }}>
-      
       {/* Main Content Area (3/4 of page) */}
-      <Box sx={{ flex: 3, p: 3, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-        
+      <Box sx={{ 
+        width: '75%', 
+        p: 3, 
+        overflow: 'auto',
+        position: 'relative'
+      }}>
         {/* Page Input */}
         <Paper
           elevation={currentStep === 'page_input' ? 3 : 1}
@@ -747,20 +927,53 @@ const MainInteractionPage: React.FC = () => {
                          whiteSpace: 'pre-wrap',
                          lineHeight: 1.8,
                          '& p': { marginBottom: 2 },
-                         '& .paragraph': { marginBottom: 2 }
+                         '& .paragraph': { marginBottom: 2 },
+                         '& .drop-cap': {
+                           float: 'left',
+                           fontSize: '3.5em',
+                           lineHeight: '0.8',
+                           paddingRight: '0.1em',
+                           paddingTop: '0.1em',
+                           fontFamily: '"Alice", serif',
+                           color: 'primary.main'
+                         }
                        }}
                      >
                        {/* Split content by paragraphs and render each one with text cleaning */}
                        {fixAliceText(selectedSection.content)
                          .split(/\n\s*\n/)
-                         .map((paragraph, index) => (
-                           <React.Fragment key={index}>
-                             {paragraph.trim()}
-                             {index < fixAliceText(selectedSection.content).split(/\n\s*\n/).length - 1 && (
-                               <Box component="span" sx={{ display: 'block', my: 2 }} />
-                             )}
-                           </React.Fragment>
-                         ))}
+                         .map((paragraph, index) => {
+                           const trimmedParagraph = paragraph.trim();
+                           if (!trimmedParagraph) return null;
+                           
+                           // Add drop cap to first paragraph only
+                           if (index === 0) {
+                             // Get the first word and its first letter
+                             const firstWord = trimmedParagraph.split(/\s+/)[0];
+                             const firstChar = firstWord.charAt(0);
+                             const restOfFirstWord = firstWord.slice(1);
+                             const restOfText = trimmedParagraph.slice(firstWord.length);
+                             
+                             return (
+                               <React.Fragment key={index}>
+                                 <span className="drop-cap">{firstChar}</span>
+                                 {restOfFirstWord}{restOfText}
+                                 {index < fixAliceText(selectedSection.content).split(/\n\s*\n/).length - 1 && (
+                                   <Box component="span" sx={{ display: 'block', my: 2 }} />
+                                 )}
+                               </React.Fragment>
+                             );
+                           }
+                           
+                           return (
+                             <React.Fragment key={index}>
+                               {trimmedParagraph}
+                               {index < fixAliceText(selectedSection.content).split(/\n\s*\n/).length - 1 && (
+                                 <Box component="span" sx={{ display: 'block', my: 2 }} />
+                               )}
+                             </React.Fragment>
+                           );
+                         })}
                      </Typography>
 
                      {/* Show content length for debugging */}
@@ -806,126 +1019,283 @@ const MainInteractionPage: React.FC = () => {
         </Box>
       </Box>
 
-      {/* Navigation Sidebar (1/4 of page) */}
+      {/* Right Sidebar (1/4 of page) */}
       <Box sx={{ 
-        flex: 1, 
+        width: '25%', 
         p: 2, 
-        borderLeft: '1px solid', 
+        borderLeft: '1px solid',
         borderColor: 'divider',
         display: 'flex',
         flexDirection: 'column',
         gap: 2
       }}>
-        
-                 {/* AI Assistance Button */}
-         <Card 
-           sx={{ 
-             cursor: 'pointer',
-             transition: 'all 0.2s',
-             '&:hover': { 
-               transform: 'translateY(-2px)', 
-               boxShadow: 4 
-             }
-           }}
-           onClick={handleAskAI}
-         >
-           <CardContent sx={{ textAlign: 'center', py: 2 }}>
-             <Box sx={{ 
-               width: 60, 
-               height: 60, 
-               mx: 'auto', 
-               mb: 1, 
-               display: 'flex', 
-               alignItems: 'center', 
-               justifyContent: 'center',
-               backgroundColor: '#f5f5f5',
-               borderRadius: '50%'
-             }}>
-               <AutoAwesomeIcon 
-                 sx={{ width: 30, height: 30, color: '#333' }}
-               />
-             </Box>
-             <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-               AI assistance
-             </Typography>
-           </CardContent>
-         </Card>
-
-         {/* Our Consultant Button */}
-         <Card 
-           sx={{ 
-             cursor: 'pointer',
-             transition: 'all 0.2s',
-             '&:hover': { 
-               transform: 'translateY(-2px)', 
-               boxShadow: 4 
-             }
-           }}
-           onClick={handleNotes}
-         >
-           <CardContent sx={{ textAlign: 'center', py: 2 }}>
-             <Box sx={{ 
-               width: 60, 
-               height: 60, 
-               mx: 'auto', 
-               mb: 1, 
-               display: 'flex', 
-               alignItems: 'center', 
-               justifyContent: 'center',
-               backgroundColor: '#f5f5f5',
-               borderRadius: '50%'
-             }}>
-               <SupportAgentIcon 
-                 sx={{ width: 30, height: 30, color: '#666' }}
-               />
-             </Box>
-             <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-               Our Consultants
-             </Typography>
-           </CardContent>
-         </Card>
-
-         {/* Info Center Button */}
-         <Card 
-           sx={{ 
-             cursor: 'pointer',
-             transition: 'all 0.2s',
-             '&:hover': { 
-               transform: 'translateY(-2px)', 
-               boxShadow: 4 
-             }
-           }}
-           onClick={handleInfoCenter}
-         >
-           <CardContent sx={{ textAlign: 'center', py: 2 }}>
-             <Box sx={{ 
-               width: 60, 
-               height: 60, 
-               mx: 'auto', 
-               mb: 1, 
-               display: 'flex', 
-               alignItems: 'center', 
-               justifyContent: 'center',
-               backgroundColor: '#e3f2fd',
-               borderRadius: '50%'
-             }}>
-               <LibraryBooksIcon 
-                 sx={{ width: 30, height: 30, color: '#1976d2' }}
-               />
-             </Box>
-             <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-               INFO CENTER
-             </Typography>
-           </CardContent>
-         </Card>
-
-        {/* Loading indicator for definition */}
-        {isLoadingDefinition && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-            <CircularProgress size={20} />
+        {/* Consultant Help */}
+        <Box
+          sx={{
+            p: 2,
+            borderRadius: 2,
+            bgcolor: 'background.paper',
+            boxShadow: 1,
+            transition: 'all 0.2s ease-in-out',
+            '&:hover': {
+              transform: 'translateY(-2px)',
+              boxShadow: 3,
+            },
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            textAlign: 'center',
+            minHeight: '140px'
+          }}
+          onClick={() => navigate('/consultant')}
+        >
+          <Box sx={{ 
+            width: 60,
+            height: 60,
+            mx: 'auto', 
+            mb: 1, 
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: '#f5f5f5',
+            borderRadius: '50%'
+          }}>
+            <SupportAgentIcon 
+              sx={{ 
+                fontSize: 32,
+                color: 'primary.main'
+              }}
+            />
           </Box>
-        )}
+          <Typography variant="h6" gutterBottom>
+            Consultant Help
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Email or Phone Consultation
+          </Typography>
+        </Box>
+
+        {/* Info Center Button */}
+        <Card 
+          sx={{ 
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            '&:hover': { 
+              transform: 'translateY(-2px)', 
+              boxShadow: 4 
+            }
+          }}
+          onClick={handleInfoCenter}
+        >
+          <CardContent sx={{ textAlign: 'center', py: 2 }}>
+            <Box sx={{ 
+              width: 60, 
+              height: 60, 
+              mx: 'auto', 
+              mb: 1, 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              backgroundColor: '#f5f5f5',
+              borderRadius: '50%'
+            }}>
+              <BookIcon 
+                sx={{ width: 30, height: 30, color: '#333' }}
+              />
+            </Box>
+            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+              Info Center
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              More Books & Events
+            </Typography>
+          </CardContent>
+        </Card>
       </Box>
+
+      {/* Dictionary Dialog */}
+      <Dialog 
+        open={dictionaryDialogOpen} 
+        onClose={() => setDictionaryDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          pr: 2
+        }}>
+          <Typography variant="h6">
+            Definition for "{selectedText}"
+          </Typography>
+          <IconButton 
+            onClick={() => setDictionaryDialogOpen(false)}
+            size="small"
+            sx={{ 
+              color: 'text.secondary',
+              '&:hover': {
+                color: 'text.primary'
+              }
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          {dictionaryLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+              <CircularProgress />
+            </Box>
+          ) : dictionaryError ? (
+            <Typography color="error">{dictionaryError}</Typography>
+          ) : dictionaryDefinition ? (
+            <Box sx={{ py: 1 }}>
+              {/* Definition Section */}
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  Definition
+                </Typography>
+                <Typography variant="body1">
+                  {dictionaryDefinition}
+                </Typography>
+              </Box>
+
+              {/* Example Section */}
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  Example
+                </Typography>
+                {isGeneratingExample ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <CircularProgress size={16} />
+                    <Typography variant="body2" color="text.secondary">
+                      Generating example...
+                    </Typography>
+                  </Box>
+                ) : example ? (
+                  <Typography variant="body1" sx={{ fontStyle: 'italic' }}>
+                    {example}
+                  </Typography>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    No example available
+                  </Typography>
+                )}
+              </Box>
+
+              {/* Origin Section */}
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  Origin
+                </Typography>
+                <Typography variant="body1">
+                  {wordOrigin || 'Origin not available'}
+                </Typography>
+              </Box>
+
+              {/* AI Help Section */}
+              <Box sx={{ 
+                mt: 4,
+                pt: 2,
+                borderTop: '1px solid',
+                borderColor: 'divider',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1
+              }}>
+                <Typography variant="body2" color="text.secondary">
+                  Need deeper analysis?
+                </Typography>
+                <Button 
+                  size="small" 
+                  color="secondary"
+                  onClick={handleAIAssistantClick}
+                  disabled={AIAnalysisLoading}
+                  sx={{ 
+                    ml: 'auto',
+                    '&:hover': {
+                      backgroundColor: 'rgba(144, 202, 249, 0.08)'
+                    }
+                  }}
+                >
+                  {AIAnalysisLoading ? 'Analyzing...' : 'Ask AI'}
+                </Button>
+                <AutoAwesomeIcon 
+                  color="secondary" 
+                  fontSize="small"
+                  sx={{ 
+                    animation: 'sparkle 1.5s ease-in-out infinite',
+                    '@keyframes sparkle': {
+                      '0%': { opacity: 0.7 },
+                      '50%': { opacity: 1 },
+                      '100%': { opacity: 0.7 }
+                    }
+                  }}
+                />
+              </Box>
+            </Box>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      {/* AI Assistant Dialog */}
+      <Dialog
+        open={aiDialogOpen}
+        onClose={handleCloseAIDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          AI Assistant
+          <IconButton
+            onClick={handleCloseAIDialog}
+            sx={{ position: 'absolute', right: 8, top: 8 }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="subtitle1" gutterBottom>
+            Selected Text:
+          </Typography>
+          <Paper
+            variant="outlined"
+            sx={{
+              p: 2,
+              mb: 2,
+              backgroundColor: 'grey.50',
+              fontStyle: 'italic'
+            }}
+          >
+            "{selectedText}"
+          </Paper>
+          
+          <Typography variant="subtitle1" gutterBottom>
+            AI Response:
+          </Typography>
+          {isAiLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Paper
+              variant="outlined"
+              sx={{
+                p: 2,
+                backgroundColor: 'background.paper',
+                whiteSpace: 'pre-wrap'
+              }}
+            >
+              {aiResponse}
+            </Paper>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseAIDialog}>Close</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
