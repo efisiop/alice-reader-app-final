@@ -45,6 +45,7 @@ import { readerService, SectionSnippet } from '../../services/readerService';
 import { registry } from '../../services/serviceRegistry';
 import { ALICE_BOOK_ID } from '../../data/fallbackBookData';
 import { DictionaryServiceInterface } from '../../services/dictionaryService';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 
 // Define types for Section data
 interface SectionDetail extends SectionSnippet {
@@ -57,6 +58,25 @@ interface DefinitionData {
   examples?: string[];
   source?: 'database' | 'local' | 'external' | 'not_found' | 'error';
 }
+
+// Common phrasal verbs for detection
+const commonPhrasalVerbs = [
+  'look up', 'find out', 'come across', 'run into', 'get up', 'sit down', 'stand up',
+  'turn around', 'come back', 'go away', 'come in', 'go out', 'put on', 'take off',
+  'pick up', 'put down', 'come up', 'go down', 'come out', 'go in', 'look down',
+  'come over', 'go over', 'come through', 'go through', 'come along', 'go along',
+  'come about', 'go about', 'go across', 'come after', 'go after', 'come before',
+  'go before', 'come between', 'go between', 'come by', 'go by', 'come for',
+  'go for', 'come from', 'go from', 'come into', 'go into', 'come of', 'go of',
+  'come off', 'go off', 'come on', 'go on', 'come round', 'go round', 'come to',
+  'go to', 'come under', 'go under', 'come upon', 'go upon', 'come with', 'go with'
+];
+
+// Simple phrasal verb detection function
+const detectPhrasalVerb = (text: string): boolean => {
+  const cleanText = text.toLowerCase().trim();
+  return commonPhrasalVerbs.includes(cleanText);
+};
 
 const MainInteractionPage: React.FC = () => {
   // These hooks are kept for future implementation of navigation and error handling
@@ -102,15 +122,19 @@ const MainInteractionPage: React.FC = () => {
   const [aiResponse, setAiResponse] = useState<string>('');
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiAssistantPosition, setAiAssistantPosition] = useState({ x: 0, y: 0 });
+  const [showAiButton, setShowAiButton] = useState(false);
+  const [aiButtonPosition, setAiButtonPosition] = useState({ x: 0, y: 0 });
 
   // Dictionary state
   const [dictionaryLoading, setDictionaryLoading] = useState(false);
   const [dictionaryError, setDictionaryError] = useState<string | null>(null);
   const [dictionaryDefinition, setDictionaryDefinition] = useState<string | null>(null);
   const [dictionaryDialogOpen, setDictionaryDialogOpen] = useState(false);
-
-  // Add state for origin
   const [wordOrigin, setWordOrigin] = useState<string | null>(null);
+  const [example, setExample] = useState<string | null>(null);
+  const [isGeneratingExample, setIsGeneratingExample] = useState(false);
+  const [dictionarySource, setDictionarySource] = useState<string | null>(null);
+  const [isPhrasalVerb, setIsPhrasalVerb] = useState(false);
 
   // Add these state variables at the top with other states
   const [AIAnalysis, setAIAnalysis] = useState<string | null>(null);
@@ -144,10 +168,6 @@ const MainInteractionPage: React.FC = () => {
       return null;
     }
   };
-
-  // Modify the dictionary dialog content
-  const [example, setExample] = useState<string | null>(null);
-  const [isGeneratingExample, setIsGeneratingExample] = useState(false);
 
   // Add this effect to generate example when dictionary definition is loaded
   useEffect(() => {
@@ -395,212 +415,155 @@ const MainInteractionPage: React.FC = () => {
 
   // --- Key Event Handlers ---
 
-  const handleTextSelection = () => {
+  const handleTextSelection = async () => {
     const selection = window.getSelection();
     if (!selection || !selection.toString().trim()) return;
 
-    const selectedText = selection.toString().trim();
+    let selectedText = selection.toString().trim();
     const range = selection.getRangeAt(0);
-    const text = range.startContainer.textContent || '';
-    const startOffset = range.startOffset;
-    const endOffset = range.endOffset;
+    const rect = range.getBoundingClientRect();
 
-    // Find the nearest punctuation marks
-    const punctuationMarks = ['.', '!', '?', ';', ':', ','];
-    let startPos = startOffset;
-    let endPos = endOffset;
-
-    // Look for punctuation before the selection
-    for (let i = startOffset; i >= 0; i--) {
-      if (punctuationMarks.includes(text[i])) {
-        startPos = i + 1;
-        break;
+    // Expand selection to full word/phrase (existing logic)
+    const anchorNode = selection.anchorNode;
+    let expanded = null;
+    if (anchorNode && anchorNode.nodeType === Node.TEXT_NODE) {
+      const textContent = anchorNode.textContent || '';
+      const startOffset = selection.anchorOffset;
+      const endOffset = selection.focusOffset;
+      expanded = expandSelectionToWords(textContent, startOffset, endOffset);
+      if (expanded) {
+        // Check if user selected multiple words or if it's a phrasal verb
+        const originalSelection = selection.toString().trim();
+        const originalWordCount = originalSelection.split(/\s+/).length;
+        const isPhrasalVerb = detectPhrasalVerb(expanded.phrase);
+        
+        // Use phrase only if user selected multiple words OR if it's a known phrasal verb
+        if (originalWordCount > 1 || isPhrasalVerb) {
+          selectedText = expanded.phrase || expanded.singleWord;
+        } else {
+          // Default to single word for single-word selections
+          selectedText = expanded.singleWord;
+        }
+        selectedText = selectedText.trim();
       }
     }
 
-    // Look for punctuation after the selection
-    for (let i = endOffset; i < text.length; i++) {
-      if (punctuationMarks.includes(text[i])) {
-        endPos = i;
-        break;
-      }
+    // Count words
+    const wordCount = selectedText.split(/\s+/).length;
+
+    if (wordCount > 5) {
+      // Show AI assistant button for long selections
+      setShowAiButton(true);
+      setAiButtonPosition({ x: rect.left, y: rect.bottom });
+      setDictionaryDialogOpen(false);
+      return;
     }
 
-    // Create a new range with the adjusted positions
-    const newRange = document.createRange();
-    newRange.setStart(range.startContainer, startPos);
-    newRange.setEnd(range.endContainer, endPos);
-
-    // Update the selection
-    selection.removeAllRanges();
-    selection.addRange(newRange);
-
-    // Get the new selected text
-    const newSelectedText = selection.toString().trim();
-    setSelectedText(newSelectedText);
-    fetchDictionaryDefinition(newSelectedText);
+    // Try dictionary lookup for 1-5 words
+    setDictionaryLoading(true);
+    setDictionaryError(null);
+    setDictionaryDefinition(null);
     setDictionaryDialogOpen(true);
+    setSelectedText(selectedText);
+    setShowAiButton(false);
+
+    // Try to fetch definition (local glossary or external API)
+    try {
+      await fetchDictionaryDefinition(selectedText);
+    } catch (err) {
+      setDictionaryError('Error fetching definition.');
+    } finally {
+      setDictionaryLoading(false);
+    }
   };
 
-  // Update the fetchDictionaryDefinition function
+  // Handle AI button click
+  const handleAiButtonClick = () => {
+    setAiDialogOpen(true);
+    setShowAiButton(false);
+  };
+
+  // Handle AI dialog close
+  const handleCloseAIDialog = () => {
+    setAiDialogOpen(false);
+    setAiResponse('');
+  };
+
+  // Handle dictionary dialog close
+  const handleCloseDictionaryDialog = () => {
+    setDictionaryDialogOpen(false);
+    setDictionaryDefinition(null);
+    setDictionaryError(null);
+    setWordOrigin(null);
+    setExample(null);
+    setDictionarySource(null);
+    setIsPhrasalVerb(false);
+  };
+
+  // Fetch dictionary definition
   const fetchDictionaryDefinition = async (word: string) => {
     setDictionaryLoading(true);
     setDictionaryError(null);
     setDictionaryDefinition(null);
     setWordOrigin(null);
     setExample(null);
-
+    setDictionarySource(null);
+    setIsPhrasalVerb(false);
+    
     try {
-      // First try the free dictionary API
-      const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
-      if (!response.ok) {
-        throw new Error('Word not found');
-      }
-      const data = await response.json();
+      // Add a small delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 300));
       
-      // Get the first definition and origin
-      const firstEntry = data[0];
-      const firstMeaning = firstEntry.meanings[0];
-      const firstDefinition = firstMeaning.definitions[0].definition;
-      
-      // Try to get origin from etymology
-      let origin = 'Origin not available';
-      if (firstEntry.etymologies && firstEntry.etymologies.length > 0) {
-        origin = firstEntry.etymologies[0];
-      } else if (firstEntry.origin) {
-        origin = firstEntry.origin;
-      }
-
-      setDictionaryDefinition(firstDefinition);
-      setWordOrigin(origin);
-    } catch (error) {
-      console.error('Error fetching definition:', error);
-      setDictionaryError('Failed to fetch definition. Please try again.');
-    } finally {
-      setDictionaryLoading(false);
-    }
-  };
-
-  // Update the handleAIAssistantClick function to ensure it's making the request
-  const handleAIAssistantClick = async () => {
-    try {
-      setAIAnalysisLoading(true);
-      const response = await fetch('/api/ai/generate-example', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          word: selectedText,
-          definition: dictionaryDefinition,
-          context: 'Alice in Wonderland',
-          type: 'detailed'
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to get AI analysis');
-      }
-
-      const data = await response.json();
-      setAIAnalysis(data.example);
-      setAIAnalysisDialogOpen(true);
-    } catch (error) {
-      console.error('Error getting AI analysis:', error);
-      setAIAnalysisError('Failed to get AI analysis. Please try again.');
-    } finally {
-      setAIAnalysisLoading(false);
-    }
-  };
-
-  const handleCloseAIDialog = () => {
-    setAiDialogOpen(false);
-    setAiResponse('');
-  };
-
-  // Separate function to handle the actual definition lookup
-  const lookupDefinition = async (termToLookup: string, originalTerm: string, expansion?: any) => {
-    // Show loading state
-    setIsLoadingDefinition(true);
-    setDefinitionData(null);
-
-    try {
-      console.log('Looking up definition for:', termToLookup);
-
       if (!dictionaryService) {
         throw new Error('Dictionary service not available');
       }
 
-             // Try to get definition from dictionary service
-       let definition = await dictionaryService.getDefinition(ALICE_BOOK_UUID, termToLookup);
-       console.log('Definition result for', termToLookup, ':', definition);
+      // Get the current section ID for context
+      const currentSectionId = selectedSection?.id;
+      
+      // Use the enhanced dictionary service
+      const result = await dictionaryService.getDefinition(
+        ALICE_BOOK_UUID,
+        word,
+        currentSectionId
+      );
 
-       // If no definition found for phrase and we have expansion info, try the single word
-       if ((!definition || !definition.definition) && expansion && expansion.phrase !== expansion.singleWord) {
-         console.log('No phrasal definition found, trying single word:', expansion.singleWord);
-         const singleWordCleaned = cleanWord(expansion.singleWord);
-         if (singleWordCleaned && singleWordCleaned !== termToLookup) {
-           definition = await dictionaryService.getDefinition(ALICE_BOOK_UUID, singleWordCleaned);
-           console.log('Single word definition result for', singleWordCleaned, ':', definition);
-           if (definition && definition.definition) {
-             termToLookup = singleWordCleaned;
-             originalTerm = expansion.singleWord;
-           }
-         }
-       }
-
-      if (definition && definition.definition) {
-        const definitionData: DefinitionData = {
-          word: originalTerm,
-          definition: definition.definition,
-          examples: definition.examples || [],
-          source: definition.source as any || 'database'
-        };
-
-        setDefinitionData(definitionData);
-        console.log('Definition set:', definitionData);
-
-        // Log the successful dictionary lookup if user is logged in
+      if (result && result.definition) {
+        setDictionaryDefinition(result.definition);
+        setWordOrigin(result.wordOrigin || null);
+        setExample(result.examples && result.examples.length > 0 ? result.examples[0] : null);
+        setDictionarySource(result.source || null);
+        setIsPhrasalVerb(result.isPhrasalVerb || false);
+        
+        // Log the successful lookup
         if (user && selectedSection) {
           dictionaryService.logDictionaryLookup(
             user.id,
             ALICE_BOOK_UUID,
             selectedSection.id,
-            termToLookup,
+            word,
             true
           ).catch(err => console.error("Error logging dictionary lookup:", err));
         }
       } else {
-        // No definition found
-        const noDefData: DefinitionData = {
-          word: originalTerm,
-          definition: 'Definition not found.',
-          source: 'not_found'
-        };
-        setDefinitionData(noDefData);
-        console.log('No definition found for:', termToLookup);
-
-        // Log the failed dictionary lookup if user is logged in
+        setDictionaryError('No definition found for this word.');
+        
+        // Log the failed lookup
         if (user && selectedSection) {
           dictionaryService.logDictionaryLookup(
             user.id,
             ALICE_BOOK_UUID,
             selectedSection.id,
-            termToLookup,
+            word,
             false
           ).catch(err => console.error("Error logging dictionary lookup:", err));
         }
       }
     } catch (error) {
-      console.error('Error getting definition:', error);
-      const errorDefData: DefinitionData = {
-        word: originalTerm,
-        definition: 'Error loading definition.',
-        source: 'error'
-      };
-      setDefinitionData(errorDefData);
+      console.error('Error fetching definition:', error);
+      setDictionaryError('Failed to fetch definition. Please try again.');
     } finally {
-      setIsLoadingDefinition(false);
+      setDictionaryLoading(false);
     }
   };
 
@@ -646,84 +609,38 @@ const MainInteractionPage: React.FC = () => {
 
       // Check if it's a single word or multiple words
       const wordCount = selectedText.split(/\s+/).length;
+      
       if (wordCount === 1) {
         // Single word: show dictionary definition dialog
-        setDictionaryLoading(true);
-        setDictionaryError(null);
-        setDictionaryDefinition(null);
+        setSelectedText(selectedText);
         setDictionaryDialogOpen(true);
-
-        // Get the current section ID
-        const currentSectionId = selectedSection?.id;
-
-        // Get the definition using the dictionary service
-        const dictionaryService = await registry.getService<DictionaryServiceInterface>('dictionaryService');
-        const result = await dictionaryService.getDefinition(
-          ALICE_BOOK_ID,
-          selectedText,
-          currentSectionId
-        );
-
-        if (result.definition) {
-          setDictionaryDefinition(result.definition);
-          // Log the successful lookup
-          await dictionaryService.logDictionaryLookup(
-            user?.id || 'anonymous',
-            ALICE_BOOK_ID,
-            currentSectionId,
-            selectedText,
-            true
-          );
-        } else {
-          setDictionaryError("No definition found for this term.");
-          // Log the failed lookup
-          await dictionaryService.logDictionaryLookup(
-            user?.id || 'anonymous',
-            ALICE_BOOK_ID,
-            currentSectionId,
-            selectedText,
-            false
-          );
-        }
-        setDictionaryLoading(false);
+        await fetchDictionaryDefinition(selectedText);
       } else {
-        // Multiple words: show AI assistant dialog
-        setAIAnalysisLoading(true);
-        setAIAnalysisDialogOpen(true);
-        setDictionaryDialogOpen(false);
-        setAIAnalysisError(null);
-        setAIAnalysis(null);
-        try {
-          const response = await fetch('/api/ai/generate-example', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              word: selectedText,
-              context: 'Alice in Wonderland',
-              type: 'detailed'
-            }),
+        // Multiple words: check if it's a phrasal verb first
+        const phrasalVerbInfo = detectPhrasalVerb(selectedText);
+        
+        if (phrasalVerbInfo) {
+          // It's a phrasal verb: show dictionary dialog
+          setSelectedText(selectedText);
+          setDictionaryDialogOpen(true);
+          await fetchDictionaryDefinition(selectedText);
+        } else {
+          // Multiple words that aren't a phrasal verb: show AI assistant
+          setSelectedText(selectedText);
+          setShowAiButton(true);
+          
+          // Position the AI button near the selection
+          const range = selection.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+          setAiButtonPosition({
+            x: rect.left + rect.width / 2,
+            y: rect.bottom + 10
           });
-
-          if (!response.ok) {
-            throw new Error('Failed to get AI analysis');
-          }
-
-          const data = await response.json();
-          setAIAnalysis(data.example);
-        } catch (error) {
-          setAIAnalysisError('Failed to get AI analysis. Please try again.');
-        } finally {
-          setAIAnalysisLoading(false);
         }
       }
     } catch (error) {
-      console.error("Error in dictionary or AI lookup:", error);
+      console.error("Error in dictionary lookup:", error);
       setDictionaryError("Failed to look up definition. Please try again.");
-      setAIAnalysisError("Failed to get AI analysis. Please try again.");
-      setDictionaryLoading(false);
-      setAIAnalysisLoading(false);
     }
   };
 
@@ -740,6 +657,28 @@ const MainInteractionPage: React.FC = () => {
        document.addEventListener('keydown', handleKeyDown);
        return () => document.removeEventListener('keydown', handleKeyDown);
      }, []);
+
+  // Add event listeners for text selection
+  useEffect(() => {
+    document.addEventListener('mouseup', handleTextSelection);
+    return () => {
+      document.removeEventListener('mouseup', handleTextSelection);
+    };
+  }, []);
+
+  // Add click outside listener to hide AI button
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showAiButton) {
+        setShowAiButton(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showAiButton]);
 
   // --- Render Logic ---
   if (!isReady) {
@@ -1114,182 +1053,165 @@ const MainInteractionPage: React.FC = () => {
         </Card>
       </Box>
 
-      {/* Dictionary Dialog */}
-      <Dialog 
-        open={dictionaryDialogOpen} 
-        onClose={() => setDictionaryDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          pr: 2
-        }}>
-          <Typography variant="h6">
-            Definition for "{selectedText}"
-          </Typography>
-          <IconButton 
-            onClick={() => setDictionaryDialogOpen(false)}
+      {/* AI Button */}
+      {showAiButton && (
+        <Box
+          sx={{
+            position: 'absolute',
+            left: aiButtonPosition.x,
+            top: aiButtonPosition.y,
+            zIndex: 1000,
+          }}
+        >
+          <Button
+            variant="contained"
+            color="primary"
             size="small"
-            sx={{ 
-              color: 'text.secondary',
+            onClick={handleAiButtonClick}
+            startIcon={<AutoAwesomeIcon />}
+            sx={{
+              backgroundColor: 'primary.main',
               '&:hover': {
-                color: 'text.primary'
-              }
+                backgroundColor: 'primary.dark',
+              },
+              boxShadow: 2,
             }}
           >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent>
-          {dictionaryLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-              <CircularProgress />
-            </Box>
-          ) : dictionaryError ? (
-            <Typography color="error">{dictionaryError}</Typography>
-          ) : dictionaryDefinition ? (
-            <Box sx={{ py: 1 }}>
-              {/* Definition Section */}
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                  Definition
-                </Typography>
-                <Typography variant="body1">
-                  {dictionaryDefinition}
-                </Typography>
-              </Box>
+            Ask AI Assistant
+          </Button>
+        </Box>
+      )}
 
-              {/* Example Section */}
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                  Example
-                </Typography>
-                {isGeneratingExample ? (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <CircularProgress size={16} />
-                    <Typography variant="body2" color="text.secondary">
-                      Generating example...
-                    </Typography>
-                  </Box>
-                ) : example ? (
-                  <Typography variant="body1" sx={{ fontStyle: 'italic' }}>
-                    {example}
-                  </Typography>
-                ) : (
-                  <Typography variant="body2" color="text.secondary">
-                    No example available
-                  </Typography>
-                )}
-              </Box>
-
-              {/* Origin Section */}
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                  Origin
-                </Typography>
-                <Typography variant="body1">
-                  {wordOrigin || 'Origin not available'}
-                </Typography>
-              </Box>
-
-              {/* AI Help Section */}
-              <Box sx={{ 
-                mt: 4,
-                pt: 2,
-                borderTop: '1px solid',
-                borderColor: 'divider',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1
-              }}>
-                <Typography variant="body2" color="text.secondary">
-                  Need deeper analysis?
-                </Typography>
-                <Button 
-                  size="small" 
-                  color="secondary"
-                  onClick={handleAIAssistantClick}
-                  disabled={AIAnalysisLoading}
-                  sx={{ 
-                    ml: 'auto',
-                    '&:hover': {
-                      backgroundColor: 'rgba(144, 202, 249, 0.08)'
-                    }
-                  }}
-                >
-                  {AIAnalysisLoading ? 'Analyzing...' : 'Ask AI'}
-                </Button>
-                <AutoAwesomeIcon 
-                  color="secondary" 
-                  fontSize="small"
-                  sx={{ 
-                    animation: 'sparkle 1.5s ease-in-out infinite',
-                    '@keyframes sparkle': {
-                      '0%': { opacity: 0.7 },
-                      '50%': { opacity: 1 },
-                      '100%': { opacity: 0.7 }
-                    }
-                  }}
-                />
-              </Box>
-            </Box>
-          ) : null}
-        </DialogContent>
-      </Dialog>
-
-      {/* AI Assistant Dialog */}
+      {/* Dictionary Dialog */}
       <Dialog
-        open={aiDialogOpen}
-        onClose={handleCloseAIDialog}
+        open={dictionaryDialogOpen}
+        onClose={handleCloseDictionaryDialog}
         maxWidth="sm"
         fullWidth
       >
         <DialogTitle>
-          AI Assistant
-          <IconButton
-            onClick={handleCloseAIDialog}
-            sx={{ position: 'absolute', right: 8, top: 8 }}
-          >
-            <CloseIcon />
-          </IconButton>
+          Definition for "{selectedText}"
+          {isPhrasalVerb && (
+            <Typography variant="caption" color="primary" sx={{ display: 'block', mt: 1 }}>
+              📝 Phrasal Verb
+            </Typography>
+          )}
+          {dictionarySource && (
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+              Source: {dictionarySource === 'glossary' ? 'Alice Glossary' : 
+                       dictionarySource === 'external' ? 'Free Dictionary API' : 
+                       dictionarySource === 'database' ? 'Database' : 
+                       dictionarySource === 'not_found' ? 'Not Found' : dictionarySource}
+            </Typography>
+          )}
         </DialogTitle>
         <DialogContent>
-          <Typography variant="subtitle1" gutterBottom>
-            Selected Text:
-          </Typography>
-          <Paper
-            variant="outlined"
-            sx={{
-              p: 2,
-              mb: 2,
-              backgroundColor: 'grey.50',
-              fontStyle: 'italic'
-            }}
-          >
-            "{selectedText}"
-          </Paper>
-          
-          <Typography variant="subtitle1" gutterBottom>
-            AI Response:
-          </Typography>
+          {dictionaryLoading ? (
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: 'column',
+              justifyContent: 'center', 
+              alignItems: 'center',
+              p: 4,
+              minHeight: '200px'
+            }}>
+              <CircularProgress size={40} />
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                Looking up definition...
+              </Typography>
+            </Box>
+          ) : dictionaryError ? (
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: 'column',
+              justifyContent: 'center', 
+              alignItems: 'center',
+              p: 4,
+              minHeight: '200px'
+            }}>
+              <Typography color="error" variant="h6" gutterBottom>
+                Definition Not Found
+              </Typography>
+              <Typography color="text.secondary" textAlign="center">
+                {dictionaryError}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 2, textAlign: 'center' }}>
+                Try selecting a different word or phrase.
+              </Typography>
+            </Box>
+          ) : (
+            <>
+              <Typography variant="subtitle1" color="text.secondary" sx={{ fontWeight: 'bold', mt: 1 }}>
+                Definition
+              </Typography>
+              <Typography variant="body1" paragraph>
+                {dictionaryDefinition || 'No definition available'}
+              </Typography>
+              
+              {example && (
+                <>
+                  <Typography variant="subtitle1" color="text.secondary" sx={{ fontWeight: 'bold', mt: 2 }}>
+                    Example
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" paragraph>
+                    {example}
+                  </Typography>
+                </>
+              )}
+              
+              {wordOrigin && (
+                <>
+                  <Typography variant="subtitle1" color="text.secondary" sx={{ fontWeight: 'bold', mt: 2 }}>
+                    Origin
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" paragraph>
+                    {wordOrigin}
+                  </Typography>
+                </>
+              )}
+              
+              <Divider sx={{ my: 2 }} />
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mt: 2 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mr: 2 }}>
+                  Need deeper analysis?
+                </Typography>
+                <Button
+                  variant="text"
+                  color="secondary"
+                  startIcon={<AutoAwesomeIcon />}
+                  onClick={handleAiButtonClick}
+                  sx={{ fontWeight: 'bold' }}
+                >
+                  Ask AI
+                </Button>
+              </Box>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDictionaryDialog}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* AI Dialog */}
+      <Dialog
+        open={aiDialogOpen}
+        onClose={handleCloseAIDialog}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          Explanation
+        </DialogTitle>
+        <DialogContent>
           {isAiLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
               <CircularProgress />
             </Box>
           ) : (
-            <Paper
-              variant="outlined"
-              sx={{
-                p: 2,
-                backgroundColor: 'background.paper',
-                whiteSpace: 'pre-wrap'
-              }}
-            >
+            <Typography variant="body1">
               {aiResponse}
-            </Paper>
+            </Typography>
           )}
         </DialogContent>
         <DialogActions>

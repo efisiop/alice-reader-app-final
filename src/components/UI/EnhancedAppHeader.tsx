@@ -32,8 +32,7 @@ import BarChartIcon from '@mui/icons-material/BarChart';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import HomeIcon from '@mui/icons-material/Home';
 import AssessmentIcon from '@mui/icons-material/Assessment';
-import ConnectionStatus from './ConnectionStatus';
-import { AuthContext } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { TRANSITIONS } from '../../theme/theme';
 import { appLog } from '../LogViewer';
 
@@ -57,7 +56,7 @@ const EnhancedAppHeader: React.FC = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
   const location = useLocation();
-  const auth = useContext(AuthContext);
+  const { user, signOut } = useAuth();
   const [mobileMenuAnchorEl, setMobileMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [userMenuAnchorEl, setUserMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [visible, setVisible] = useState(false);
@@ -101,10 +100,8 @@ const EnhancedAppHeader: React.FC = () => {
   // Handle logout
   const handleLogout = async () => {
     try {
-      if (auth?.signOut) {
-        await auth.signOut();
-        navigate('/login');
-      }
+      await signOut();
+      navigate('/login');
     } catch (error) {
       console.error('Error signing out:', error);
     }
@@ -112,9 +109,9 @@ const EnhancedAppHeader: React.FC = () => {
   
   // Get user initials
   const getUserInitials = () => {
-    if (!auth?.user) return '?';
+    if (!user) return '?';
     
-    const email = auth.user.email || '';
+    const email = user.email || '';
     return email.substring(0, 2).toUpperCase();
   };
   
@@ -139,11 +136,8 @@ const EnhancedAppHeader: React.FC = () => {
           {/* Logo/Title */}
           <Typography
             variant="h6"
-            component={RouterLink}
-            to="/"
             sx={{
               flexGrow: 1,
-              textDecoration: 'none',
               color: 'inherit',
               display: 'flex',
               alignItems: 'center',
@@ -155,78 +149,9 @@ const EnhancedAppHeader: React.FC = () => {
             Alice Reader
           </Typography>
           
-          {/* Desktop navigation */}
-          {!isMobile && (
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              {auth?.user ? (
-                <>
-                  <Button
-                    color="inherit"
-                    component={RouterLink}
-                    to="/reader"
-                  >
-                    Dashboard
-                  </Button>
-                  <Button
-                    color="inherit"
-                    component={RouterLink}
-                    to="/reader/stats"
-                  >
-                    My Stats
-                  </Button>
-                  <Button
-                    color="inherit"
-                    component={RouterLink}
-                    to="/settings"
-                  >
-                    Settings
-                  </Button>
-                  <IconButton
-                    color="inherit"
-                    onClick={handleUserMenuOpen}
-                    size="large"
-                  >
-                    <AccountCircleIcon />
-                  </IconButton>
-                </>
-              ) : (
-                <>
-                  <Button
-                    color="inherit"
-                    component={RouterLink}
-                    to="/login"
-                  >
-                    Login
-                  </Button>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    component={RouterLink}
-                    to="/register"
-                  >
-                    Sign Up
-                  </Button>
-                </>
-              )}
-            </Box>
-          )}
-          
-          {/* Mobile menu button */}
-          {isMobile && (
-            <IconButton
-              color="inherit"
-              onClick={handleMobileMenuOpen}
-              size="large"
-            >
-              <MenuIcon />
-            </IconButton>
-          )}
-          
           {/* User section */}
-          {auth?.user && (
+          {user && (
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <ConnectionStatus />
-              
               <Tooltip title="Account settings">
                 <IconButton
                   onClick={handleUserMenuOpen}
@@ -254,6 +179,17 @@ const EnhancedAppHeader: React.FC = () => {
             </Box>
           )}
           
+          {/* Mobile menu button */}
+          {isMobile && (
+            <IconButton
+              color="inherit"
+              onClick={handleMobileMenuOpen}
+              size="large"
+            >
+              <MenuIcon />
+            </IconButton>
+          )}
+          
           {/* Mobile menu */}
           <Menu
             anchorEl={mobileMenuAnchorEl}
@@ -269,7 +205,7 @@ const EnhancedAppHeader: React.FC = () => {
               },
             }}
           >
-            {auth?.user ? (
+            {user ? (
               <>
                 <MenuItem onClick={() => handleNavigate('/reader')}>
                   <ListItemIcon>
@@ -328,7 +264,7 @@ const EnhancedAppHeader: React.FC = () => {
               <ListItemIcon>
                 <AccountCircleIcon fontSize="small" />
               </ListItemIcon>
-              <ListItemText primary={auth?.user?.email} />
+              <ListItemText primary={user?.email} />
             </MenuItem>
             <Divider />
             <MenuItem onClick={() => handleNavigate('/')}>
