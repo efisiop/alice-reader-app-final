@@ -308,7 +308,9 @@ const ReaderDashboard: React.FC = () => {
               {[
                 { title: 'User Guide', link: '/help/guide' },
                 { title: 'FAQ', link: '/help/faq' },
-                { title: 'Contact Support', link: '/help/contact' }
+                { title: 'Contact Support', link: '/help/contact' },
+                // Add Alice glossary demo link in development mode
+                ...(import.meta.env.DEV ? [{ title: '✨ Alice Glossary Demo', link: '/alice-glossary-demo' }] : [])
               ].map((item, index) => (
                 <ListItem
                   key={index}

@@ -4,7 +4,7 @@ import {
   Box, Paper, Typography, TextField, Button, Divider,
   Drawer, Tabs, Tab, IconButton, Tooltip,
   Container, List, ListItem, ListItemText, CircularProgress,
-  Alert, SpeedDial, SpeedDialAction, SpeedDialIcon
+  Alert, SpeedDial, SpeedDialAction, SpeedDialIcon, Chip
 } from '@mui/material';
 import { useParams, useNavigate } from 'react-router-dom';
 import CloseIcon from '@mui/icons-material/Close';
@@ -25,8 +25,9 @@ import WelcomePage from '../components/Reader/WelcomePage';
 import { appLog } from '../components/LogViewer';
 import FeedbackDialog from '../components/Reader/FeedbackDialog';
 import HelpRequestDialog from '../components/Reader/HelpRequestDialog';
-import TextHighlighter from '../components/Reader/TextHighlighter';
+import GlossaryAwareTextHighlighter from '../components/Reader/GlossaryAwareTextHighlighter';
 import DefinitionPopup from '../components/Reader/DefinitionPopup';
+import { useGlossaryTerms } from '../hooks/useGlossaryTerms';
 import { BookId } from '../types/idTypes';
 
 // Reader interface component that uses the ReaderContext
@@ -47,6 +48,9 @@ const ReaderInterfaceContent: React.FC = () => {
     navigateToPage,
     navigateToSection
   } = useReader();
+  
+  // Glossary terms hook
+  const { glossaryTerms, isLoading: glossaryLoading, error: glossaryError, termCount } = useGlossaryTerms();
   
   // Local state
   const [pageNumber, setPageNumber] = useState(currentPage.toString());
@@ -101,7 +105,7 @@ const ReaderInterfaceContent: React.FC = () => {
   };
   
   // Handle word selection for definition
-  const handleWordSelect = useCallback(async (word: string, element: HTMLElement) => {
+  const handleWordSelect = useCallback(async (word: string, element: HTMLElement, context?: string) => {
     // Clean the word
     const cleanWord = word.replace(/[.,!?;:'"]/g, '').trim();
     if (!cleanWord) return;
@@ -111,15 +115,25 @@ const ReaderInterfaceContent: React.FC = () => {
     setLoadingDefinition(true);
     setDefinition(null);
     
-    appLog('ReaderInterface', 'Looking up definition', 'info', { word: cleanWord });
+    appLog('ReaderInterface', 'Looking up definition', 'info', { word: cleanWord, hasContext: !!context });
     
     try {
-      // Get definition
-      const definitionData = await getDefinition(
-        bookData?.id || 'alice-in-wonderland', 
-        cleanWord,
-        selectedSection || undefined
-      );
+      // Get definition with context if available
+      let definitionData;
+      if (context && context.trim().length > 0) {
+        definitionData = await getDefinition(
+          bookData?.id || 'alice-in-wonderland', 
+          cleanWord,
+          selectedSection || undefined,
+          context // Pass context as additional parameter
+        );
+      } else {
+        definitionData = await getDefinition(
+          bookData?.id || 'alice-in-wonderland', 
+          cleanWord,
+          selectedSection || undefined
+        );
+      }
       
       setDefinition(definitionData);
       
@@ -209,7 +223,10 @@ const ReaderInterfaceContent: React.FC = () => {
   // Render welcome page if needed
   if (showWelcome) {
     return (
-      <WelcomePage onClose={handleWelcomeClose} />
+      <WelcomePage 
+        bookTitle={bookData?.title || 'Alice in Wonderland'}
+        onStartReading={handleWelcomeClose}
+      />
     );
   }
   
@@ -266,6 +283,55 @@ const ReaderInterfaceContent: React.FC = () => {
           </Alert>
         ) : (
           <>
+            {/* Glossary Status */}
+            <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box>
+                  <Typography variant="h6" sx={{ color: 'primary.main', mb: 1 }}>
+                    ✨ Alice in Wonderland Glossary
+                  </Typography>
+                  {glossaryLoading && (
+                    <Typography variant="body2" color="text.secondary">
+                      Loading {termCount} glossary terms...
+                    </Typography>
+                  )}
+                  {glossaryError && (
+                    <Typography variant="body2" color="error">
+                      Error loading glossary: {glossaryError}
+                    </Typography>
+                  )}
+                  {!glossaryLoading && termCount > 0 && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography variant="body2" color="success.main" sx={{ fontWeight: 'bold' }}>
+                        ✅ {termCount} Alice terms loaded
+                      </Typography>
+                      <Chip 
+                        label="Enhanced highlighting" 
+                        size="small" 
+                        color="warning" 
+                        variant="outlined"
+                      />
+                    </Box>
+                  )}
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <span 
+                    className="glossary-term" 
+                    style={{ 
+                      display: 'inline-block', 
+                      padding: '4px 8px',
+                      fontSize: '1rem'
+                    }}
+                  >
+                    Alice
+                  </span>
+                  <Typography variant="body2" color="text.secondary">
+                    Orange = Alice terms
+                  </Typography>
+                </Box>
+              </Box>
+            </Paper>
+
             <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Typography variant="h5">
@@ -300,14 +366,17 @@ const ReaderInterfaceContent: React.FC = () => {
                     {section.chapter_title} - {section.title}
                   </Typography>
                   
-                  {/* Use TextHighlighter for interactive text */}
-                  <TextHighlighter
+                  {/* Enhanced GlossaryAwareTextHighlighter with Alice terms */}
+                  <GlossaryAwareTextHighlighter
                     text={section.content}
                     onWordSelect={handleWordSelect}
                     onTextSelect={handleTextSelect}
                     fontSize="1.1rem"
                     lineHeight={1.7}
                     fontFamily="Georgia, serif"
+                    glossaryTerms={glossaryTerms}
+                    normalWordHoverColor="rgba(25, 118, 210, 0.1)"
+                    technicalWordHoverColor="rgba(255, 152, 0, 0.3)"
                   />
                 </Box>
               ))}
@@ -436,7 +505,7 @@ const ReaderInterfaceContent: React.FC = () => {
           icon={<SpeedDialIcon />}
           open={Boolean(aiPromptAnchorEl)}
           onClose={handleAiPromptClose}
-          onOpen={handleAiPromptClick}
+          onOpen={() => setAiPromptAnchorEl(document.body)}
         >
           <SpeedDialAction
             icon={<SmartToyIcon />}
@@ -460,16 +529,16 @@ const ReaderInterfaceContent: React.FC = () => {
       <FeedbackDialog
         open={feedbackDialogOpen}
         onClose={handleFeedbackClose}
-        bookId={bookData?.id}
-        sectionId={selectedSection}
+        bookId={bookData?.id || 'alice-in-wonderland'}
+        sectionId={selectedSection || undefined}
       />
       
       {/* Help request dialog */}
       <HelpRequestDialog
         open={helpDialogOpen}
         onClose={handleHelpClose}
-        bookId={bookData?.id}
-        sectionId={selectedSection}
+        bookId={bookData?.id || 'alice-in-wonderland'}
+        sectionId={selectedSection || undefined}
       />
     </Box>
   );
