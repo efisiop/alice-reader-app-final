@@ -2,7 +2,7 @@
 // The above line disables unused variable warnings for this file
 // Some variables are declared but not used yet as they will be used in future implementations
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -31,6 +31,7 @@ import { useBookService, useDictionaryService } from '../../hooks/useService';
 import { LoadingIndicator } from '../../components/common/LoadingIndicator';
 import { useSnackbar } from '../../utils/notistackUtils';
 import { fixAliceText, validateText } from '../../utils/textUtils';
+import { appLog } from '../../components/LogViewer';
 import CloseIcon from '@mui/icons-material/Close';
 import EqualizerIcon from '@mui/icons-material/Equalizer';
 import NoteIcon from '@mui/icons-material/Note';
@@ -46,6 +47,9 @@ import { registry } from '../../services/serviceRegistry';
 import { ALICE_BOOK_ID } from '../../data/fallbackBookData';
 import { DictionaryServiceInterface } from '../../services/dictionaryService';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import GlossaryAwareTextHighlighter from '../../components/Reader/GlossaryAwareTextHighlighter';
+import { useGlossaryTerms } from '../../hooks/useGlossaryTerms';
+import ConnectionStatus from '../../components/UI/ConnectionStatus';
 
 // Define types for Section data
 interface SectionDetail extends SectionSnippet {
@@ -86,6 +90,9 @@ const MainInteractionPage: React.FC = () => {
   const { service: bookService, loading: bookServiceLoading, error: bookServiceError } = useBookService();
   const { service: dictionaryService, loading: dictionaryServiceLoading, error: dictionaryServiceError } = useDictionaryService();
   const { enqueueSnackbar } = useSnackbar(); // Will be used for notifications
+
+  // Glossary terms for hover highlighting
+  const { glossaryTerms, isLoading: glossaryLoading, error: glossaryError, termCount } = useGlossaryTerms();
 
   // FIXED: Define the actual UUID for Alice in Wonderland book to use in API calls
   const ALICE_BOOK_UUID = '550e8400-e29b-41d4-a716-446655440000';
@@ -142,6 +149,9 @@ const MainInteractionPage: React.FC = () => {
   const [AIAnalysisError, setAIAnalysisError] = useState<string | null>(null);
   const [AIAnalysisDialogOpen, setAIAnalysisDialogOpen] = useState(false);
 
+  // Ref for tracking last interaction time
+  const lastInteractionTime = useRef<number>(0);
+
   // Add this new function after the existing handleAIAssistantClick
   const handleGenerateExample = async () => {
     try {
@@ -168,6 +178,106 @@ const MainInteractionPage: React.FC = () => {
       return null;
     }
   };
+
+  // Handle word selection for definitions
+  const handleWordSelect = useCallback(async (word: string, element: HTMLElement, context?: string) => {
+    // Clean the word
+    const cleanWord = word.replace(/[.,!?;:'"]/g, '').trim();
+    if (!cleanWord) return;
+    
+    setSelectedText(cleanWord);
+    setDictionaryLoading(true);
+    setDictionaryError(null);
+    setDictionaryDefinition(null);
+    setWordOrigin(null);
+    setExample(null);
+    setDictionarySource(null);
+    setIsPhrasalVerb(false);
+    setDictionaryDialogOpen(true);
+    
+    try {
+      // Add a small delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      if (!dictionaryService) {
+        throw new Error('Dictionary service not available');
+      }
+
+      // Get the current section ID for context
+      const currentSectionId = selectedSection?.id;
+      
+      // Use context-aware dictionary service if context is available
+      let result;
+      if (context && context.trim().length > 0) {
+        appLog('MainInteractionPage', 'Using context-aware definition lookup', 'info', { 
+          word: cleanWord, 
+          context: context.substring(0, 100) + '...' 
+        });
+        
+        result = await dictionaryService.getContextAwareDefinition(
+          ALICE_BOOK_UUID,
+          cleanWord,
+          context,
+          currentSectionId
+        );
+      } else {
+        // Fallback to regular definition lookup
+        result = await dictionaryService.getDefinition(
+          ALICE_BOOK_UUID,
+          cleanWord,
+          currentSectionId
+        );
+      }
+
+      if (result && result.definition) {
+        setDictionaryDefinition(result.definition);
+        setWordOrigin(result.wordOrigin || null);
+        setExample(result.examples && result.examples.length > 0 ? result.examples[0] : null);
+        setDictionarySource(result.source || null);
+        setIsPhrasalVerb(result.isPhrasalVerb || false);
+        
+        // Log the successful lookup
+        if (user && selectedSection && dictionaryService) {
+          dictionaryService.logDictionaryLookup(
+            user.id,
+            ALICE_BOOK_UUID,
+            selectedSection.id,
+            cleanWord,
+            true
+          ).catch(err => console.error("Error logging dictionary lookup:", err));
+        }
+      } else {
+        setDictionaryError('No definition found for this word.');
+        
+        // Log the failed lookup
+        if (user && selectedSection && dictionaryService) {
+          dictionaryService.logDictionaryLookup(
+            user.id,
+            ALICE_BOOK_UUID,
+            selectedSection.id,
+            cleanWord,
+            false
+          ).catch(err => console.error("Error logging dictionary lookup:", err));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching definition:', error);
+      setDictionaryError('Error fetching definition. Please try again.');
+      
+      // Log the error
+      if (user && selectedSection && dictionaryService) {
+        dictionaryService.logDictionaryLookup(
+          user.id,
+          ALICE_BOOK_UUID,
+          selectedSection.id,
+          cleanWord,
+          false
+        ).catch(err => console.error("Error logging dictionary lookup:", err));
+      }
+    } finally {
+      setDictionaryLoading(false);
+    }
+  }, [dictionaryService, selectedSection, user]);
 
   // Add this effect to generate example when dictionary definition is loaded
   useEffect(() => {
@@ -536,7 +646,7 @@ const MainInteractionPage: React.FC = () => {
         setIsPhrasalVerb(result.isPhrasalVerb || false);
         
         // Log the successful lookup
-        if (user && selectedSection) {
+        if (user && selectedSection && dictionaryService) {
           dictionaryService.logDictionaryLookup(
             user.id,
             ALICE_BOOK_UUID,
@@ -549,7 +659,7 @@ const MainInteractionPage: React.FC = () => {
         setDictionaryError('No definition found for this word.');
         
         // Log the failed lookup
-        if (user && selectedSection) {
+        if (user && selectedSection && dictionaryService) {
           dictionaryService.logDictionaryLookup(
             user.id,
             ALICE_BOOK_UUID,
@@ -856,64 +966,27 @@ const MainInteractionPage: React.FC = () => {
                >
                  {selectedSection.content ? (
                    <>
-                     {/* Display section content with proper formatting */}
-                     <Typography
+                     {/* Display section content with glossary-aware highlighting */}
+                     <Box
                        ref={sectionContentRef}
-                       variant="body1"
-                       component="div"
-                       onMouseUp={handleTextSelection}
                        sx={{
-                         whiteSpace: 'pre-wrap',
-                         lineHeight: 1.8,
-                         '& p': { marginBottom: 2 },
-                         '& .paragraph': { marginBottom: 2 },
-                         '& .drop-cap': {
-                           float: 'left',
-                           fontSize: '3.5em',
-                           lineHeight: '0.8',
-                           paddingRight: '0.1em',
-                           paddingTop: '0.1em',
-                           fontFamily: '"Alice", serif',
-                           color: 'primary.main'
-                         }
+                         position: 'relative',
+                         minHeight: '200px',
+                         height: '100%'
                        }}
                      >
-                       {/* Split content by paragraphs and render each one with text cleaning */}
-                       {fixAliceText(selectedSection.content)
-                         .split(/\n\s*\n/)
-                         .map((paragraph, index) => {
-                           const trimmedParagraph = paragraph.trim();
-                           if (!trimmedParagraph) return null;
-                           
-                           // Add drop cap to first paragraph only
-                           if (index === 0) {
-                             // Get the first word and its first letter
-                             const firstWord = trimmedParagraph.split(/\s+/)[0];
-                             const firstChar = firstWord.charAt(0);
-                             const restOfFirstWord = firstWord.slice(1);
-                             const restOfText = trimmedParagraph.slice(firstWord.length);
-                             
-                             return (
-                               <React.Fragment key={index}>
-                                 <span className="drop-cap">{firstChar}</span>
-                                 {restOfFirstWord}{restOfText}
-                                 {index < fixAliceText(selectedSection.content).split(/\n\s*\n/).length - 1 && (
-                                   <Box component="span" sx={{ display: 'block', my: 2 }} />
-                                 )}
-                               </React.Fragment>
-                             );
-                           }
-                           
-                           return (
-                             <React.Fragment key={index}>
-                               {trimmedParagraph}
-                               {index < fixAliceText(selectedSection.content).split(/\n\s*\n/).length - 1 && (
-                                 <Box component="span" sx={{ display: 'block', my: 2 }} />
-                               )}
-                             </React.Fragment>
-                           );
-                         })}
-                     </Typography>
+                       <GlossaryAwareTextHighlighter
+                         text={fixAliceText(selectedSection.content)}
+                         onWordSelect={handleWordSelect}
+                         onTextSelect={handleTextSelection}
+                         fontSize="1.1rem"
+                         lineHeight={1.8}
+                         fontFamily="Georgia, serif"
+                         glossaryTerms={glossaryTerms}
+                         normalWordHoverColor="rgba(25, 118, 210, 0.1)"
+                         technicalWordHoverColor="rgba(255, 152, 0, 0.2)"
+                       />
+                     </Box>
 
                      {/* Show content length for debugging */}
                      {import.meta.env.DEV && (
@@ -927,6 +1000,13 @@ const MainInteractionPage: React.FC = () => {
                              </span>
                            ) : null;
                          })()}
+                       </Typography>
+                     )}
+
+                     {/* Glossary terms indicator */}
+                     {!glossaryLoading && termCount > 0 && (
+                       <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                         ✨ Hover over words to see highlights: {termCount} technical terms available
                        </Typography>
                      )}
 
@@ -1218,6 +1298,9 @@ const MainInteractionPage: React.FC = () => {
           <Button onClick={handleCloseAIDialog}>Close</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Connection Status Indicator */}
+      <ConnectionStatus />
     </Box>
   );
 };

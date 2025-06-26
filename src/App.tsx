@@ -9,7 +9,7 @@ import { AccessibilityProvider } from './components/common/AccessibilityMenu';
 import SnackbarProvider from './components/common/SnackbarProvider';
 import SkipToContent from './components/common/SkipToContent';
 import { RouteGuard } from './components/common/RouteGuard';
-import Header from './components/common/Header';
+import EnhancedAppHeader from './components/UI/EnhancedAppHeader';
 
 // Pages
 import LandingPage from './pages/LandingPage';
@@ -29,6 +29,8 @@ import ProxySettingsPage from './pages/Admin/ProxySettingsPage';
 import SupabaseTestPage from './pages/Admin/SupabaseTestPage';
 import { ConsultantDashboardPage } from './pages/Consultant/ConsultantDashboardPage';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
+import DictionaryTestPage from './pages/DictionaryTestPage';
+import AliceGlossaryDemo from './pages/AliceGlossaryDemo';
 // Import test pages only in development mode
 // These imports are conditionally loaded to prevent 404 errors in production
 const TestPage = import.meta.env.DEV ? React.lazy(() => import('./pages/TestPage')) : () => null;
@@ -105,7 +107,7 @@ function App() {
     <Router>
       <div className="App">
         <SkipToContent contentId="main-content" />
-        <Header />
+        <EnhancedAppHeader />
         <main id="main-content">
           <Routes>
             {/* Public Routes - Accessible to everyone */}
@@ -159,6 +161,10 @@ function App() {
             {/* Simple test routes that don't rely on services - only available in development mode */}
             {import.meta.env.DEV && <Route path="/test-simple" element={<TestSimple />} />}
             {import.meta.env.DEV && <Route path="/test-supabase" element={<TestSupabase />} />}
+            {/* Dictionary test route */}
+            {import.meta.env.DEV && <Route path="/dictionary-test" element={<DictionaryTestPage />} />}
+            {/* Alice Glossary Demo route */}
+            {import.meta.env.DEV && <Route path="/alice-glossary-demo" element={<AliceGlossaryDemo />} />}
             {/* Direct access routes are removed for production */}
           </Routes>
         </main>

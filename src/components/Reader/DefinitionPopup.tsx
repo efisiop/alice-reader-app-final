@@ -10,12 +10,15 @@ import {
   CircularProgress,
   Button,
   Tooltip,
-  useTheme
+  useTheme,
+  Collapse
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { DictionaryEntry } from '../../services/dictionaryService';
 import { appLog } from '../LogViewer';
 
@@ -28,6 +31,9 @@ interface DefinitionPopupProps {
   loading: boolean;
   onSaveToVocabulary?: (term: string, definition: string) => void;
   isSaved?: boolean;
+  // New props for context-aware definitions
+  fullDefinition?: DictionaryEntry | null;
+  onShowFullDefinition?: () => void;
 }
 
 /**
@@ -41,11 +47,14 @@ const DefinitionPopup: React.FC<DefinitionPopupProps> = ({
   definition,
   loading,
   onSaveToVocabulary,
-  isSaved = false
+  isSaved = false,
+  fullDefinition,
+  onShowFullDefinition
 }) => {
   const theme = useTheme();
   const [saved, setSaved] = useState<boolean>(isSaved);
   const [speaking, setSpeaking] = useState<boolean>(false);
+  const [showFullDefinition, setShowFullDefinition] = useState<boolean>(false);
   
   // Handle save to vocabulary
   const handleSave = () => {
@@ -88,6 +97,18 @@ const DefinitionPopup: React.FC<DefinitionPopupProps> = ({
     
     appLog('DefinitionPopup', 'Speaking term', 'info', { term });
   };
+
+  // Handle show/hide full definition
+  const handleToggleFullDefinition = () => {
+    if (showFullDefinition) {
+      setShowFullDefinition(false);
+    } else {
+      if (onShowFullDefinition) {
+        onShowFullDefinition();
+      }
+      setShowFullDefinition(true);
+    }
+  };
   
   // Get source label
   const getSourceLabel = () => {
@@ -106,6 +127,9 @@ const DefinitionPopup: React.FC<DefinitionPopupProps> = ({
         return 'Unknown';
     }
   };
+
+  // Determine which definition to show
+  const displayDefinition = showFullDefinition && fullDefinition ? fullDefinition : definition;
   
   return (
     <Popover
@@ -122,7 +146,7 @@ const DefinitionPopup: React.FC<DefinitionPopupProps> = ({
       }}
       sx={{
         '& .MuiPopover-paper': {
-          width: 320,
+          width: 350,
           maxWidth: '90vw',
           padding: 2,
           borderRadius: 1,
@@ -137,9 +161,9 @@ const DefinitionPopup: React.FC<DefinitionPopupProps> = ({
             {term}
           </Typography>
           
-          {definition?.pronunciation && (
+          {displayDefinition?.pronunciation && (
             <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-              {definition.pronunciation}
+              {displayDefinition.pronunciation}
             </Typography>
           )}
           
@@ -177,20 +201,53 @@ const DefinitionPopup: React.FC<DefinitionPopupProps> = ({
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
           <CircularProgress size={24} />
         </Box>
-      ) : definition ? (
+      ) : displayDefinition ? (
         <Box>
+          {/* Context-aware indicator */}
+          {displayDefinition.isContextAware && (
+            <Box sx={{ mb: 1.5 }}>
+              <Chip
+                label="Context-aware"
+                size="small"
+                color="success"
+                variant="outlined"
+                sx={{ fontSize: '0.7rem', mb: 1 }}
+              />
+              {displayDefinition.contextScore && (
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                  Relevance: {Math.round(displayDefinition.contextScore * 100)}%
+                </Typography>
+              )}
+            </Box>
+          )}
+
           {/* Definition */}
           <Typography variant="body1" gutterBottom>
-            {definition.definition}
+            {displayDefinition.definition}
           </Typography>
+
+          {/* Show full definition toggle */}
+          {definition?.isContextAware && fullDefinition && (
+            <Box sx={{ mt: 1.5 }}>
+              <Button
+                size="small"
+                variant="text"
+                onClick={handleToggleFullDefinition}
+                startIcon={showFullDefinition ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                sx={{ fontSize: '0.8rem' }}
+              >
+                {showFullDefinition ? 'Show context-aware' : 'Show full definition'}
+              </Button>
+            </Box>
+          )}
           
           {/* Examples */}
-          {definition.examples && definition.examples.length > 0 && (
+          {displayDefinition.examples && displayDefinition.examples.length > 0 && (
             <Box sx={{ mt: 1.5 }}>
               <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                 Examples:
               </Typography>
-              {definition.examples.map((example, index) => (
+              {displayDefinition.examples.map((example, index) => (
                 <Typography
                   key={index}
                   variant="body2"
@@ -209,19 +266,40 @@ const DefinitionPopup: React.FC<DefinitionPopupProps> = ({
           )}
           
           {/* Related terms */}
-          {definition.relatedTerms && definition.relatedTerms.length > 0 && (
+          {displayDefinition.relatedTerms && displayDefinition.relatedTerms.length > 0 && (
             <Box sx={{ mt: 1.5 }}>
               <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                 Related:
               </Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                {definition.relatedTerms.map((term, index) => (
+                {displayDefinition.relatedTerms.map((term, index) => (
                   <Chip
                     key={index}
                     label={term}
                     size="small"
                     variant="outlined"
                     sx={{ fontSize: '0.75rem' }}
+                  />
+                ))}
+              </Box>
+            </Box>
+          )}
+
+          {/* Context keywords */}
+          {displayDefinition.contextKeywords && displayDefinition.contextKeywords.length > 0 && (
+            <Box sx={{ mt: 1.5 }}>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Context keywords:
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                {displayDefinition.contextKeywords.map((keyword, index) => (
+                  <Chip
+                    key={index}
+                    label={keyword}
+                    size="small"
+                    variant="outlined"
+                    color="secondary"
+                    sx={{ fontSize: '0.7rem' }}
                   />
                 ))}
               </Box>

@@ -5,7 +5,7 @@ import { appLog } from '../LogViewer';
 
 interface TextHighlighterProps {
   text: string;
-  onWordSelect: (word: string, element: HTMLElement) => void;
+  onWordSelect: (word: string, element: HTMLElement, context?: string) => void;
   onTextSelect?: (text: string) => void;
   fontSize?: string | number;
   lineHeight?: string | number;
@@ -39,6 +39,58 @@ const TextHighlighter: React.FC<TextHighlighterProps> = ({
   // Process text into paragraphs
   const paragraphs = text.split(/\n+/).filter(p => p.trim().length > 0);
 
+  /**
+   * Extract surrounding context for a word
+   * @param word The selected word
+   * @param paragraphIndex Index of the paragraph containing the word
+   * @param wordIndex Index of the word within the paragraph
+   * @returns Context string
+   */
+  const getWordContext = (word: string, paragraphIndex: number, wordIndex: number): string => {
+    try {
+      const paragraph = paragraphs[paragraphIndex];
+      if (!paragraph) return '';
+
+      // Split paragraph into words to find the word position
+      const wordPattern = /([\w'']+|[.,!?;:()\[\]{}""''\\\/-—–]|\s+)/g;
+      const tokens = paragraph.match(wordPattern) || [];
+      
+      // Find the actual word position (skip punctuation and whitespace)
+      let actualWordIndex = 0;
+      let currentWordIndex = 0;
+      
+      for (let i = 0; i < tokens.length; i++) {
+        const token = tokens[i];
+        const isWhitespace = /^\s+$/.test(token);
+        const isPunctuation = /^[.,!?;:()\[\]{}""''\\\/-—–]$/.test(token);
+        
+        if (!isWhitespace && !isPunctuation) {
+          if (currentWordIndex === wordIndex) {
+            actualWordIndex = i;
+            break;
+          }
+          currentWordIndex++;
+        }
+      }
+
+      // Extract context: 3 words before and 3 words after
+      const contextStart = Math.max(0, actualWordIndex - 3);
+      const contextEnd = Math.min(tokens.length, actualWordIndex + 4);
+      const contextTokens = tokens.slice(contextStart, contextEnd);
+      
+      // Clean up the context
+      const context = contextTokens
+        .map(token => token.trim())
+        .filter(token => token.length > 0)
+        .join(' ');
+      
+      return context;
+    } catch (error) {
+      appLog('TextHighlighter', 'Error extracting word context', 'error', error);
+      return '';
+    }
+  };
+
   // Handle word click
   const handleWordClick = useCallback((event: React.MouseEvent<HTMLSpanElement>) => {
     const target = event.currentTarget;
@@ -53,8 +105,11 @@ const TextHighlighter: React.FC<TextHighlighterProps> = ({
     setSelectedWord(word);
     setSelectedElement(target);
 
-    // Call the callback
-    onWordSelect(word, target);
+    // Extract context
+    const context = getWordContext(word, 0, 0); // We'll improve this later
+
+    // Call the callback with context
+    onWordSelect(word, target, context);
   }, [onWordSelect]);
 
   // Handle text selection
@@ -137,6 +192,8 @@ const TextHighlighter: React.FC<TextHighlighterProps> = ({
                 position: 'relative'
               }}
               className="highlightable-word"
+              data-paragraph-index={index}
+              data-word-index={i}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = theme.palette.action.hover;
               }}

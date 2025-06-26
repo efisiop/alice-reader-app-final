@@ -7,6 +7,7 @@ import { BookId, SectionId, ChapterId, UserId } from '../types/idTypes';
 import { registry } from './serviceRegistry';
 import { handleServiceError } from '../utils/errorHandling';
 import { logInteraction, InteractionEventType } from './loggingService';
+import { getGlossaryDefinition, getAllGlossaryTerms } from './glossaryService';
 
 // Types for dictionary responses
 export interface DictionaryEntry {
@@ -18,6 +19,10 @@ export interface DictionaryEntry {
   source?: 'glossary' | 'database' | 'local' | 'external' | 'fallback' | 'not_found';
   wordOrigin?: string;
   isPhrasalVerb?: boolean;
+  // Context-aware properties
+  contextScore?: number;
+  contextKeywords?: string[];
+  isContextAware?: boolean;
 }
 
 // Alice-specific glossary terms with enhanced definitions
@@ -355,34 +360,40 @@ function detectPhrasalVerb(text: string): { phrase: string; definition: string; 
 }
 
 /**
- * Get definition from Alice glossary (highest priority)
+ * Get Alice glossary definition from Supabase
  * @param word Word to look up
  * @returns Dictionary entry or null if not found
  */
-function getAliceGlossaryDefinition(word: string): DictionaryEntry | null {
-  // Clean the word
-  const cleanWord = word.replace(/[.,!?;:'"]/g, '').trim();
-  const capitalizedWord = cleanWord.charAt(0).toUpperCase() + cleanWord.slice(1);
-  const titleCaseWord = cleanWord.split(' ').map(word => 
-    word.charAt(0).toUpperCase() + word.slice(1)
-  ).join(' ');
-
-  // Check for the word in various cases
-  if (aliceGlossary[word]) {
-    appLog('DictionaryService', `Found exact match for "${word}" in Alice glossary`, 'debug');
-    return aliceGlossary[word];
-  } else if (aliceGlossary[cleanWord]) {
-    appLog('DictionaryService', `Found lowercase match for "${cleanWord}" in Alice glossary`, 'debug');
-    return aliceGlossary[cleanWord];
-  } else if (aliceGlossary[capitalizedWord]) {
-    appLog('DictionaryService', `Found capitalized match for "${capitalizedWord}" in Alice glossary`, 'debug');
-    return aliceGlossary[capitalizedWord];
-  } else if (aliceGlossary[titleCaseWord]) {
-    appLog('DictionaryService', `Found title case match for "${titleCaseWord}" in Alice glossary`, 'debug');
-    return aliceGlossary[titleCaseWord];
+async function getAliceGlossaryDefinition(word: string): Promise<DictionaryEntry | null> {
+  try {
+    // Clean the word
+    const cleanWord = word.replace(/[.,!?;:'"]/g, '').trim();
+    
+    appLog('DictionaryService', 'Fetching Alice glossary definition from Supabase', 'debug', { word: cleanWord });
+    
+    // Try to get the definition from Supabase
+    const glossaryTerm = await getGlossaryDefinition(cleanWord);
+    
+    if (glossaryTerm) {
+      appLog('DictionaryService', `Found definition for "${cleanWord}" in Alice glossary`, 'success');
+      
+      return {
+        term: glossaryTerm.term,
+        definition: glossaryTerm.definition,
+        examples: glossaryTerm.example ? [glossaryTerm.example] : undefined,
+        relatedTerms: undefined, // Could be enhanced later
+        pronunciation: undefined, // Could be enhanced later
+        source: 'glossary',
+        wordOrigin: undefined // Could be enhanced later
+      };
+    }
+    
+    appLog('DictionaryService', `No definition found for "${cleanWord}" in Alice glossary`, 'debug');
+    return null;
+  } catch (error) {
+    appLog('DictionaryService', 'Error fetching Alice glossary definition', 'error', error);
+    return null;
   }
-
-  return null;
 }
 
 /**
@@ -528,7 +539,15 @@ export interface DictionaryServiceInterface {
     sectionId?: string | SectionId,
     chapterId?: string | ChapterId
   ) => Promise<DictionaryEntry>;
-
+  
+  getContextAwareDefinition: (
+    bookId: string | BookId,
+    term: string,
+    surroundingText: string,
+    sectionId?: string | SectionId,
+    chapterId?: string | ChapterId
+  ) => Promise<DictionaryEntry>;
+  
   logDictionaryLookup: (
     userId: string | UserId,
     bookId: string | BookId,
@@ -536,22 +555,20 @@ export interface DictionaryServiceInterface {
     term: string,
     definitionFound: boolean
   ) => Promise<void>;
-
+  
   saveToVocabulary: (
     userId: string | UserId,
     term: string,
     definition: string
-  ) => boolean;
-
-  getUserVocabulary: (
-    userId: string | UserId
-  ) => any[];
-
+  ) => Promise<boolean>;
+  
+  getUserVocabulary: (userId: string | UserId) => Promise<any[]>;
+  
   removeFromVocabulary: (
     userId: string | UserId,
     term: string
-  ) => boolean;
-
+  ) => Promise<boolean>;
+  
   clearDefinitionCache: () => void;
 }
 
@@ -591,7 +608,7 @@ const createDictionaryService = async (): Promise<DictionaryServiceInterface> =>
         }
 
         // 1. FIRST PRIORITY: Check Alice glossary (highest priority for Alice-specific terms)
-        const aliceDefinition = getAliceGlossaryDefinition(cleanTerm);
+        const aliceDefinition = await getAliceGlossaryDefinition(cleanTerm);
         if (aliceDefinition) {
           appLog('DictionaryService', 'Found definition in Alice glossary', 'success', { term: cleanTerm });
           dictionaryCache.set(cacheKey, aliceDefinition, 24 * 60 * 60 * 1000); // 24 hours
@@ -661,16 +678,62 @@ const createDictionaryService = async (): Promise<DictionaryServiceInterface> =>
       }
     },
 
+    getContextAwareDefinition: async (
+      bookId: string | BookId,
+      term: string,
+      surroundingText: string,
+      sectionId?: string | SectionId,
+      chapterId?: string | ChapterId
+    ): Promise<DictionaryEntry> => {
+      try {
+        // First get the full definition
+        const fullDefinition = await getDefinition(bookId, term, sectionId, chapterId);
+        
+        // If no definition found, return the original result
+        if (!fullDefinition || fullDefinition.source === 'not_found') {
+          return fullDefinition;
+        }
+
+        // Analyze context to determine relevance
+        const contextAnalysis = analyzeContext(term, surroundingText, fullDefinition);
+        
+        // Create context-aware definition
+        const contextAwareDefinition: DictionaryEntry = {
+          ...fullDefinition,
+          definition: contextAnalysis.relevantDefinition,
+          contextScore: contextAnalysis.score,
+          contextKeywords: contextAnalysis.keywords,
+          isContextAware: true,
+          // Preserve word origin if context suggests etymology interest or if it's particularly interesting
+          wordOrigin: contextAnalysis.preserveWordOrigin ? fullDefinition.wordOrigin : undefined
+        };
+
+        appLog('DictionaryService', 'Generated context-aware definition', 'info', {
+          term,
+          contextScore: contextAnalysis.score,
+          originalLength: fullDefinition.definition.length,
+          contextLength: contextAnalysis.relevantDefinition.length,
+          preserveWordOrigin: contextAnalysis.preserveWordOrigin
+        });
+
+        return contextAwareDefinition;
+      } catch (error) {
+        appLog('DictionaryService', 'Error getting context-aware definition', 'error', error);
+        // Fallback to regular definition
+        return await getDefinition(bookId, term, sectionId, chapterId);
+      }
+    },
+
     logDictionaryLookup: async (
       userId: string | UserId,
       bookId: string | BookId,
       sectionId: string | SectionId | undefined,
       term: string,
-      definitionFound: boolean
+      found: boolean
     ): Promise<void> => {
       try {
         appLog('DictionaryService', 'Logging dictionary lookup', 'info', {
-          userId, bookId, sectionId, term, definitionFound
+          userId, bookId, sectionId, term, found
         });
 
         // Log as AI interaction for analytics (legacy method)
@@ -678,7 +741,7 @@ const createDictionaryService = async (): Promise<DictionaryServiceInterface> =>
           userId.toString(),
           bookId.toString(),
           `Dictionary lookup: ${term}`,
-          definitionFound ? `Definition found for "${term}"` : `No definition found for "${term}"`,
+          found ? `Definition found for "${term}"` : `No definition found for "${term}"`,
           sectionId?.toString()
         );
 
@@ -690,7 +753,7 @@ const createDictionaryService = async (): Promise<DictionaryServiceInterface> =>
             bookId: bookId.toString(),
             sectionId: sectionId?.toString(),
             content: term,
-            definitionFound
+            definitionFound: found
           }
         ).catch(err => {
           // Just log the error but don't fail the lookup
@@ -701,25 +764,26 @@ const createDictionaryService = async (): Promise<DictionaryServiceInterface> =>
       }
     },
 
-    saveToVocabulary: (
+    saveToVocabulary: async (
       userId: string | UserId,
       term: string,
       definition: string
-    ): boolean => {
+    ): Promise<boolean> => {
       try {
         // In a real app, this would save to Supabase
-        // For now, just save to localStorage
-        const vocabulary = JSON.parse(localStorage.getItem('userVocabulary') || '{}');
+        appLog('DictionaryService', 'Saving to vocabulary', 'info', { userId, term });
 
+        const vocabulary = JSON.parse(localStorage.getItem('userVocabulary') || '{}');
+        
         if (!vocabulary[userId]) {
           vocabulary[userId] = [];
         }
 
-        // Check if word already exists in vocabulary
+        // Check if term already exists
         const existingIndex = vocabulary[userId].findIndex((item: any) => item.term === term);
-
-        if (existingIndex >= 0) {
-          appLog('DictionaryService', 'Word already exists in vocabulary, updating', 'info');
+        
+        if (existingIndex !== -1) {
+          // Update existing entry
           vocabulary[userId][existingIndex] = {
             term,
             definition,
@@ -727,6 +791,7 @@ const createDictionaryService = async (): Promise<DictionaryServiceInterface> =>
             updatedAt: new Date().toISOString()
           };
         } else {
+          // Add new entry
           vocabulary[userId].push({
             term,
             definition,
@@ -742,17 +807,20 @@ const createDictionaryService = async (): Promise<DictionaryServiceInterface> =>
       }
     },
 
-    getUserVocabulary: (userId: string | UserId): any[] => {
+    getUserVocabulary: async (userId: string | UserId): Promise<any[]> => {
       try {
         const vocabulary = JSON.parse(localStorage.getItem('userVocabulary') || '{}');
         return vocabulary[userId] || [];
       } catch (error) {
-        appLog('DictionaryService', 'Error getting user vocabulary', 'error', error);
+        appLog('DictionaryService', 'Error getting vocabulary', 'error', error);
         return [];
       }
     },
 
-    removeFromVocabulary: (userId: string | UserId, term: string): boolean => {
+    removeFromVocabulary: async (
+      userId: string | UserId,
+      term: string
+    ): Promise<boolean> => {
       try {
         const vocabulary = JSON.parse(localStorage.getItem('userVocabulary') || '{}');
 
@@ -809,22 +877,22 @@ export async function logDictionaryLookup(
   return service.logDictionaryLookup(userId, bookId, sectionId, term, definitionFound);
 };
 
-export function saveToVocabulary(
+export async function saveToVocabulary(
   userId: string | UserId,
   term: string,
   definition: string
-): boolean {
-  const service = registry.get<DictionaryServiceInterface>('dictionaryService');
+): Promise<boolean> {
+  const service = await registry.getService<DictionaryServiceInterface>('dictionaryService');
   return service.saveToVocabulary(userId, term, definition);
 };
 
-export function getUserVocabulary(userId: string | UserId): any[] {
-  const service = registry.get<DictionaryServiceInterface>('dictionaryService');
+export async function getUserVocabulary(userId: string | UserId): Promise<any[]> {
+  const service = await registry.getService<DictionaryServiceInterface>('dictionaryService');
   return service.getUserVocabulary(userId);
 };
 
-export function removeFromVocabulary(userId: string | UserId, term: string): boolean {
-  const service = registry.get<DictionaryServiceInterface>('dictionaryService');
+export async function removeFromVocabulary(userId: string | UserId, term: string): Promise<boolean> {
+  const service = await registry.getService<DictionaryServiceInterface>('dictionaryService');
   return service.removeFromVocabulary(userId, term);
 };
 
@@ -832,3 +900,154 @@ export function clearDefinitionCache(): void {
   const service = registry.get<DictionaryServiceInterface>('dictionaryService');
   service.clearDefinitionCache();
 };
+
+/**
+ * Get all Alice glossary terms as a Set for efficient lookup
+ * @returns Set of all glossary terms
+ */
+export async function getAliceGlossaryTerms(): Promise<Set<string>> {
+  try {
+    return await getAllGlossaryTerms();
+  } catch (error) {
+    appLog('DictionaryService', 'Error getting Alice glossary terms', 'error', error);
+    // Return empty set on error
+    return new Set<string>();
+  }
+}
+
+/**
+ * Analyze text context to determine the most relevant definition
+ * @param term The selected term
+ * @param surroundingText Text around the term
+ * @param fullDefinition The complete definition entry
+ * @returns Context analysis result
+ */
+function analyzeContext(
+  term: string,
+  surroundingText: string,
+  fullDefinition: DictionaryEntry
+): {
+  relevantDefinition: string;
+  score: number;
+  keywords: string[];
+  preserveWordOrigin: boolean;
+} {
+  // Clean and normalize the surrounding text
+  const cleanText = surroundingText.toLowerCase();
+  const cleanTerm = term.toLowerCase();
+  
+  // Extract keywords from the surrounding text
+  const textKeywords = extractKeywords(cleanText);
+  
+  // Extract keywords from the full definition
+  const definitionKeywords = extractKeywords(fullDefinition.definition.toLowerCase());
+  
+  // Calculate relevance score based on keyword overlap
+  const keywordOverlap = textKeywords.filter(keyword => 
+    definitionKeywords.includes(keyword)
+  );
+  
+  const score = keywordOverlap.length / Math.max(textKeywords.length, 1);
+  
+  // Check if context suggests etymology interest
+  const etymologyKeywords = ['origin', 'etymology', 'derived', 'comes from', 'meaning', 'root', 'history', 'old', 'ancient', 'latin', 'greek', 'french', 'german'];
+  const hasEtymologyInterest = etymologyKeywords.some(keyword => 
+    cleanText.includes(keyword)
+  );
+  
+  // If we have examples, try to find the most relevant one
+  let relevantDefinition = fullDefinition.definition;
+  let relevantExample = '';
+  
+  if (fullDefinition.examples && fullDefinition.examples.length > 0) {
+    // Find the example that best matches the context
+    const bestExample = fullDefinition.examples.reduce((best, example) => {
+      const exampleKeywords = extractKeywords(example.toLowerCase());
+      const exampleScore = exampleKeywords.filter(keyword => 
+        textKeywords.includes(keyword)
+      ).length / Math.max(exampleKeywords.length, 1);
+      
+      return exampleScore > best.score ? { example, score: exampleScore } : best;
+    }, { example: '', score: 0 });
+    
+    if (bestExample.score > 0.3) { // Threshold for relevance
+      relevantExample = bestExample.example;
+    }
+  }
+  
+  // Create a shorter, context-aware definition
+  if (score > 0.2) { // If there's good context match
+    // Try to extract the most relevant part of the definition
+    const sentences = fullDefinition.definition.split(/[.!?]+/).filter(s => s.trim());
+    
+    if (sentences.length > 1) {
+      // Find the sentence that best matches the context
+      const bestSentence = sentences.reduce((best, sentence) => {
+        const sentenceKeywords = extractKeywords(sentence.toLowerCase());
+        const sentenceScore = sentenceKeywords.filter(keyword => 
+          textKeywords.includes(keyword)
+        ).length / Math.max(sentenceKeywords.length, 1);
+        
+        return sentenceScore > best.score ? { sentence, score: sentenceScore } : best;
+      }, { sentence: sentences[0], score: 0 });
+      
+      if (bestSentence.score > 0.1) {
+        relevantDefinition = bestSentence.sentence.trim();
+        
+        // Add the relevant example if we found one
+        if (relevantExample) {
+          relevantDefinition += ` (e.g., "${relevantExample}")`;
+        }
+      }
+    }
+  }
+  
+  // If the definition is still too long, truncate it
+  if (relevantDefinition.length > 200) {
+    const truncated = relevantDefinition.substring(0, 200).trim();
+    const lastSpace = truncated.lastIndexOf(' ');
+    if (lastSpace > 150) {
+      relevantDefinition = truncated.substring(0, lastSpace) + '...';
+    } else {
+      relevantDefinition = truncated + '...';
+    }
+  }
+  
+  // Determine if we should preserve word origin
+  // Always preserve if there's etymology interest or if the word origin is particularly interesting
+  const preserveWordOrigin = hasEtymologyInterest || 
+    !!(fullDefinition.wordOrigin && (
+      fullDefinition.wordOrigin.includes('Old French') ||
+      fullDefinition.wordOrigin.includes('Latin') ||
+      fullDefinition.wordOrigin.includes('Greek') ||
+      fullDefinition.wordOrigin.includes('Compound word') ||
+      fullDefinition.wordOrigin.includes('Named after')
+    ));
+  
+  return {
+    relevantDefinition,
+    score,
+    keywords: keywordOverlap,
+    preserveWordOrigin
+  };
+}
+
+/**
+ * Extract meaningful keywords from text
+ * @param text Text to extract keywords from
+ * @returns Array of keywords
+ */
+function extractKeywords(text: string): string[] {
+  // Remove common stop words and punctuation
+  const stopWords = new Set([
+    'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by',
+    'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
+    'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can', 'this', 'that', 'these', 'those',
+    'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them',
+    'my', 'your', 'his', 'her', 'its', 'our', 'their', 'mine', 'yours', 'hers', 'ours', 'theirs'
+  ]);
+  
+  // Extract words (3+ characters) that aren't stop words
+  const words = text.match(/\b[a-z]{3,}\b/g) || [];
+  return words.filter(word => !stopWords.has(word));
+}

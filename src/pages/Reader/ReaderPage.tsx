@@ -18,7 +18,16 @@ import {
   Zoom,
   useTheme,
   useMediaQuery,
-  Container
+  Container,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemText,
+  Chip,
+  useSnackbar
 } from '@mui/material';
 import { useParams, useNavigate } from 'react-router-dom';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
@@ -29,12 +38,15 @@ import SmartToyIcon from '@mui/icons-material/SmartToy';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import CloseIcon from '@mui/icons-material/Close';
 import HomeIcon from '@mui/icons-material/Home';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { useBookService, useAuthService, useAnalyticsService, useDictionaryService, useAIService, useTriggerService } from '../../hooks/useService';
 import { usePerformance } from '../../hooks/usePerformance';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAccessibility } from '../../components/common/AccessibilityMenu';
 import AccessibilityMenu from '../../components/common/AccessibilityMenu';
 import LoadingSkeleton from '../../components/common/LoadingSkeleton';
+import GlossaryAwareTextHighlighter from '../../components/Reader/GlossaryAwareTextHighlighter';
+import { useGlossaryTerms } from '../../hooks/useGlossaryTerms';
 
 // Definition popup component
 const DefinitionPopup: React.FC<{
@@ -359,6 +371,9 @@ const ReaderPage: React.FC = () => {
     trackRender: true,
     componentName: 'ReaderPage'
   });
+
+  // Glossary terms for hover highlighting
+  const { glossaryTerms, isLoading: glossaryLoading, error: glossaryError, termCount } = useGlossaryTerms();
 
   // Load book content
   useEffect(() => {
@@ -718,6 +733,15 @@ const ReaderPage: React.FC = () => {
 
           <Divider sx={{ my: 2 }} />
 
+          {/* Glossary terms indicator */}
+          {!glossaryLoading && termCount > 0 && (
+            <Box sx={{ mb: 2, p: 1, bgcolor: 'warning.light', borderRadius: 1 }}>
+              <Typography variant="caption" color="text.secondary">
+                ✨ Alice Glossary Active: {termCount} technical terms available for highlighting
+              </Typography>
+            </Box>
+          )}
+
           <Box
             ref={contentRef}
             onClick={handleTextSelection}
@@ -730,16 +754,25 @@ const ReaderPage: React.FC = () => {
             }}
           >
             {currentPage?.content ? (
-              currentPage.content.split('\n\n').map((paragraph: string, index: number) => (
-                <Typography
-                  key={index}
-                  component="p"
-                  paragraph
-                  sx={fontSizeStyle}
-                >
-                  {paragraph}
-                </Typography>
-              ))
+              <GlossaryAwareTextHighlighter
+                text={currentPage.content}
+                onWordSelect={(word, element) => {
+                  console.log('Word selected:', word);
+                  // Handle word selection for definitions
+                  setSelectedWord(word);
+                  setDefinitionAnchorEl(element);
+                }}
+                onTextSelect={(text) => {
+                  console.log('Text selected:', text);
+                  // Handle text selection
+                }}
+                fontSize="1.1rem"
+                lineHeight={1.8}
+                fontFamily="Georgia, serif"
+                glossaryTerms={glossaryTerms}
+                normalWordHoverColor="rgba(25, 118, 210, 0.1)"
+                technicalWordHoverColor="rgba(255, 152, 0, 0.2)"
+              />
             ) : (
               <Typography variant="body1">
                 No content available for this page.
