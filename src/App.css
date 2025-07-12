@@ -1,0 +1,165 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+/* Alice Glossary Term Styling */
+.glossary-term {
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin: 0 1px;
+}
+
+/* Subtle dotted underline for Alice terms (always visible) */
+.glossary-term::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, 
+    rgba(255, 152, 0, 0.6) 0%, 
+    rgba(255, 152, 0, 0.3) 50%, 
+    rgba(255, 152, 0, 0.6) 100%);
+  border-radius: 1px;
+  opacity: 0.7;
+  transition: all 0.3s ease;
+}
+
+/* Enhanced hover effects for Alice glossary terms */
+.glossary-term:hover {
+  background: linear-gradient(135deg, 
+    rgba(255, 152, 0, 0.15) 0%, 
+    rgba(255, 193, 7, 0.1) 100%);
+  transform: translateY(-1px);
+  box-shadow: 
+    0 4px 12px rgba(255, 152, 0, 0.3),
+    0 2px 4px rgba(255, 152, 0, 0.2);
+  border-radius: 6px;
+}
+
+/* Enhanced underline on hover */
+.glossary-term:hover::after {
+  height: 3px;
+  background: linear-gradient(90deg, 
+    rgba(255, 152, 0, 0.9) 0%, 
+    rgba(255, 193, 7, 0.8) 50%, 
+    rgba(255, 152, 0, 0.9) 100%);
+  opacity: 1;
+  box-shadow: 0 2px 4px rgba(255, 152, 0, 0.4);
+}
+
+/* Normal word styling (for comparison) */
+.normal-word {
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 3px;
+  padding: 1px 2px;
+}
+
+.normal-word:hover {
+  background: rgba(25, 118, 210, 0.1);
+  transform: scale(1.02);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Special styling for multi-word Alice terms */
+.glossary-term[data-original-term*=" "] {
+  font-weight: 500;
+}
+
+.glossary-term[data-original-term*=" "]:hover {
+  background: linear-gradient(135deg, 
+    rgba(255, 152, 0, 0.2) 0%, 
+    rgba(255, 193, 7, 0.15) 100%);
+}
+
+/* Animation for glossary term discovery */
+@keyframes glossaryPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(255, 152, 0, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 152, 0, 0);
+  }
+}
+
+.glossary-term.discovered {
+  animation: glossaryPulse 2s ease-out;
+}
+
+/* Accessibility: High contrast mode support */
+@media (prefers-contrast: high) {
+  .glossary-term::after {
+    background: rgba(255, 152, 0, 0.9);
+    height: 3px;
+  }
+  
+  .glossary-term:hover {
+    background: rgba(255, 152, 0, 0.3);
+    border: 2px solid rgba(255, 152, 0, 0.8);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .glossary-term,
+  .glossary-term::after,
+  .normal-word {
+    transition: none;
+  }
+  
+  .glossary-term:hover {
+    transform: none;
+  }
+  
+  .glossary-term.discovered {
+    animation: none;
+  }
+}
